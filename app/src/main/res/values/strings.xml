@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name" translatable="false">CryptoWallet</string>
+    <string name="receive_text">Receive</string>
+    <string name="send_text">Send</string>
+    <string name="balance_text">Balance</string>
+    <string name="recents_text">Recents</string>
+    <string name="fee_text">Fee</string>
+    <string name="received_text">Received</string>
+    <string name="sent_text">Sent</string>
+    <string name="see_all_button_text">See all</string>
+    <string name="notify_receive">You have receive %s</string>
+    <string name="nofity_send">You have send %s</string>
+    <string name="placehold_recipient_address">Recipient address</string>
+    <string name="amount_text">Amount</string>
+    <string name="fee_per_kb_text">Fee per KB</string>
+    <string name="remaining_balance_text">Remaining balance</string>
+    <string name="to_text">To</string>
+    <string name="regular_fee_text">Regular</string>
+    <string name="priority_fee_text">Priority</string>
+    <string name="request_payment_text">Request</string>
+</resources>

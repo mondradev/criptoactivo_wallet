@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="balance_text">Saldo</string>
+    <string name="recents_text">Recientes</string>
+    <string name="fee_text">Comisión</string>
+    <string name="received_text">Recibido</string>
+    <string name="sent_text">Enviado</string>
+    <string name="see_all_button_text">Ver todo</string>
+    <string name="notify_receive">Has recibido %s</string>
+    <string name="nofity_send">Has enviado %s</string>
+    <string name="receive_text">Recibir</string>
+    <string name="send_text">Enviar</string>
+    <string name="placehold_recipient_address">Dirección del receptor</string>
+    <string name="amount_text">Cantidad</string>
+    <string name="fee_per_kb_text">Comisión por KB</string>
+    <string name="remaining_balance_text">Saldo restante</string>
+    <string name="to_text">Para</string>
+    <string name="regular_fee_text">Normal</string>
+    <string name="priority_fee_text">Urgente</string>
+    <string name="request_payment_text">Solicitar</string>
+</resources>
