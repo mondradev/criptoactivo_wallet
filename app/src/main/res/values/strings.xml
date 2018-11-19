@@ -48,4 +48,9 @@
     <string name="request_payment_template">Please send your payment to this address %s</string>
     <string name="request_payment_template_2">Please send the amount of %s to this address %s</string>
     <string name="blockchain_downloaded">Blockchain downloaded</string>
+    <string name="history_title">History</string>
+    <string name="commited_sample_text" translatable="false">6+</string>
+    <string name="tx_hash_sample" translatable="false">a1cbbcc70c2565e9730d2a2f62c39573a470de4d596a176ba50ba272e37bb99a</string>
+    <string name="unknown_address">(Unknown address)</string>
+    <string name="coinbase_address">(Coinbase address)</string>
 </resources>

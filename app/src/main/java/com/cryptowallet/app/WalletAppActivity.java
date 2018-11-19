@@ -18,7 +18,7 @@ import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinListener;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.Helper;
-import com.cryptowallet.wallet.RecentItem;
+import com.cryptowallet.wallet.GenericTransaction;
 import com.cryptowallet.wallet.RecentListAdapter;
 import com.cryptowallet.wallet.SupportedAssets;
 
@@ -170,14 +170,14 @@ public class WalletAppActivity extends AppCompatActivity {
          */
         private void addToRecents(final Transaction tx, final BitcoinService service) {
             boolean isPay = tx.getValue(service.getWallet()).isNegative();
-            final RecentItem item = new RecentItem(
-                    WalletAppActivity.this,
-                    Helper.getTxKind(isPay),
-                    tx.getUpdateTime(),
-                    isPay ? tx.getFee().toFriendlyString() : "",
-                    Helper.getBtcValue(tx, service).toFriendlyString(),
-                    WalletAppActivity.this.getDrawable(R.mipmap.ic_btc)
-            );
+
+            final GenericTransaction item = new GenericTransaction.GenericTransactionBuilder(WalletAppActivity.this, R.mipmap.ic_btc)
+                    .setKind(Helper.getTxKind(isPay))
+                    .setTime(tx.getUpdateTime())
+                    .setFee(isPay ? tx.getFee().toFriendlyString() : "")
+                    .setAmount(Helper.getBtcValue(tx, service).toFriendlyString())
+                    .build();
+
             if (tx.getConfidence().getConfidenceType()
                     != TransactionConfidence.ConfidenceType.BUILDING) {
                 tx.getConfidence().addEventListener(new TransactionConfidence.Listener() {
@@ -359,5 +359,15 @@ public class WalletAppActivity extends AppCompatActivity {
         }
 
         return String.format("(Moneda no disponible: %s)", amount);
+    }
+
+    /**
+     * Acción que muestra la actividad del historial de transacciones.
+     *
+     * @param view Componente que desencadena el evento Click.
+     */
+    public void handlerShowHistory(View view) {
+        Intent intent = new Intent(this, TransactionsActivity.class);
+        startActivityForResult(intent, 0);
     }
 }

@@ -24,10 +24,10 @@ public final class RecentListAdapter
     /**
      * Lista de elementos.
      */
-    private List<RecentItem> mItemList = new ArrayList<>();
+    private List<GenericTransaction> mItemList = new ArrayList<>();
 
     /**
-     * Crea cada elemento visual que representa a un <code>RecentItem</code>.
+     * Crea cada elemento visual que representa a un <code>GenericTransaction</code>.
      *
      * @param viewGroup Contenedor principal de transacciones.
      * @param i         Posición del elemento a crear.
@@ -39,16 +39,11 @@ public final class RecentListAdapter
         View view = LayoutInflater.from(viewGroup.getContext())
                 .inflate(R.layout.recycler_recents_list, viewGroup, false);
 
-        RecentItemHolder recentItemHolder = new RecentItemHolder(view);
-
-        if (i == getItemCount() - 1)
-            recentItemHolder.hideDivider();
-
-        return recentItemHolder;
+        return new RecentItemHolder(view);
     }
 
     /**
-     * Vincula la vista de los elementos con cada uno <code>RecentItem</code> que se encuentra de
+     * Vincula la vista de los elementos con cada uno <code>GenericTransaction</code> que se encuentra de
      * en la lista.
      *
      * @param recentItemHolder ViewHolder que se va a vincular.
@@ -56,8 +51,11 @@ public final class RecentListAdapter
      */
     @Override
     public void onBindViewHolder(@NonNull RecentItemHolder recentItemHolder, int i) {
-        RecentItem item = mItemList.get(i);
+        GenericTransaction item = mItemList.get(i);
         recentItemHolder.setRecentItem(item);
+
+        if (i == getItemCount() - 1)
+            recentItemHolder.hideDivider();
     }
 
     /**
@@ -65,11 +63,11 @@ public final class RecentListAdapter
      *
      * @param item Elemento nuevo.
      */
-    public void addItem(RecentItem item) {
+    public void addItem(GenericTransaction item) {
         mItemList.add(item);
-        Collections.sort(mItemList, new Comparator<RecentItem>() {
+        Collections.sort(mItemList, new Comparator<GenericTransaction>() {
             @Override
-            public int compare(RecentItem o1, RecentItem o2) {
+            public int compare(GenericTransaction o1, GenericTransaction o2) {
                 return o2.getTime().compareTo(o1.getTime());
             }
         });
@@ -112,7 +110,7 @@ public final class RecentListAdapter
          *
          * @param item Elemento de la lista.
          */
-        void setRecentItem(RecentItem item) {
+        void setRecentItem(GenericTransaction item) {
             final TextView mStatus = mItemView.findViewById(R.id.mStatus);
 
             TextView mOperKind = mItemView.findViewById(R.id.mOperationKind);
@@ -121,11 +119,11 @@ public final class RecentListAdapter
             TextView mTime = mItemView.findViewById(R.id.mTime);
             ImageView mIcon = mItemView.findViewById(R.id.mIcon);
 
-            mOperKind.setText(item.getOperationKind() == RecentItem.TxKind.RECEIVE
+            mOperKind.setText(item.getOperationKind() == GenericTransaction.TxKind.RECEIVE
                     ? R.string.received_text : R.string.sent_text);
 
             mAmount.setText(item.getAmount());
-            mAmount.setTextColor(item.getOperationKind() == RecentItem.TxKind.SEND
+            mAmount.setTextColor(item.getOperationKind() == GenericTransaction.TxKind.SEND
                     ? mItemView.getResources().getColor(R.color.red_color)
                     : mItemView.getResources().getColor(R.color.green_color)
             );

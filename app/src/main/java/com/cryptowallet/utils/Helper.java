@@ -18,7 +18,7 @@ import android.view.ViewGroup;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.wallet.RecentItem;
+import com.cryptowallet.wallet.GenericTransaction;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -52,8 +52,8 @@ public final class Helper {
      * @param isPay Es un pago.
      * @return Tipo de transacción.
      */
-    public static RecentItem.TxKind getTxKind(boolean isPay) {
-        return isPay ? RecentItem.TxKind.SEND : RecentItem.TxKind.RECEIVE;
+    public static GenericTransaction.TxKind getTxKind(boolean isPay) {
+        return isPay ? GenericTransaction.TxKind.SEND : GenericTransaction.TxKind.RECEIVE;
     }
 
     /**

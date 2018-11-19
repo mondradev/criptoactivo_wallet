@@ -42,4 +42,7 @@
     <string name="request_payment_template">Por favor envía tu pago a esta dirección %s</string>
     <string name="blockchain_downloaded">Blockchain descargada</string>
     <string name="request_payment_template_2">Por favor envía la cantidad de %s a esta dirección %s</string>
+    <string name="history_title">Historial</string>
+    <string name="unknown_address">(Dirección desconocida)</string>
+    <string name="coinbase_address">(Dirección de Coinbase)</string>
 </resources>

@@ -49,6 +49,13 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
+        <activity
+            android:name=".app.TransactionsActivity"
+            android:parentActivityName=".app.WalletAppActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.WalletAppActivity" />
+        </activity>
     </application>
 
 </manifest>

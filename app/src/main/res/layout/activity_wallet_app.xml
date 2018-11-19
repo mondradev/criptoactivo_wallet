@@ -125,6 +125,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:background="@android:color/transparent"
+                        android:onClick="handlerShowHistory"
                         android:text="@string/see_all_button_text"
                         android:textAllCaps="true"
                         android:textColor="@color/colorAccent" />
