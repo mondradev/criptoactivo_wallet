@@ -19,6 +19,7 @@ import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.Threading;
+import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 
@@ -38,12 +39,16 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * Valor del BTC en satoshis.
      */
     public static final long BTC_IN_SATOSHIS = 100000000;
-
     /**
      * Lista de escucha de eventos de la billetera.
      */
     private final static CopyOnWriteArrayList<BitcoinListener> mListeners
             = new CopyOnWriteArrayList<>();
+    /**
+     * Semila de la billetera.
+     */
+    private static String mSeed = "";
+
     /**
      * Servicio de la billetera.
      */
@@ -123,6 +128,23 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     }
 
     /**
+     * Establece la semila de la billetera.
+     *
+     * @param seed Semilla.
+     */
+    public static void setSeed(String seed) {
+        mSeed = seed;
+    }
+
+    /**
+     * Obtiene las 12 palabras de la billetera.
+     */
+    public List<String> getSeedCode() {
+        DeterministicSeed seed = getWallet().getKeyChainSeed();
+        return seed.getMnemonicCode();
+    }
+
+    /**
      * Obtiene la instancia que controla la billetera.
      *
      * @return Una billetera.
@@ -165,6 +187,16 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                 }
             }
         };
+
+        try {
+            if (!mSeed.isEmpty()) {
+                mKitApp.restoreWalletFromSeed(new DeterministicSeed(
+                        mSeed, null, "", 0));
+
+                mSeed = "";
+            }
+        } catch (Exception ignored) {
+        }
 
         mKitApp.setAutoSave(true)
                 .setDownloadListener(new DownloadProgressTracker() {

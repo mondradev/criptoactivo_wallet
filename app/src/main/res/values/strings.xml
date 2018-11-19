@@ -53,4 +53,32 @@
     <string name="tx_hash_sample" translatable="false">a1cbbcc70c2565e9730d2a2f62c39573a470de4d596a176ba50ba272e37bb99a</string>
     <string name="unknown_address">(Unknown address)</string>
     <string name="coinbase_address">(Coinbase address)</string>
+    <string name="drawer_open">Open drawer</string>
+    <string name="drawer_close">Close drawer</string>
+    <string name="settings">Settings</string>
+    <string name="backup_funds">Backup funds</string>
+    <string name="drop_wallet">Delete wallet</string>
+    <string name="indications_restore_text">The next 12 words guarantees access to your funds from any other wallet. Keep this information secure by writing it down on a piece of paper.</string>
+    <string name="next_word_text">Next</string>
+    <string name="start_word_text">Start</string>
+    <string name="test_words">Test</string>
+    <string name="testing_word_text">Enter the word %d</string>
+    <string name="error_word">Invalid word</string>
+    <string name="backup_funds_title">Backup</string>
+    <string name="create_wallet">Create</string>
+    <string name="restore_wallet">Restore</string>
+    <string name="indications_restore_words_text">Please enter your 12 words</string>
+    <string name="word1_text">Word 1</string>
+    <string name="word2_text">Word 2</string>
+    <string name="word3_text">Word 3</string>
+    <string name="word4_text">Word 4</string>
+    <string name="word5_text">Word 5</string>
+    <string name="word6_text">Word 6</string>
+    <string name="word7_text">Word 7</string>
+    <string name="word8_text">Word 8</string>
+    <string name="word9_text">Word 9</string>
+    <string name="word10_text">Word 10</string>
+    <string name="word11_text">Word 11</string>
+    <string name="word12_text">Word 12</string>
+    <string name="error_12_words">Verify your 12 words</string>
 </resources>

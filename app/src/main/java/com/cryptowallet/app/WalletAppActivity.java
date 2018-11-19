@@ -2,7 +2,11 @@ package com.cryptowallet.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.NavigationView;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -215,6 +219,11 @@ public class WalletAppActivity extends AppCompatActivity {
     };
 
     /**
+     *
+     */
+    private ActionBarDrawerToggle mToggle;
+
+    /**
      * Este método se ejecuta cuando la actividad es creada.
      *
      * @param savedInstanceState Estado actual de la actividad.
@@ -227,7 +236,7 @@ public class WalletAppActivity extends AppCompatActivity {
         String actionBarError = "No se logró obtener el ActionBar";
 
         Objects.requireNonNull(getSupportActionBar(), actionBarError)
-                .setDisplayShowHomeEnabled(true);
+                .setDisplayHomeAsUpEnabled(true);
         Objects.requireNonNull(getSupportActionBar(), actionBarError)
                 .setIcon(R.drawable.ic_bitcoin);
 
@@ -237,6 +246,49 @@ public class WalletAppActivity extends AppCompatActivity {
         mRecentsAdapter = new RecentListAdapter();
         mBalanceText = findViewById(R.id.mBalanceText);
 
+        DrawerLayout mDrawerLayout = findViewById(R.id.mDrawerLayout);
+        mToggle = new ActionBarDrawerToggle(this, mDrawerLayout,
+                R.string.drawer_open, R.string.drawer_close);
+
+        mDrawerLayout.addDrawerListener(mToggle);
+        mToggle.syncState();
+
+        NavigationView mLeftDrawer = findViewById(R.id.mLeftDrawer);
+        mLeftDrawer.setNavigationItemSelectedListener(new NavigationView
+                .OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int id = item.getItemId();
+                switch (id) {
+                    case R.id.mSettings:
+                        handlerShowSettingsActivity();
+                        break;
+
+                    case R.id.mBackup:
+                        handlerShowBackupFundsActivity();
+                        break;
+
+                    case R.id.mDrop:
+                        handlerShowDropWalletActivity();
+                        break;
+
+                    case R.id.mSend:
+                        handlerShowSendPaymentsActivity(null);
+                        break;
+
+                    case R.id.mReceive:
+                        handlerShowRequestPaymentsActivity();
+                        break;
+
+                    case R.id.mHistory:
+                        handlerShowHistory(null);
+                        break;
+                }
+
+                return true;
+            }
+        });
+
         RecyclerView mRecentsRecycler = findViewById(R.id.mRecentsRecycler);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
 
@@ -245,9 +297,6 @@ public class WalletAppActivity extends AppCompatActivity {
         mRecentsRecycler.setLayoutManager(mLayoutManager);
 
         BitcoinService.addEventListener(mListener);
-
-        Intent intent = new Intent(this, BitcoinService.class);
-        startService(intent);
 
         mLogger.info("Actividad principal creada");
 
@@ -259,6 +308,30 @@ public class WalletAppActivity extends AppCompatActivity {
         mDialogOnLoad.setCanceledOnTouchOutside(false);
         mDialogOnLoad.show();
     }
+
+    /**
+     * Muestra la actividad de elimanar billetera.
+     */
+    private void handlerShowDropWalletActivity() {
+
+    }
+
+    /**
+     * Muestra la actividad de configuración.
+     */
+    private void handlerShowSettingsActivity() {
+
+
+    }
+
+    /**
+     * Muestra la actividad de respaldo de fondos.
+     */
+    private void handlerShowBackupFundsActivity() {
+        Intent intent = new Intent(this, BackupFundsActitivy.class);
+        startActivityForResult(intent, 0);
+    }
+
 
     /**
      * Este método es llamado cuando la actividad es destruída.
@@ -292,6 +365,10 @@ public class WalletAppActivity extends AppCompatActivity {
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
+        if (mToggle.onOptionsItemSelected(item))
+            return true;
+
         switch (item.getItemId()) {
             case R.id.request_payment_qr:
                 handlerShowRequestPaymentsActivity();

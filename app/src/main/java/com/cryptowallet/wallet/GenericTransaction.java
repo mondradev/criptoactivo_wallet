@@ -264,7 +264,8 @@ public final class GenericTransaction {
             if (!mTransaction.mAddress.isEmpty())
                 mTransaction.mAddress += "\n";
 
-            mTransaction.mAddress += address;
+            if (!mTransaction.mAddress.contains(address))
+                mTransaction.mAddress += address;
 
             return this;
         }

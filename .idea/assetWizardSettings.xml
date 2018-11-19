@@ -16,26 +16,12 @@
                             <entry key="launcher">
                               <value>
                                 <PersistentState>
-                                  <option name="children">
-                                    <map>
-                                      <entry key="foregroundImage">
-                                        <value>
-                                          <PersistentState>
-                                            <option name="values">
-                                              <map>
-                                                <entry key="scalingPercent" value="129" />
-                                              </map>
-                                            </option>
-                                          </PersistentState>
-                                        </value>
-                                      </entry>
-                                    </map>
-                                  </option>
                                   <option name="values">
                                     <map>
                                       <entry key="backgroundAssetType" value="COLOR" />
                                       <entry key="backgroundColor" value="4caf50" />
-                                      <entry key="foregroundImage" value="C:\Users\javi_\Desktop\Artboard 6.png" />
+                                      <entry key="foregroundImage" value="C:\Users\javi_\Desktop\Splash.png" />
+                                      <entry key="outputName" value="ic_cryptowallet" />
                                       <entry key="showGrid" value="true" />
                                     </map>
                                   </option>
@@ -63,8 +49,8 @@
                         <option name="values">
                           <map>
                             <entry key="assetSourceType" value="FILE" />
-                            <entry key="outputName" value="ic_refresh" />
-                            <entry key="sourceFile" value="C:\Users\javi_\Desktop\refresh.svg" />
+                            <entry key="outputName" value="ic_delete" />
+                            <entry key="sourceFile" value="C:\Users\javi_\Desktop\delete.svg" />
                           </map>
                         </option>
                       </PersistentState>

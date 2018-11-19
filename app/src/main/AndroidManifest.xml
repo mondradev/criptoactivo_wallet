@@ -7,12 +7,14 @@
     <application
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_descriptor"
-        android:icon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".app.WalletAppActivity">
+        <activity
+            android:name=".app.SplashActivity"
+            android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -56,6 +58,16 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
+        <activity android:name=".app.WalletAppActivity" />
+        <activity
+            android:name=".app.BackupFundsActitivy"
+            android:parentActivityName=".app.WalletAppActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.WalletAppActivity" />
+        </activity>
+        <activity android:name=".app.InitWalletActivity" />
+        <activity android:name=".app.RestoreWalletActivity"></activity>
     </application>
 
 </manifest>

@@ -6,6 +6,15 @@ package com.cryptowallet.app;
 final class ExtrasKey {
 
     /**
+     * Restauración de la billetera.
+     */
+    static final String RESTORED_WALLET = "restored-wallet";
+    /**
+     * Crear un billetera nueva.
+     */
+    static final String CREATE_WALLET = "create-wallet";
+
+    /**
      * Moneda seleccionada.
      */
     static final String SELECTED_COIN = "selected-coin";
@@ -19,4 +28,6 @@ final class ExtrasKey {
      * Operación que realiza la actividad.
      */
     static final String OP_ACTIVITY = "op-activity";
+
+
 }
