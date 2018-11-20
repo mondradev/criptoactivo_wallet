@@ -67,7 +67,8 @@
                 android:value=".app.WalletAppActivity" />
         </activity>
         <activity android:name=".app.InitWalletActivity" />
-        <activity android:name=".app.RestoreWalletActivity"></activity>
+        <activity android:name=".app.RestoreWalletActivity" />
+        <activity android:name=".app.DeleteWalletActivity" />
     </application>
 
 </manifest>

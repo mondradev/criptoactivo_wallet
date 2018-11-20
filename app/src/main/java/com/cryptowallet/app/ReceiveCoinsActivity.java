@@ -15,6 +15,7 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
@@ -135,6 +136,9 @@ public class ReceiveCoinsActivity extends AppCompatActivity {
 
         mAddress = getAddressRecipient();
         mAmount = 0;
+
+        TextView mAddressText = findViewById(R.id.mAddressToReceive);
+        mAddressText.setText(mAddress);
 
         EditText mAmountEdit = findViewById(R.id.mAmountToRequest);
         mAmountEdit.setFilters(new InputFilter[]{new DecimalsFilter(16, 8)});

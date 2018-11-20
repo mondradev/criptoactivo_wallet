@@ -73,54 +73,6 @@ public class WalletAppActivity extends AppCompatActivity {
         @Override
         public void onReceived(BitcoinService service, Transaction tx) {
             addToRecents(tx, service);
-
-            String btcValue = Coin.valueOf(BitcoinService.get().getValueFromTx(tx))
-                    .toFriendlyString();
-            String messge = String.format(getString(R.string.notify_receive), btcValue);
-            String template = "%s\nTxID: %s";
-
-            Helper.sendLargeTextNotificationOs(
-                    WalletAppActivity.this,
-                    R.mipmap.ic_btc,
-                    getString(R.string.app_name),
-                    messge,
-                    String.format(template,
-                            messge,
-                            tx.getHash()
-                    )
-            );
-        }
-
-        /**
-         * Este método se ejecuta cuando la billetera envía una transacción.
-         *
-         * @param service Servicio de la billetera.
-         * @param tx      Transacción enviada.
-         */
-        @Override
-        public void onSent(BitcoinService service, Transaction tx) {
-
-        }
-
-        /**
-         * Este método se ejecuta cuando una transacción es confirmada.
-         *
-         * @param service Servicio de la billetera.
-         * @param tx      Transacción que fue confirmada.
-         */
-        @Override
-        public void onCommited(BitcoinService service, Transaction tx) {
-
-        }
-
-        /**
-         * Este método se ejecuta cuando la billetera sufre un cambio.
-         *
-         * @param service Servicio de la billetera.
-         */
-        @Override
-        public void onWalletChanged(BitcoinService service) {
-
         }
 
         /**

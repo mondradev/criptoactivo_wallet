@@ -66,4 +66,79 @@ public abstract class BitcoinListener extends WalletListenerBase<Coin, Transacti
         this.onSent(BitcoinService.get(), tx);
         this.onBalanceChanged(BitcoinService.get(), newBalance);
     }
+
+    /**
+     * Este método se ejecuta cuando la billetera recibe una transacción.
+     *
+     * @param service Servicio de la billetera.
+     * @param tx      Transacción recibida.
+     */
+    @Override
+    public void onReceived(BitcoinService service, Transaction tx) {
+
+    }
+
+    /**
+     * Este método se ejecuta cuando la billetera envía una transacción.
+     *
+     * @param service Servicio de la billetera.
+     * @param tx      Transacción enviada.
+     */
+    @Override
+    public void onSent(BitcoinService service, Transaction tx) {
+
+    }
+
+    /**
+     * Este método se ejecuta cuando una transacción es confirmada.
+     *
+     * @param service Servicio de la billetera.
+     * @param tx      Transacción que fue confirmada.
+     */
+    @Override
+    public void onCommited(BitcoinService service, Transaction tx) {
+
+    }
+
+    /**
+     * Este método se ejecuta cuando la billetera sufre un cambio.
+     *
+     * @param service Servicio de la billetera.
+     */
+    @Override
+    public void onWalletChanged(BitcoinService service) {
+
+    }
+
+    /**
+     * Este método se ejecuta cuando el saldo de la billetera ha cambiado.
+     *
+     * @param service Servicio de la billetera.
+     * @param balance Balance nuevo en la unidad más pequeña de la moneda o token.
+     */
+    @Override
+    public void onBalanceChanged(BitcoinService service, Coin balance) {
+
+    }
+
+    /**
+     * Este método se ejecuta cuando la billetera está inicializada correctamente.
+     *
+     * @param service Servicio de la billetera.
+     */
+    @Override
+    public void onReady(BitcoinService service) {
+
+    }
+
+    /**
+     * Este método se ejecuta cuando la blockchain de la billetera ha sido descargada
+     * completamente.
+     *
+     * @param service Servicio de la billetera.
+     */
+    @Override
+    public void onCompletedDownloaded(BitcoinService service) {
+
+    }
 }

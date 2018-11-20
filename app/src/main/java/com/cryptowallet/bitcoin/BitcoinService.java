@@ -4,6 +4,8 @@ import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import com.cryptowallet.R;
+import com.cryptowallet.utils.Helper;
 import com.cryptowallet.wallet.BroadcastListener;
 import com.cryptowallet.wallet.WalletServiceBase;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -22,6 +24,7 @@ import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
 
 import java.io.File;
 import java.util.List;
@@ -39,11 +42,13 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * Valor del BTC en satoshis.
      */
     public static final long BTC_IN_SATOSHIS = 100000000;
+
     /**
      * Lista de escucha de eventos de la billetera.
      */
     private final static CopyOnWriteArrayList<BitcoinListener> mListeners
             = new CopyOnWriteArrayList<>();
+
     /**
      * Semila de la billetera.
      */
@@ -72,6 +77,31 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * Número máximo de conexiones administradas por el grupo de P2P.
      */
     private int mMaxConnections = 5;
+
+    /**
+     *
+     */
+    private WalletCoinsReceivedEventListener mReceivedNotifier
+            = new WalletCoinsReceivedEventListener() {
+        @Override
+        public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
+            String btcValue = Coin.valueOf(getValueFromTx(tx))
+                    .toFriendlyString();
+            String messge = String.format(getString(R.string.notify_receive), btcValue);
+            String template = "%s\nTxID: %s";
+
+            Helper.sendLargeTextNotificationOs(
+                    getApplicationContext(),
+                    R.mipmap.ic_btc,
+                    getString(R.string.app_name),
+                    messge,
+                    String.format(template,
+                            messge,
+                            tx.getHash()
+                    )
+            );
+        }
+    };
 
     /**
      * Crea una instancia de WalletServiceBase.
@@ -104,8 +134,14 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         mListeners.add(listener);
 
         if (get() != null)
-            if (get().isInitialized())
+            if (get().isInitialized()) {
                 listener.onReady(get());
+                get().getWallet().addCoinsSentEventListener(listener);
+                get().getWallet().addChangeEventListener(listener);
+                get().getWallet().addReorganizeEventListener(listener);
+                get().getWallet().addCoinsReceivedEventListener(listener);
+            }
+
 
     }
 
@@ -185,6 +221,8 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     if (listener != null)
                         listener.onReady(BitcoinService.this);
                 }
+
+                wallet().addCoinsReceivedEventListener(mReceivedNotifier);
             }
         };
 
@@ -199,6 +237,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         }
 
         mKitApp.setAutoSave(true)
+                .setBlockingStartup(false)
                 .setDownloadListener(new DownloadProgressTracker() {
 
                     /**
