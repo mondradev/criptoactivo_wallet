@@ -9,6 +9,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
@@ -33,6 +34,7 @@ import org.bitcoinj.utils.Threading;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -63,6 +65,8 @@ public class WalletAppActivity extends AppCompatActivity {
      * Escucha de los eventos de la billetera de bitcoin.
      */
     private BitcoinListener mListener = new BitcoinListener() {
+
+        private boolean mInitDownload = false;
 
         /**
          * Este método se ejecuta cuando la billetera recibe una transacción.
@@ -100,22 +104,14 @@ public class WalletAppActivity extends AppCompatActivity {
         public void onReady(final BitcoinService service) {
             final Coin balance = service.getBalance();
 
-            Threading.USER_THREAD.execute(new Runnable() {
-                @Override
-                public void run() {
-                    mBalanceText.setText(balance.toFriendlyString());
-                    List<Transaction> transactions = service.getTransactionsByTime();
+            mBalanceText.setText(balance.toFriendlyString());
+            List<Transaction> transactions = service.getTransactionsByTime();
 
-                    findViewById(R.id.mEmptyRecents).setVisibility(
-                            transactions.size() > 0 ? View.GONE : View.VISIBLE
-                    );
+            for (final Transaction tx : transactions)
+                addToRecents(tx, service);
 
-                    for (final Transaction tx : transactions)
-                        addToRecents(tx, service);
-
-                    mDialogOnLoad.cancel();
-                }
-            });
+            if (mDialogOnLoad != null)
+                mDialogOnLoad.cancel();
         }
 
         /**
@@ -162,11 +158,67 @@ public class WalletAppActivity extends AppCompatActivity {
          */
         @Override
         public void onCompletedDownloaded(BitcoinService service) {
+            if (!mInitDownload)
+                return;
+
             Helper.sendNotificationOs(
                     WalletAppActivity.this,
                     getString(R.string.app_name),
                     getString(R.string.blockchain_downloaded)
             );
+
+            Threading.USER_THREAD.execute(new Runnable() {
+                @Override
+                public void run() {
+                    CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+                    mStatus.setVisibility(View.GONE);
+
+                    mInitDownload = false;
+                }
+            });
+        }
+
+        /**
+         * @param service
+         * @param leftBlocks
+         * @param totalBlocksToDownload
+         * @param blockTime
+         */
+        @Override
+        public void onBlocksDownloaded(BitcoinService service, final int leftBlocks,
+                                       final int totalBlocksToDownload, final Date blockTime) {
+
+            Threading.USER_THREAD.execute(new Runnable() {
+                @Override
+                public void run() {
+
+                    CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+                    if (mStatus.getVisibility() == View.GONE)
+                        mStatus.setVisibility(View.VISIBLE);
+
+                    TextView mLastBlock = findViewById(R.id.mLastBlock);
+                    mLastBlock.setText(String.format(getString(R.string.last_block_date_text), leftBlocks));
+
+                    if (leftBlocks == 0)
+                        mStatus.setVisibility(View.GONE);
+                }
+            });
+        }
+
+        @Override
+        public void onStartDownload(BitcoinService bitcoinService, int blocksTodownload) {
+            mInitDownload = true;
+
+            Threading.USER_THREAD.execute(new Runnable() {
+                @Override
+                public void run() {
+                    CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+                    mStatus.setVisibility(View.VISIBLE);
+
+                    TextView mLastBlock = findViewById(R.id.mLastBlock);
+                    mLastBlock.setText(getString(R.string.calculate_blocks));
+                }
+            });
         }
     };
 
@@ -183,6 +235,7 @@ public class WalletAppActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppPreference.loadTheme(this);
         setContentView(R.layout.activity_wallet_app);
 
         String actionBarError = "No se logró obtener el ActionBar";
@@ -248,17 +301,22 @@ public class WalletAppActivity extends AppCompatActivity {
         mRecentsRecycler.setHasFixedSize(true);
         mRecentsRecycler.setLayoutManager(mLayoutManager);
 
+        mRecentsAdapter.setEmptyView(findViewById(R.id.mEmptyRecents));
+
         BitcoinService.addEventListener(mListener);
 
         mLogger.info("Actividad principal creada");
 
-        mDialogOnLoad = new AlertDialog.Builder(this)
-                .setTitle(R.string.loading_title_text)
-                .setMessage(R.string.loading_text)
-                .create();
+        if (!BitcoinService.get().isInitialized()) {
 
-        mDialogOnLoad.setCanceledOnTouchOutside(false);
-        mDialogOnLoad.show();
+            mDialogOnLoad = new AlertDialog.Builder(this)
+                    .setTitle(R.string.loading_title_text)
+                    .setMessage(R.string.loading_text)
+                    .create();
+
+            mDialogOnLoad.setCanceledOnTouchOutside(false);
+            mDialogOnLoad.show();
+        }
     }
 
     /**
@@ -272,8 +330,8 @@ public class WalletAppActivity extends AppCompatActivity {
      * Muestra la actividad de configuración.
      */
     private void handlerShowSettingsActivity() {
-
-
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
     }
 
     /**

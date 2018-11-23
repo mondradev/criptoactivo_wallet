@@ -27,6 +27,11 @@ public final class RecentListAdapter
     private List<GenericTransaction> mItemList = new ArrayList<>();
 
     /**
+     *
+     */
+    private View mEmptyView;
+
+    /**
      * Crea cada elemento visual que representa a un <code>GenericTransaction</code>.
      *
      * @param viewGroup Contenedor principal de transacciones.
@@ -37,7 +42,7 @@ public final class RecentListAdapter
     @Override
     public RecentItemHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(viewGroup.getContext())
-                .inflate(R.layout.recycler_recents_list, viewGroup, false);
+                .inflate(R.layout.generic_transaction_item, viewGroup, false);
 
         return new RecentItemHolder(view);
     }
@@ -56,6 +61,8 @@ public final class RecentListAdapter
 
         if (i == getItemCount() - 1)
             recentItemHolder.hideDivider();
+        else
+            recentItemHolder.showDivider();
     }
 
     /**
@@ -73,6 +80,23 @@ public final class RecentListAdapter
         });
 
         notifyDataSetChanged();
+
+        if (mEmptyView != null)
+            mEmptyView.setVisibility(View.GONE);
+    }
+
+    /**
+     * @return
+     */
+    public View getEmptyView() {
+        return mEmptyView;
+    }
+
+    /**
+     * @param mEmptyView
+     */
+    public void setEmptyView(View mEmptyView) {
+        this.mEmptyView = mEmptyView;
     }
 
     /**
@@ -115,7 +139,6 @@ public final class RecentListAdapter
 
             TextView mOperKind = mItemView.findViewById(R.id.mOperationKind);
             TextView mAmount = mItemView.findViewById(R.id.mAmount);
-            TextView mFee = mItemView.findViewById(R.id.mFee);
             TextView mTime = mItemView.findViewById(R.id.mTime);
             ImageView mIcon = mItemView.findViewById(R.id.mIcon);
 
@@ -123,18 +146,13 @@ public final class RecentListAdapter
                     ? R.string.received_text : R.string.sent_text);
 
             mAmount.setText(item.getAmount());
-            mAmount.setTextColor(item.getOperationKind() == GenericTransaction.TxKind.SEND
-                    ? mItemView.getResources().getColor(R.color.red_color)
-                    : mItemView.getResources().getColor(R.color.green_color)
+            mAmount.setBackground(item.getOperationKind() == GenericTransaction.TxKind.SEND
+                    ? mItemView.getResources().getDrawable(R.drawable.send_round)
+                    : mItemView.getResources().getDrawable(R.drawable.receive_round)
             );
 
             mTime.setText(item.getTimeToStringFriendly());
             mIcon.setImageDrawable(item.getImage());
-
-            if (!item.getFee().isEmpty())
-                mFee.setText(item.getFee());
-            else
-                mFee.setVisibility(View.GONE);
 
             if (item.isCommited())
                 mStatus.setVisibility(View.GONE);
@@ -147,6 +165,14 @@ public final class RecentListAdapter
                     mStatus.setVisibility(View.GONE);
                 }
             });
+        }
+
+        /**
+         * Muestra el divisor de elementos.
+         */
+        void showDivider() {
+            View mDivider = mItemView.findViewById(R.id.mDivider);
+            mDivider.setVisibility(View.VISIBLE);
         }
 
         /**

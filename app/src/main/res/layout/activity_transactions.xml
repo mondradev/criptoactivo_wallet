@@ -15,7 +15,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:listitem="@layout/recycler_transactions_history" />
+        tools:listitem="@layout/generic_transaction_item" />
 
     <TextView
         android:id="@+id/mEmptyHistory"
@@ -25,7 +25,6 @@
         android:paddingBottom="40dp"
         android:text="@string/empty_recents_text"
         android:textAlignment="center"
-        android:textColor="@color/colorPrimaryDark"
         android:textSize="18sp"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"

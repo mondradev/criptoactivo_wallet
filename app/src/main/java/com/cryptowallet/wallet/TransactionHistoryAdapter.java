@@ -1,5 +1,6 @@
 package com.cryptowallet.wallet;
 
+import android.content.res.Resources;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
@@ -48,7 +49,7 @@ public final class TransactionHistoryAdapter
     @Override
     public TransactionHistoryViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(viewGroup.getContext())
-                .inflate(R.layout.recycler_transactions_history, viewGroup, false);
+                .inflate(R.layout.generic_transaction_item, viewGroup, false);
 
         return new TransactionHistoryViewHolder(view);
     }
@@ -73,7 +74,8 @@ public final class TransactionHistoryAdapter
                     expandList();
                 }
             });
-        }
+        } else
+            viewHolder.showDivider();
     }
 
     /**
@@ -148,50 +150,37 @@ public final class TransactionHistoryAdapter
          * @param item Elemento de la lista.
          */
         void setGenericTransaction(final GenericTransaction item) {
-            final TextView mCommits = mItemView.findViewById(R.id.mCommits);
+            final TextView mStatus = mItemView.findViewById(R.id.mStatus);
 
-            TextView mOperKind = mItemView.findViewById(R.id.mTxOperationKind);
-            TextView mAmount = mItemView.findViewById(R.id.mTxAmount);
-            TextView mFee = mItemView.findViewById(R.id.mTxFee);
-            TextView mTime = mItemView.findViewById(R.id.mTxTime);
-            ImageView mIcon = mItemView.findViewById(R.id.mAssetImage);
-            TextView mAddress = mItemView.findViewById(R.id.mTxAddress);
-            TextView mTxID = mItemView.findViewById(R.id.mTxHash);
+            TextView mOperKind = mItemView.findViewById(R.id.mOperationKind);
+            TextView mAmount = mItemView.findViewById(R.id.mAmount);
+            TextView mTime = mItemView.findViewById(R.id.mTime);
+            ImageView mIcon = mItemView.findViewById(R.id.mIcon);
 
-            mTxID.setText(item.getTxID());
             mOperKind.setText(item.getOperationKind() == GenericTransaction.TxKind.RECEIVE
                     ? R.string.received_text : R.string.sent_text);
 
-
-            int sendTxColor = mItemView.getResources().getColor(R.color.red_color);
-            int receiveTxColor = mItemView.getResources().getColor(R.color.green_color);
-
-            mAddress.setText(item.getAddress());
-            mAddress.setTextColor(item.getOperationKind() == GenericTransaction.TxKind.SEND
-                    ? sendTxColor : receiveTxColor);
-
             mAmount.setText(item.getAmount());
-            mAmount.setTextColor(item.getOperationKind() == GenericTransaction.TxKind.SEND
-                    ? sendTxColor : receiveTxColor
+            mAmount.setBackground(item.getOperationKind() == GenericTransaction.TxKind.SEND
+                    ? mItemView.getResources().getDrawable(R.drawable.send_round)
+                    : mItemView.getResources().getDrawable(R.drawable.receive_round)
             );
 
             mTime.setText(item.getTimeToStringFriendly());
             mIcon.setImageDrawable(item.getImage());
 
-            if (!item.getFee().isEmpty()) {
-                mFee.setText(item.getFee());
-                mFee.setVisibility(View.VISIBLE);
-            } else
-                mFee.setVisibility(View.GONE);
-
-            setCommitColor(mCommits, item.getCommits());
+            if (item.isCommited())
+                mStatus.setVisibility(View.GONE);
+            else
+                mStatus.setVisibility(View.VISIBLE);
 
             item.setOnCommited(new Runnable() {
                 @Override
                 public void run() {
-                    setCommitColor(mCommits, item.getCommits());
+                    mStatus.setVisibility(View.GONE);
                 }
             });
+            setCommitColor(mStatus, item.getCommits());
         }
 
         /**
@@ -204,10 +193,12 @@ public final class TransactionHistoryAdapter
 
             mCommits.setText(commits > 6 ? "6+" : Integer.toString(commits));
 
+            Resources a = mCommits.getContext().getResources();
 
-            int uncommit = mCommits.getResources().getColor(R.color.red_color);
-            int commitedPlus = mCommits.getResources().getColor(R.color.green_color);
-            int commited = mCommits.getResources().getColor(R.color.yellow_color);
+            int uncommit = a.getColor(R.color.unCommitColor);
+            int commitedPlus = a.getColor(R.color.plusCommitColor);
+            int commited = a.getColor(R.color.commitColor);
+
 
             mCommits.setTextColor(commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited);
         }
@@ -216,8 +207,16 @@ public final class TransactionHistoryAdapter
          * Oculta el divisor de elementos.
          */
         void hideDivider() {
-            View mDivider = mItemView.findViewById(R.id.mDividerTx);
-            mDivider.setVisibility(View.GONE);
+            View mDivider = mItemView.findViewById(R.id.mDivider);
+            mDivider.setVisibility(View.INVISIBLE);
+        }
+
+        /**
+         * Muestra el divisor de elementos.
+         */
+        void showDivider() {
+            View mDivider = mItemView.findViewById(R.id.mDivider);
+            mDivider.setVisibility(View.VISIBLE);
         }
     }
 

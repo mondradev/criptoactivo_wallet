@@ -10,6 +10,8 @@ import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
 import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
 import org.bitcoinj.wallet.listeners.WalletReorganizeEventListener;
 
+import java.util.Date;
+
 /**
  * Provee de una clase base para ejecutar métodos invocados por los eventos de la billetera.
  */
@@ -139,6 +141,17 @@ public abstract class BitcoinListener extends WalletListenerBase<Coin, Transacti
      */
     @Override
     public void onCompletedDownloaded(BitcoinService service) {
+
+    }
+
+    @Override
+    public void onBlocksDownloaded(BitcoinService service, int leftBlocks, int totalBlocksToDownload,
+                                   Date blockTime) {
+
+    }
+
+    @Override
+    public void onStartDownload(BitcoinService bitcoinService, int blocksTodownload) {
 
     }
 }

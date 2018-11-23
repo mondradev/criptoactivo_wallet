@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.cryptowallet">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -35,7 +36,9 @@
 
         <service
             android:name=".bitcoin.BitcoinService"
-            android:exported="false" />
+            android:directBootAware="true"
+            android:exported="false"
+            tools:targetApi="o" />
 
         <activity
             android:name=".app.SendPaymentsActivity"
@@ -68,7 +71,21 @@
         </activity>
         <activity android:name=".app.InitWalletActivity" />
         <activity android:name=".app.RestoreWalletActivity" />
-        <activity android:name=".app.DeleteWalletActivity" />
+        <activity android:name=".app.DeleteWalletActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.WalletAppActivity" />
+        </activity>
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="portrait"
+            android:stateNotNeeded="true"
+            tools:replace="android:screenOrientation" />
+        <activity android:name=".app.SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.WalletAppActivity" />
+        </activity>
     </application>
 
 </manifest>

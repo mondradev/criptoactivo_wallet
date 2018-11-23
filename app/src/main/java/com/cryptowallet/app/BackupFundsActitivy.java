@@ -46,6 +46,7 @@ public class BackupFundsActitivy extends AppCompatActivity {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_backup_funds_actitivy);
 

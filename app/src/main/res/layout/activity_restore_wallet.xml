@@ -16,195 +16,35 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <android.support.v7.widget.GridLayout
-        android:id="@+id/gridLayout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:columnCount="3"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/mDescription"
-        app:rowCount="4">
-
-        <EditText
-            android:id="@+id/mWord1"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:hint="@string/word1_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord2"
-            app:layout_column="0"
-            app:layout_row="0"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord2"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:ems="10"
-            android:hint="@string/word2_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord3"
-            android:nextFocusLeft="@id/mWord1"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord3"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:ems="10"
-            android:hint="@string/word3_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord4"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord4"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:nextFocusLeft="@id/mWord3"
-            android:ems="10"
-            android:hint="@string/word4_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord5"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord5"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:hint="@string/word5_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusLeft="@id/mWord4"
-            android:nextFocusRight="@id/mWord6"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord6"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:nextFocusLeft="@id/mWord5"
-            android:hint="@string/word6_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord7"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord7"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:hint="@string/word7_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord8"
-            app:layout_column="0"
-            android:nextFocusLeft="@id/mWord6"
-            app:layout_row="2"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord8"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:nextFocusLeft="@id/mWord7"
-            android:hint="@string/word8_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord9"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord9"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:hint="@string/word9_text"
-            android:nextFocusLeft="@id/mWord8"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusRight="@id/mWord10"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord10"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:hint="@string/word10_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusLeft="@id/mWord9"
-            android:nextFocusRight="@id/mWord11"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord11"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:nextFocusRight="@id/mWord10"
-            android:nextFocusLeft="@id/mWord12"
-            android:hint="@string/word11_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            tools:targetApi="O" />
-
-        <EditText
-            android:id="@+id/mWord12"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:ems="10"
-            android:hint="@string/word12_text"
-            android:importantForAutofill="no"
-            android:inputType="text"
-            android:nextFocusLeft="@id/mWord11"
-            tools:targetApi="O" />
-
-    </android.support.v7.widget.GridLayout>
-
-    <Button
-        android:id="@+id/mRestore"
+    <EditText
+        android:id="@+id/mSeedWords"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:background="@color/colorPrimary"
+        android:ems="10"
+        android:hint="@string/words_text"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        app:layout_column="0"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mDescription"
+        app:layout_row="0"
+        tools:targetApi="O" />
+
+    <Button
+        android:id="@+id/mRestore"
+        android:layout_width="0dp"
+        android:layout_height="54dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
         android:onClick="handlerRestore"
         android:text="@string/restore_wallet"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/gridLayout" />
+        app:layout_constraintTop_toBottomOf="@+id/mSeedWords" />
 
 </android.support.constraint.ConstraintLayout>

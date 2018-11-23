@@ -48,6 +48,7 @@ public class TransactionsActivity extends AppCompatActivity {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transactions);
 
@@ -144,30 +145,29 @@ public class TransactionsActivity extends AppCompatActivity {
 
         boolean isPay = tx.getValue(service.getWallet()).isNegative();
 
-        try {
+        if (isPay) {
+            Wallet wallet = BitcoinService.get().getWallet();
+            List<TransactionOutput> outputs = tx.getOutputs();
 
-            if (isPay) {
-                Wallet wallet = BitcoinService.get().getWallet();
-                List<TransactionOutput> outputs = tx.getOutputs();
+            for (TransactionOutput output : outputs) {
+                if (output.isMine(wallet))
+                    continue;
 
-                for (TransactionOutput output : outputs) {
-                    if (output.isMine(wallet))
-                        continue;
+                Address address = output.getAddressFromP2SH(params);
 
-                    Address address = output.getAddressFromP2SH(params);
+                if (address == null)
+                    address = output.getAddressFromP2PKHScript(params);
 
-                    if (address == null)
-                        address = output.getAddressFromP2PKHScript(params);
+                if (address != null)
+                    builder.appendAddress(address.toBase58());
+            }
 
-                    if (address != null)
-                        builder.appendAddress(address.toBase58());
-                }
+        } else {
 
-            } else {
+            List<TransactionInput> inputs = tx.getInputs();
 
-                List<TransactionInput> inputs = tx.getInputs();
-
-                for (TransactionInput input : inputs) {
+            for (TransactionInput input : inputs) {
+                try {
 
                     if (input.isCoinBase()) {
                         builder.appendAddress(getString(R.string.coinbase_address));
@@ -179,11 +179,12 @@ public class TransactionsActivity extends AppCompatActivity {
 
                     builder.appendAddress(Address
                             .fromP2SHHash(params, Utils.sha256hash160(key)).toBase58());
+
+
+                } catch (ScriptException ex) {
+                    builder.appendAddress(getString(R.string.unknown_address));
                 }
             }
-
-        } catch (ScriptException ex) {
-            builder.appendAddress(getString(R.string.unknown_address));
         }
     }
 }

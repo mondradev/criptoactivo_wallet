@@ -1,6 +1,8 @@
 package com.cryptowallet.wallet;
 
 
+import java.util.Date;
+
 /**
  * Provee de los evento ejecutados por los servicios, utilizados para comunicar la interfaz
  * gráfica con el servicio.
@@ -60,4 +62,19 @@ public abstract class WalletListenerBase<Coin, Transaction, WalletService> {
      * @param service Servicio de la billetera.
      */
     public abstract void onCompletedDownloaded(WalletService service);
+
+    /**
+     * @param service
+     * @param leftBlocks
+     * @param totalBlocksToDownload
+     * @param blockTime
+     */
+    public abstract void onBlocksDownloaded(WalletService service, int leftBlocks,
+                                            int totalBlocksToDownload, Date blockTime);
+
+    /**
+     * @param service
+     * @param blocksTodownload
+     */
+    public abstract void onStartDownload(WalletService service, int blocksTodownload);
 }

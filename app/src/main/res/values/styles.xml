@@ -2,14 +2,41 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="textPrimaryColor">?attr/colorPrimary</item>
+        <item name="textAccentColor">?attr/colorAccent</item>
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+        <item name="unCommitColor">@color/unCommitColor</item>
+        <item name="commitColor">@color/commitColor</item>
+        <item name="plusCommitColor">@color/plusCommitColor</item>
+        <item name="dividersColor">@color/dividersColor</item>
+        <item name="android:colorButtonNormal">?attr/colorPrimary</item>
     </style>
 
-    <style name="SplashTheme" parent="AppTheme">
+    <style name="AppTheme.Button.Borderless.Colored" parent="Base.Widget.AppCompat.Button.Borderless.Colored">
+        <item name="android:textColor">?attr/textAccentColor</item>
+    </style>
+
+    <style name="AppTheme.Dark" parent="AppTheme">
+        <item name="colorPrimary">@color/darkColorPrimary</item>
+        <item name="colorPrimaryDark">@color/darkColorPrimaryDark</item>
+        <item name="colorAccent">@color/darkColorAccent</item>
+        <item name="android:textColorSecondary">@color/darkTextColor</item>
+        <item name="android:textColorPrimary">@color/darkTextColor</item>
+        <item name="android:colorBackground">@color/darkBackground</item>
+        <item name="android:colorForeground">@android:color/white</item>
+        <item name="colorButtonNormal">@color/darkBackground</item>
+        <item name="cardViewStyle">@style/CardView.Dark</item>
+        <item name="android:windowBackground">@color/darkBackground</item>
+        <item name="dividersColor">@color/darkDividersColor</item>
+        <item name="android:textColorHint">@color/darkDividersColor</item>
+        <item name="colorBackgroundFloating">@color/darkBackground</item>
+        <item name="android:itemBackground">@color/darkBackground</item>
+    </style>
+
+    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
-
 </resources>

@@ -65,28 +65,12 @@ public final class Helper {
      */
     public static String getDateTime(Context context, Date txTime) {
         String pattern = isToday(txTime)
-                ? "'" + context.getString(R.string.today_text) + "', hh:mm aa"
+                ? "'" + context.getString(R.string.today_text) + "' '@' hh:mm aa"
                 : isYesterday(txTime)
-                ? "'" + context.getString(R.string.yesterday_text) + "', hh:mm aa"
-                : isCurrentYear(txTime)
-                ? "MMMM dd,\nhh:mm aa" : "MMMM aa,\nyyyy";
+                ? "'" + context.getString(R.string.yesterday_text) + "' '@' hh:mm aa"
+                : "MMMM dd, yyyy '@' hh:mm aa";
 
         return new SimpleDateFormat(pattern, Locale.getDefault()).format(txTime);
-    }
-
-    /**
-     * Obtiene un valor que indica si la fecha/hora corresponde al año actual.
-     *
-     * @param time Fecha/hora a evaluar.
-     * @return Un valor que indica que corresponde al año actual.
-     */
-    private static boolean isCurrentYear(Date time) {
-        Calendar calendar = Calendar.getInstance();
-        Calendar today = Calendar.getInstance();
-
-        calendar.setTime(time);
-
-        return calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR);
     }
 
     /**
@@ -217,6 +201,7 @@ public final class Helper {
                 .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
                 .setColor(context.getResources().getColor(R.color.colorPrimary))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setGroup("cryptowallet_notification")
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
 
@@ -247,6 +232,7 @@ public final class Helper {
                 .setColor(context.getResources().getColor(R.color.colorPrimary))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(largeText))
+                .setGroup("cryptowallet_notification")
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
 

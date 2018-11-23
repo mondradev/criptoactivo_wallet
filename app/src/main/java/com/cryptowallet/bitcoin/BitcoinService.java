@@ -12,9 +12,12 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
+import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.FilteredBlock;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.Peer;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
@@ -67,6 +70,11 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * Instancia de kit de billetera.
      */
     private WalletAppKit mKitApp;
+
+    /**
+     *
+     */
+    private boolean mSyncronizedBlockchain = false;
 
     /**
      * Parametros de la red utilizada en Bitcoin.
@@ -133,7 +141,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
         mListeners.add(listener);
 
-        if (get() != null)
+        if (get() != null) {
             if (get().isInitialized()) {
                 listener.onReady(get());
                 get().getWallet().addCoinsSentEventListener(listener);
@@ -141,6 +149,9 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                 get().getWallet().addReorganizeEventListener(listener);
                 get().getWallet().addCoinsReceivedEventListener(listener);
             }
+            if (get().isSyncronizedBlockchain())
+                listener.onCompletedDownloaded(get());
+        }
 
 
     }
@@ -218,8 +229,15 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     wallet().addChangeEventListener(listener);
                     wallet().addCoinsSentEventListener(listener);
 
+                    final BitcoinListener l = listener;
+
                     if (listener != null)
-                        listener.onReady(BitcoinService.this);
+                        Threading.USER_THREAD.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                l.onReady(BitcoinService.this);
+                            }
+                        });
                 }
 
                 wallet().addCoinsReceivedEventListener(mReceivedNotifier);
@@ -241,14 +259,57 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                 .setDownloadListener(new DownloadProgressTracker() {
 
                     /**
+                     *
+                     */
+                    private int mBlocksLeft;
+
+                    /**
+                     * @param peer
+                     * @param blocksLeft
+                     */
+                    @Override
+                    public void onChainDownloadStarted(Peer peer, int blocksLeft) {
+                        super.onChainDownloadStarted(peer, blocksLeft);
+                        this.mBlocksLeft = blocksLeft;
+                        get().mSyncronizedBlockchain = false;
+
+                        for (BitcoinListener listener : mListeners)
+                            listener.onStartDownload(BitcoinService.this, blocksLeft);
+                    }
+
+                    /**
+                     * @param peer
+                     * @param block
+                     * @param filteredBlock
+                     * @param blocksLeft
+                     */
+                    @Override
+                    public void onBlocksDownloaded(Peer peer, Block block,
+                                                   @Nullable FilteredBlock filteredBlock,
+                                                   int blocksLeft) {
+                        super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
+                        for (BitcoinListener listener : mListeners)
+                            listener.onBlocksDownloaded(BitcoinService.this, blocksLeft,
+                                    mBlocksLeft, block.getTime());
+                    }
+
+                    /**
                      * Este método es llamado cuando la blockchain es descargada.
                      */
                     @Override
                     protected void doneDownload() {
+                        get().mSyncronizedBlockchain = true;
                         for (BitcoinListener listener : mListeners)
                             listener.onCompletedDownloaded(BitcoinService.this);
                     }
                 }).startAsync();
+    }
+
+    /**
+     * @return
+     */
+    public boolean isSyncronizedBlockchain() {
+        return mSyncronizedBlockchain;
     }
 
     /**

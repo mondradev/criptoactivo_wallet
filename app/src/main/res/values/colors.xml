@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <color name="colorPrimary">#4caf4f</color>
     <color name="colorPrimaryDark">#1b5e1f</color>
     <color name="colorAccent">#FFAB40</color>
-    <color name="red_color">#F44336</color>
-    <color name="green_color">#4CAF50</color>
-    <color name="gray_color">#1F000000</color>
-    <color name="yellow_color">#FBC02D</color>
+    <color name="snackBarColor">#212121</color>
+    <color name="dividersColor">#1F000000</color>
+    <color name="unCommitColor">#F44336</color>
+    <color name="commitColor">#FFC107</color>
+    <color name="plusCommitColor">#4CAF50</color>
+    <color name="sendColor">#F44336</color>
+    <color name="receiveColor">#4CAF50</color>
+
+
+    <!-- Colores de fondo oscuro -->
+
+    <color name="darkColorPrimary">#C62828</color>
+    <color name="darkColorPrimaryDark">#B71C1C</color>
+    <color name="darkColorAccent">#DD2C00</color>
+    <color name="darkBackground">#FF212121</color>
+    <color name="darkTextColor">#E0E0E0</color>
+    <color name="darkDividersColor">#424242</color>
 </resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="CustomAttr">
+        <attr name="textPrimaryColor" format="color" />
+        <attr name="textAccentColor" format="color" />
+        <attr name="plusCommitColor" format="color" />
+        <attr name="unCommitColor" format="color" />
+        <attr name="snackBarColor" format="color" />
+        <attr name="dividersColor" format="color" />
+        <attr name="commitColor" format="color" />
+    </declare-styleable>
+</resources>

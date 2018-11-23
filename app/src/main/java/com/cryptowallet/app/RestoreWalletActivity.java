@@ -23,42 +23,21 @@ public class RestoreWalletActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_restore_wallet);
 
 
-        EditText mWord1 = findViewById(R.id.mWord1);
+        EditText mWord1 = findViewById(R.id.mSeedWords);
         mWord1.setFocusable(true);
     }
 
     public void handlerRestore(View view) {
         List<String> words = new ArrayList<>();
 
-        EditText mWord1 = findViewById(R.id.mWord1);
-        EditText mWord2 = findViewById(R.id.mWord2);
-        EditText mWord3 = findViewById(R.id.mWord3);
-        EditText mWord4 = findViewById(R.id.mWord4);
-        EditText mWord5 = findViewById(R.id.mWord5);
-        EditText mWord6 = findViewById(R.id.mWord6);
-        EditText mWord7 = findViewById(R.id.mWord7);
-        EditText mWord8 = findViewById(R.id.mWord8);
-        EditText mWord9 = findViewById(R.id.mWord9);
-        EditText mWord10 = findViewById(R.id.mWord10);
-        EditText mWord11 = findViewById(R.id.mWord11);
-        EditText mWord12 = findViewById(R.id.mWord12);
+        EditText mSeedWords = findViewById(R.id.mSeedWords);
 
-        words.add(mWord1.getText().toString());
-        words.add(mWord2.getText().toString());
-        words.add(mWord3.getText().toString());
-        words.add(mWord4.getText().toString());
-        words.add(mWord5.getText().toString());
-        words.add(mWord6.getText().toString());
-        words.add(mWord7.getText().toString());
-        words.add(mWord8.getText().toString());
-        words.add(mWord9.getText().toString());
-        words.add(mWord10.getText().toString());
-        words.add(mWord11.getText().toString());
-        words.add(mWord12.getText().toString());
+        words.add(mSeedWords.getText().toString());
 
         try {
             String seedStr = Joiner.on(" ").join(words);

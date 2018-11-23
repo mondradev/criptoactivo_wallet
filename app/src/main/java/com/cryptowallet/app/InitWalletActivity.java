@@ -18,6 +18,7 @@ public class InitWalletActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.restore_wallet);
 
