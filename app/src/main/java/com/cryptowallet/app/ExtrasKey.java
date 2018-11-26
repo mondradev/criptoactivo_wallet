@@ -5,6 +5,11 @@ package com.cryptowallet.app;
  */
 final class ExtrasKey {
 
+
+    public static final String REG_PIN = "reg-pin";
+    static final String PIN_RESPONSE = "pin-response";
+
+    static final String PIN_DATA = "pin-data";
     /**
      * Restauración de la billetera.
      */

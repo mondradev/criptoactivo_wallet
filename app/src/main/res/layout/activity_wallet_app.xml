@@ -173,7 +173,7 @@
                                 android:paddingStart="8dp"
                                 android:paddingEnd="8dp"
                                 android:scrollbarAlwaysDrawHorizontalTrack="false"
-                                tools:listitem="@layout/generic_transaction_item" />
+                                tools:listitem="@layout/viewholder_generic_transaction" />
 
                             <TextView xmlns:android="http://schemas.android.com/apk/res/android"
                                 android:id="@+id/mEmptyRecents"

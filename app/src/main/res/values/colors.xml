@@ -11,6 +11,7 @@
     <color name="plusCommitColor">#4CAF50</color>
     <color name="sendColor">#F44336</color>
     <color name="receiveColor">#4CAF50</color>
+    <color name="amountColor">@android:color/white</color>
 
 
     <!-- Colores de fondo oscuro -->
@@ -20,5 +21,9 @@
     <color name="darkColorAccent">#DD2C00</color>
     <color name="darkBackground">#FF212121</color>
     <color name="darkTextColor">#E0E0E0</color>
-    <color name="darkDividersColor">#424242</color>
+    <color name="darkDividersColor">#FF424242</color>
+    <color name="darkSnackbarBackground">#FF616161</color>
+    <color name="darkSendColor">#EF9A9A</color>
+    <color name="darkReceiveColor">#A5D6A7</color>
+    <color name="darkAmountColor">#FF212121</color>
 </resources>

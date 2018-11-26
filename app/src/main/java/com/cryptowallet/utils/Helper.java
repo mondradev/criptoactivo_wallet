@@ -45,6 +45,10 @@ public final class Helper {
      * Identificador de la aplicación.
      */
     private static final String CHANNEL_ID = "CryptoWallet";
+    /**
+     *
+     */
+    private static int notifyID = 0;
 
     /**
      * Obtiene el tipo de transacción.
@@ -174,7 +178,7 @@ public final class Helper {
                 = (ViewGroup.MarginLayoutParams) snackView.getLayoutParams();
         layoutParams.setMargins(16, 16, 16, 16);
 
-        snackView.setBackground(reference.getContext().getDrawable(R.drawable.snackbar_round));
+        snackView.setBackground(reference.getContext().getDrawable(R.drawable.bg_snackbar));
         ViewCompat.setElevation(snackView, 6);
 
         if (listener != null && caption != null && !caption.isEmpty())
@@ -195,19 +199,20 @@ public final class Helper {
             return;
 
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher_round)
+                .setSmallIcon(R.mipmap.ic_launcher_foreground)
                 .setContentTitle(title)
                 .setContentText(message)
                 .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
                 .setColor(context.getResources().getColor(R.color.colorPrimary))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setGroup("cryptowallet_notification")
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
 
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationCompat.notify(1, mBuilder.build());
+        notificationCompat.notify(notifyID, mBuilder.build());
+
+        notifyID++;
     }
 
     /**
@@ -232,13 +237,14 @@ public final class Helper {
                 .setColor(context.getResources().getColor(R.color.colorPrimary))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(largeText))
-                .setGroup("cryptowallet_notification")
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
 
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationCompat.notify(1, mBuilder.build());
+        notificationCompat.notify(notifyID, mBuilder.build());
+
+        notifyID++;
     }
 
     /**
@@ -287,5 +293,13 @@ public final class Helper {
         }
 
         return null;
+    }
+
+    public static CharSequence getString(String password) {
+        return null;
+    }
+
+    public static boolean between(int digit, int min, int max) {
+        return min <= digit && digit <= max;
     }
 }

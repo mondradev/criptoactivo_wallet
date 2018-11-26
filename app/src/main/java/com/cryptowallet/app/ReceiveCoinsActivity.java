@@ -8,7 +8,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -33,7 +32,7 @@ import java.util.Objects;
 /**
  * Actividad que permite realizar petición de pagos y compartirlo a través de otras aplicaciones.
  */
-public class ReceiveCoinsActivity extends AppCompatActivity {
+public class ReceiveCoinsActivity extends ActivityBase {
 
     /**
      * Tamaño del código QR.
@@ -125,7 +124,6 @@ public class ReceiveCoinsActivity extends AppCompatActivity {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_receive_coins);
 

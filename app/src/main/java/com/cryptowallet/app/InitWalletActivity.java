@@ -3,7 +3,6 @@ package com.cryptowallet.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
 import com.cryptowallet.R;
@@ -14,11 +13,10 @@ import java.util.Objects;
 /**
  *
  */
-public class InitWalletActivity extends AppCompatActivity {
+public class InitWalletActivity extends ActivityBase {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.restore_wallet);
 

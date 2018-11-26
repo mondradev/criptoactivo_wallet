@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/dividersColor"
+    tools:context=".app.LoginWalletActivity">
+
+    <ImageView
+        android:id="@+id/mIconApp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@mipmap/img_cryptowallet" />
+
+    <ImageButton
+        android:id="@+id/imageButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="84dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/backspace_pad"
+        android:onClick="handlerBackspace"
+        android:padding="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mIconApp"
+        app:srcCompat="@drawable/ic_backspace_outline" />
+
+    <TextView
+        android:id="@+id/pinInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:textAlignment="center"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageButton" />
+
+    <View
+        android:id="@+id/view"
+        android:layout_width="match_parent"
+        android:layout_height="477dp"
+        android:layout_marginTop="16dp"
+        android:background="?attr/colorPrimary"
+        app:layout_constraintTop_toBottomOf="@+id/pinInfo">
+
+    </View>
+
+    <android.support.v7.widget.GridLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        app:columnCount="3"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/view"
+        app:rowCount="4">
+
+        <Button
+            android:id="@+id/mNum1"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_1_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="0"
+            app:layout_row="0" />
+
+        <Button
+            android:id="@+id/mNum2"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_2_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="1"
+            app:layout_row="0" />
+
+        <Button
+            android:id="@+id/mNum3"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_3_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="2"
+            app:layout_row="0" />
+
+        <Button
+            android:id="@+id/mNum4"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_4_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="0"
+            app:layout_row="1" />
+
+        <Button
+            android:id="@+id/mNum5"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_5_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="1"
+            app:layout_row="1" />
+
+        <Button
+            android:id="@+id/mNum6"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_6_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="2"
+            app:layout_row="1" />
+
+
+        <Button
+            android:id="@+id/mNum7"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_7_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="0"
+            app:layout_row="2" />
+
+        <Button
+            android:id="@+id/mNum8"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_8_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="1"
+            app:layout_row="2" />
+
+        <Button
+            android:id="@+id/mNum9"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_9_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="2"
+            app:layout_row="2" />
+
+        <Button
+            android:id="@+id/mNum0"
+            style="@style/AppTheme.Button.Borderless.Colored"
+            android:layout_width="96dp"
+            android:layout_height="72dp"
+            android:onClick="handlerPad"
+            android:text="@string/pad_0_text"
+            android:textColor="@color/amountColor"
+            android:textSize="30sp"
+            app:layout_column="1"
+            app:layout_row="3" />
+
+    </android.support.v7.widget.GridLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
+        android:gravity="end"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toStartOf="@+id/imageButton"
+        app:layout_constraintTop_toBottomOf="@+id/mIconApp"
+        app:layout_gravity="end">
+
+        <ImageView
+            android:id="@+id/mPin1"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/pin_digit"
+            app:srcCompat="@drawable/br_pin"
+            tools:layout_editor_absoluteX="24dp"
+            tools:layout_editor_absoluteY="132dp" />
+
+        <ImageView
+            android:id="@+id/mPin2"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/pin_digit"
+            app:srcCompat="@drawable/br_pin"
+            tools:layout_editor_absoluteX="24dp"
+            tools:layout_editor_absoluteY="132dp" />
+
+        <ImageView
+            android:id="@+id/mPin3"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/pin_digit"
+            app:srcCompat="@drawable/br_pin"
+            tools:layout_editor_absoluteX="24dp"
+            tools:layout_editor_absoluteY="132dp" />
+
+        <ImageView
+            android:id="@+id/mPin4"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/pin_digit"
+            app:srcCompat="@drawable/br_pin"
+            tools:layout_editor_absoluteX="24dp"
+            tools:layout_editor_absoluteY="132dp" />
+    </LinearLayout>
+
+</android.support.constraint.ConstraintLayout>

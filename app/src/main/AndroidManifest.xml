@@ -13,6 +13,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+
+        <service
+            android:name=".bitcoin.BitcoinService"
+            android:exported="false"
+            tools:targetApi="o" />
+
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="portrait"
+            android:stateNotNeeded="true"
+            tools:replace="android:screenOrientation" />
+
         <activity
             android:name=".app.SplashActivity"
             android:theme="@style/SplashTheme">
@@ -34,11 +47,6 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".bitcoin.BitcoinService"
-            android:directBootAware="true"
-            android:exported="false"
-            tools:targetApi="o" />
 
         <activity
             android:name=".app.SendPaymentsActivity"
@@ -70,22 +78,22 @@
                 android:value=".app.WalletAppActivity" />
         </activity>
         <activity android:name=".app.InitWalletActivity" />
-        <activity android:name=".app.RestoreWalletActivity" />
+        <activity android:name=".app.RestoreWalletActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.InitWalletActivity" />
+        </activity>
         <activity android:name=".app.DeleteWalletActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
-        <activity
-            android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="portrait"
-            android:stateNotNeeded="true"
-            tools:replace="android:screenOrientation" />
         <activity android:name=".app.SettingsActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
+        <activity android:name=".app.LoginWalletActivity" />
     </application>
 
 </manifest>

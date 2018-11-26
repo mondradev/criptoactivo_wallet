@@ -1,14 +1,15 @@
 package com.cryptowallet.app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 
 import com.cryptowallet.R;
 
-public class SettingsActivity extends AppCompatActivity {
+public class SettingsActivity extends ActivityBase {
 
     private Handler mHandler = new Handler();
 
@@ -16,7 +17,6 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        AppPreference.loadTheme(this);
 
         setContentView(R.layout.activity_settings);
         setTitle(R.string.settings);
@@ -50,4 +50,9 @@ public class SettingsActivity extends AppCompatActivity {
 
     }
 
+    public void handleConfigurePin(View view) {
+        Intent intent = new Intent(this, LoginWalletActivity.class);
+        intent.putExtra(ExtrasKey.REG_PIN, true);
+        startActivity(intent);
+    }
 }

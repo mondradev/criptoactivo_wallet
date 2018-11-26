@@ -1,5 +1,6 @@
 package com.cryptowallet.app;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
@@ -11,7 +12,7 @@ import com.cryptowallet.utils.Helper;
 /**
  *
  */
-final class AppPreference {
+public final class AppPreference {
 
     private static final String LIGHT_THEME = "AppTheme";
     private static final String DARK_THEME = "AppTheme.Dark";
@@ -72,4 +73,11 @@ final class AppPreference {
     }
 
 
+    static void reloadTheme(Activity context) {
+        context.recreate();
+    }
+
+    static String getThemeName() {
+        return mCurrentTheme;
+    }
 }

@@ -21,6 +21,7 @@ import org.bitcoinj.core.Peer;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
+import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.Threading;
@@ -28,6 +29,7 @@ import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
+import org.spongycastle.crypto.params.KeyParameter;
 
 import java.io.File;
 import java.util.List;
@@ -93,6 +95,10 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
             = new WalletCoinsReceivedEventListener() {
         @Override
         public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
+
+            if (tx.getValue(wallet).isNegative())
+                return;
+
             String btcValue = Coin.valueOf(getValueFromTx(tx))
                     .toFriendlyString();
             String messge = String.format(getString(R.string.notify_receive), btcValue);
@@ -100,7 +106,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
             Helper.sendLargeTextNotificationOs(
                     getApplicationContext(),
-                    R.mipmap.ic_btc,
+                    R.mipmap.img_bitcoin,
                     getString(R.string.app_name),
                     messge,
                     String.format(template,
@@ -220,6 +226,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
              */
             @Override
             protected void onSetupCompleted() {
+                peerGroup().setStallThreshold(10, 1024 * 50);
                 peerGroup().setMaxConnections(mMaxConnections);
                 setInitialized();
 
@@ -254,7 +261,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         } catch (Exception ignored) {
         }
 
-        mKitApp.setAutoSave(true)
+        mKitApp
                 .setBlockingStartup(false)
                 .setDownloadListener(new DownloadProgressTracker() {
 
@@ -302,7 +309,8 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                         for (BitcoinListener listener : mListeners)
                             listener.onCompletedDownloaded(BitcoinService.this);
                     }
-                }).startAsync();
+                }).setUserAgent("CryptoWallet", "0.8.2311_beta")
+                .startAsync();
     }
 
     /**
@@ -321,30 +329,27 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * @return Una transacción del pago.
      */
     @Override
-    public Transaction SendPay(@NonNull Coin value, @NonNull Address to, @NonNull Coin feePerKb) {
-        try {
+    public Transaction SendPay(@NonNull Coin value, @NonNull Address to, @NonNull Coin feePerKb,
+                               @Nullable byte[] password) throws InsufficientMoneyException,
+            KeyCrypterException {
+        Wallet wallet = mKitApp.wallet();
 
-            Wallet wallet = mKitApp.wallet();
+        Transaction txSend = new Transaction(mNetworkParameters);
+        txSend.addOutput(value, to);
 
-            Transaction txSend = new Transaction(mNetworkParameters);
-            txSend.addOutput(value, to);
+        SendRequest request = SendRequest.forTx(txSend);
+        request.feePerKb = feePerKb;
 
-            SendRequest request = SendRequest.forTx(txSend);
-            request.feePerKb = feePerKb;
+        if (password != null)
+            request.aesKey = new KeyParameter(password);
 
-            wallet.completeTx(request);
-            wallet.commitTx(request.tx);
+        wallet.completeTx(request);
+        wallet.commitTx(request.tx);
 
-            mLogger.info("Transacción lista para ser propagada por la red de Bitcoin, hash: "
-                    + request.tx.getHash().toString());
+        mLogger.info("Transacción lista para ser propagada por la red de Bitcoin, hash: "
+                + request.tx.getHash().toString());
 
-            return txSend;
-        } catch (InsufficientMoneyException ex) {
-            mLogger.error("El saldo no es suficiente para cubrir la transacción, mensaje reportado: "
-                    + ex.getMessage());
-
-            return null;
-        }
+        return txSend;
     }
 
     /**
@@ -392,6 +397,9 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     mLogger.error("No se logró propagar la transacción a través de la red.");
                 } catch (InterruptedException e) {
                     mLogger.error("Se interrumpió la propagación de la transacción.");
+                } catch (NullPointerException ignored) {
+                    mLogger.error("Error al obtener la confidencia de la transacción durante " +
+                            "la transmisión a la red.");
                 }
             }
         }, Threading.USER_THREAD);
@@ -441,6 +449,19 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     @Override
     public String getAddressRecipient() {
         return getWallet().freshReceiveAddress().toBase58();
+    }
+
+    /**
+     * @return
+     */
+    @Override
+    public boolean requireDecrypted() {
+        return getWallet().isEncrypted();
+    }
+
+    @Override
+    public boolean validatePin(byte[] pin) {
+        return getWallet().checkAESKey(new KeyParameter(pin));
     }
 
     /**

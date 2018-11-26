@@ -1,7 +1,6 @@
 package com.cryptowallet.app;
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -18,7 +17,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Esta actividad permite obtener las 12 palabras de la billetera.
  */
-public class BackupFundsActitivy extends AppCompatActivity {
+public class BackupFundsActitivy extends ActivityBase {
 
     /**
      * Palabra que está actualmente mostrandose.
@@ -46,9 +45,8 @@ public class BackupFundsActitivy extends AppCompatActivity {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_backup_funds_actitivy);
+        setContentView(R.layout.activity_backup_funds);
 
         setTitle(R.string.backup_funds_title);
     }

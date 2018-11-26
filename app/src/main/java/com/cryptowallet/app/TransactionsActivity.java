@@ -1,7 +1,6 @@
 package com.cryptowallet.app;
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -34,7 +33,7 @@ import static com.cryptowallet.wallet.GenericTransaction.GenericTransactionBuild
 /**
  * Actividad que permite visualizar todas las transacciones de la billetera.
  */
-public class TransactionsActivity extends AppCompatActivity {
+public class TransactionsActivity extends ActivityBase {
 
     /**
      * Adaptador de transacciones de la vista.
@@ -48,7 +47,6 @@ public class TransactionsActivity extends AppCompatActivity {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transactions);
 
@@ -102,7 +100,7 @@ public class TransactionsActivity extends AppCompatActivity {
             String fee = isPay ? tx.getFee().toFriendlyString() : "";
 
             GenericTransactionBuilder builder
-                    = new GenericTransactionBuilder(this, R.mipmap.ic_btc)
+                    = new GenericTransactionBuilder(this, R.mipmap.img_bitcoin)
                     .setCommits(tx.getConfidence().getDepthInBlocks())
                     .setAmount(Coin.valueOf(value).toFriendlyString())
                     .setFee(fee)

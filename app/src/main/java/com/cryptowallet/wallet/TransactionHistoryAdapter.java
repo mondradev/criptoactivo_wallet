@@ -49,7 +49,7 @@ public final class TransactionHistoryAdapter
     @Override
     public TransactionHistoryViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(viewGroup.getContext())
-                .inflate(R.layout.generic_transaction_item, viewGroup, false);
+                .inflate(R.layout.viewholder_generic_transaction, viewGroup, false);
 
         return new TransactionHistoryViewHolder(view);
     }
@@ -162,8 +162,8 @@ public final class TransactionHistoryAdapter
 
             mAmount.setText(item.getAmount());
             mAmount.setBackground(item.getOperationKind() == GenericTransaction.TxKind.SEND
-                    ? mItemView.getResources().getDrawable(R.drawable.send_round)
-                    : mItemView.getResources().getDrawable(R.drawable.receive_round)
+                    ? mItemView.getResources().getDrawable(R.drawable.bg_tx_send)
+                    : mItemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
 
             mTime.setText(item.getTimeToStringFriendly());

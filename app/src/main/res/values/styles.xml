@@ -13,10 +13,21 @@
         <item name="plusCommitColor">@color/plusCommitColor</item>
         <item name="dividersColor">@color/dividersColor</item>
         <item name="android:colorButtonNormal">?attr/colorPrimary</item>
+        <item name="snackBarColor">@color/snackBarColor</item>
+        <item name="receiveColor">@color/receiveColor</item>
+        <item name="sendColor">@color/sendColor</item>
+        <item name="amountColor">@color/amountColor</item>
     </style>
 
     <style name="AppTheme.Button.Borderless.Colored" parent="Base.Widget.AppCompat.Button.Borderless.Colored">
         <item name="android:textColor">?attr/textAccentColor</item>
+    </style>
+
+    <style name="AppTheme.Button.Item" parent="AppTheme.Button.Borderless.Colored">
+        <item name="android:textAlignment">viewStart</item>
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
     </style>
 
     <style name="AppTheme.Dark" parent="AppTheme">
@@ -34,9 +45,14 @@
         <item name="android:textColorHint">@color/darkDividersColor</item>
         <item name="colorBackgroundFloating">@color/darkBackground</item>
         <item name="android:itemBackground">@color/darkBackground</item>
+        <item name="snackBarColor">@color/darkSnackbarBackground</item>
+        <item name="receiveColor">@color/darkReceiveColor</item>
+        <item name="sendColor">@color/darkSendColor</item>
+        <item name="amountColor">@color/darkAmountColor</item>
     </style>
 
     <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowBackground">@drawable/bg_splashscreen</item>
     </style>
+
 </resources>

@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.view.View;
@@ -27,17 +26,21 @@ import com.google.zxing.integration.android.IntentResult;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
+import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 
 import java.util.Objects;
 
+import static com.cryptowallet.app.ExtrasKey.PIN_DATA;
+
 /**
  * Actividad que permite el envío de pagos, también ofrece leer códigos QR que almacenan un URI
  * válido.
  */
-public class SendPaymentsActivity extends AppCompatActivity
+public class SendPaymentsActivity extends ActivityBase
         implements AdapterView.OnItemSelectedListener {
 
     /**
@@ -143,7 +146,6 @@ public class SendPaymentsActivity extends AppCompatActivity
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        AppPreference.loadTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_send_payments);
 
@@ -313,32 +315,49 @@ public class SendPaymentsActivity extends AppCompatActivity
      * @param view Componente el cual desencadeno el evento Click.
      */
     public void handlerSendPayment(View view) {
-        switch (mSelectCoin) {
-            case BTC:
-                Transaction tx = BitcoinService.get().SendPay(Coin.valueOf(mAmount),
-                        Address.fromBase58(BitcoinService.get().getNetwork(), mAddress),
-                        Coin.valueOf(mFeePerKb));
 
-                BitcoinService.get().broadCastTx(tx, new BroadcastListener<Transaction>() {
-                    @Override
-                    public void onCompleted(Transaction tx) {
-                        Helper.sendLargeTextNotificationOs(getApplicationContext(),
-                                R.mipmap.ic_btc,
-                                getString(R.string.app_name),
-                                getString(R.string.nofity_propagated),
-                                getString(R.string.nofity_propagated).concat("\n")
-                                        .concat(String.format(getString(R.string.transaction_id),
-                                                tx.getHash()))
-                        );
-                    }
-                });
-                Intent result = new Intent();
-                result.putExtra(ExtrasKey.TX_VALUE, BitcoinService.get().getValueFromTx(tx));
-                result.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
-                result.putExtra(ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
-                setResult(Activity.RESULT_OK, result);
-                finish();
-                break;
+        if (BitcoinService.get().requireDecrypted()) {
+            Intent intent = new Intent(this, LoginWalletActivity.class);
+            startActivityForResult(intent, 0);
+        } else
+            doPay(null);
+    }
+
+    private void doPay(byte[] password) {
+        try {
+            switch (mSelectCoin) {
+                case BTC:
+
+
+                    Transaction tx = BitcoinService.get().SendPay(Coin.valueOf(mAmount),
+                            Address.fromBase58(BitcoinService.get().getNetwork(), mAddress),
+                            Coin.valueOf(mFeePerKb), password);
+
+                    BitcoinService.get().broadCastTx(Objects.requireNonNull(tx), new BroadcastListener<Transaction>() {
+                        @Override
+                        public void onCompleted(Transaction tx) {
+                            Helper.sendLargeTextNotificationOs(getApplicationContext(),
+                                    R.mipmap.img_bitcoin,
+                                    getString(R.string.app_name),
+                                    getString(R.string.nofity_propagated),
+                                    getString(R.string.nofity_propagated).concat("\n")
+                                            .concat(String.format(getString(R.string.transaction_id),
+                                                    tx.getHash()))
+                            );
+                        }
+                    });
+                    Intent result = new Intent();
+                    result.putExtra(ExtrasKey.TX_VALUE, BitcoinService.get().getValueFromTx(tx));
+                    result.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
+                    result.putExtra(ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
+                    setResult(Activity.RESULT_OK, result);
+                    finish();
+                    break;
+            }
+        } catch (InsufficientMoneyException ignored) {
+
+        } catch (KeyCrypterException ignored) {
+
         }
     }
 
@@ -379,6 +398,10 @@ public class SendPaymentsActivity extends AppCompatActivity
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+
+        if (data != null && data.hasExtra(PIN_DATA)) {
+            doPay(data.getByteArrayExtra(PIN_DATA));
         }
     }
 }

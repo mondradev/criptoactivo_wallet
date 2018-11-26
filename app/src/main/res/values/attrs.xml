@@ -8,5 +8,8 @@
         <attr name="snackBarColor" format="color" />
         <attr name="dividersColor" format="color" />
         <attr name="commitColor" format="color" />
+        <attr name="sendColor" format="color" />
+        <attr name="receiveColor" format="color" />
+        <attr name="amountColor" format="color" />
     </declare-styleable>
 </resources>

@@ -17,7 +17,7 @@
         android:layout_marginTop="8dp"
         android:background="@android:color/transparent"
         android:contentDescription="@string/btc_description_text"
-        android:src="@mipmap/ic_btc"
+        android:src="@mipmap/img_bitcoin"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -69,10 +69,11 @@
         android:layout_gravity="end"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
-        android:background="@drawable/receive_round"
+        android:background="@drawable/bg_tx_receive"
         android:padding="8dp"
         android:text="@string/amount_sample_text"
         android:textAlignment="center"
+        android:textColor="?attr/amountColor"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"

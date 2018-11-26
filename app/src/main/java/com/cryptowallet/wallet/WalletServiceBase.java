@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 
+import org.bitcoinj.core.InsufficientMoneyException;
+import org.bitcoinj.crypto.KeyCrypterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +75,11 @@ public abstract class WalletServiceBase<Coin, Address, Transaction> extends Serv
      * @param feePerKb Comisiones por Kilobyte.
      * @return Una transacción del pago.
      */
-    public abstract Transaction SendPay(@NonNull Coin value, @NonNull Address to, @NonNull Coin feePerKb);
+    public abstract Transaction SendPay(@NonNull Coin value,
+                                        @NonNull Address to,
+                                        @NonNull Coin feePerKb,
+                                        @Nullable byte[] password)
+            throws InsufficientMoneyException, KeyCrypterException;
 
     /**
      * Propaga una transacción a través de la red, una vez finalizada esta operación se ejecuta
@@ -113,4 +119,8 @@ public abstract class WalletServiceBase<Coin, Address, Transaction> extends Serv
      * @return Dirección de recepción.
      */
     public abstract String getAddressRecipient();
+
+    public abstract boolean requireDecrypted();
+
+    public abstract boolean validatePin(byte[] pin);
 }

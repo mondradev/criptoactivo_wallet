@@ -13,7 +13,7 @@
         android:layout_marginStart="24dp"
         android:layout_marginTop="24dp"
         android:layout_marginEnd="24dp"
-        android:background="@drawable/qr_code_frame"
+        android:background="@drawable/br_qrcode_frame"
         android:contentDescription="@string/qr_receive_description"
         android:onClick="handlerCopyToClipboard"
         android:padding="2dp"
@@ -94,7 +94,7 @@
             android:contentDescription="@string/btc_description_text"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@mipmap/ic_btc" />
+            app:srcCompat="@mipmap/img_bitcoin" />
     </android.support.constraint.ConstraintLayout>
 
     <Button

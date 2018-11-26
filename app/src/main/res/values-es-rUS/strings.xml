@@ -48,8 +48,8 @@
     <string name="drawer_open">Abrir panel lateral</string>
     <string name="drawer_close">Cerrar panel lateral</string>
     <string name="settings">Ajustes</string>
-    <string name="backup_funds">Respaldar fondos</string>
-    <string name="drop_wallet">Eliminar billetera</string>
+    <string name="backup_funds">Respaldar</string>
+    <string name="drop_wallet">Eliminar</string>
     <string name="indications_restore_text">Las siguientes 12 palabras garantiza el acceso a tus fondos de cualquier otra billetera. Mantén segura esta información anotándola en un papel.</string>
     <string name="next_word_text">Siguiente</string>
     <string name="start_word_text">Iniciar</string>
@@ -65,9 +65,9 @@
     <string name="blockchain_status">Estado de Blockchain</string>
     <string name="last_block_date_text">Bloques restantes: %,8d%n</string>
     <string name="calculate_blocks">Calculando último bloque</string>
-    <string name="darkMode">Modo oscuro</string>
-    <string name="lightMode">Modo claro</string>
-    <string name="theme_title_setting">Tema</string>
+    <string name="darkMode">Tema oscuro</string>
+    <string name="lightMode">Tema claro</string>
+    <string name="general_title_setting">General</string>
     <string name="about_title_setting">Acerca de</string>
     <string name="network_title_setting">Red</string>
     <string name="security_title_setting">Seguridad</string>
@@ -76,4 +76,12 @@
     <string name="fingerprint_setting">Usar huella dactilar</string>
     <string name="version_title_setting">Versión</string>
     <string name="requires_authenticate_to_send">Requiere autenticar para envío</string>
+    <string name="pin_hint">PIN</string>
+    <string name="indications_pin_setup">Especifique al menos 4 digitos</string>
+    <string name="pin_no_equal">El PIN especificado no coincide</string>
+    <string name="encrypt_message">Espere mientras la billetera se encripta con el PIN</string>
+    <string name="encrypt_wallet">Encriptando billetera</string>
+    <string name="commit_pin">Confirme su PIN</string>
+    <string name="error_pin">PIN incorrecto</string>
+    <string name="authenticate_title">Autenticación</string>
 </resources>

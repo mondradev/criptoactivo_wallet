@@ -8,7 +8,6 @@ import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -42,7 +41,7 @@ import java.util.Objects;
  * Actividad principal de la billetera. Desde esta actividad se establece el flujo de trabajo de
  * toda la aplicación.
  */
-public class WalletAppActivity extends AppCompatActivity {
+public class WalletAppActivity extends ActivityBase {
 
     /**
      * Gestiona todos los logs de la clase.
@@ -111,7 +110,7 @@ public class WalletAppActivity extends AppCompatActivity {
                 addToRecents(tx, service);
 
             if (mDialogOnLoad != null)
-                mDialogOnLoad.cancel();
+                mDialogOnLoad.dismiss();
         }
 
         /**
@@ -123,7 +122,7 @@ public class WalletAppActivity extends AppCompatActivity {
         private void addToRecents(final Transaction tx, final BitcoinService service) {
             boolean isPay = tx.getValue(service.getWallet()).isNegative();
 
-            final GenericTransaction item = new GenericTransaction.GenericTransactionBuilder(WalletAppActivity.this, R.mipmap.ic_btc)
+            final GenericTransaction item = new GenericTransaction.GenericTransactionBuilder(WalletAppActivity.this, R.mipmap.img_bitcoin)
                     .setKind(Helper.getTxKind(isPay))
                     .setTime(tx.getUpdateTime())
                     .setFee(isPay ? tx.getFee().toFriendlyString() : "")
@@ -235,7 +234,6 @@ public class WalletAppActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        AppPreference.loadTheme(this);
         setContentView(R.layout.activity_wallet_app);
 
         String actionBarError = "No se logró obtener el ActionBar";
@@ -315,6 +313,7 @@ public class WalletAppActivity extends AppCompatActivity {
                     .create();
 
             mDialogOnLoad.setCanceledOnTouchOutside(false);
+            mDialogOnLoad.setCancelable(false);
             mDialogOnLoad.show();
         }
     }
