@@ -25,11 +25,10 @@
     <string name="btc_description_text" translatable="false">Bitcoin</string>
     <string name="operation_kind_sample">Received</string>
     <string name="status_sample_text">(UC)</string>
-    <string name="time_sample_text">today, 08:00 AM</string>
+    <string name="time_sample_text">today @ 08:00 AM</string>
     <string name="amount_sample_text" translatable="false">0.002 BTC</string>
     <string name="fee_sample_text">Fee: 0.00003 BTC</string>
-    <string name="loading_text">The wallet is being deciphered, wait …</string>
-    <string name="loading_title_text">Loading wallet</string>
+    <string name="loading_title_text">Loading</string>
     <string name="today_text">today</string>
     <string name="yesterday_text">yesterday</string>
     <string name="address_sample" translatable="false">msyfBnf2pTwXc6uTHXH7yKyq5MK1ggq8C8</string>
@@ -82,7 +81,7 @@
     <string name="use_only_wifi_setting">Blockchain only WI-FI</string>
     <string name="change_pin_setting">Change PIN</string>
     <string name="fingerprint_setting">Use fingerprint</string>
-    <string name="current_version_setting" translatable="false">0.8.2611</string>
+    <string name="current_version_setting" translatable="false">0.8.2711</string>
     <string name="version_title_setting">Version</string>
     <string name="requires_authenticate_to_send">Requires authentication to send</string>
     <string name="pin_hint">PIN</string>
@@ -98,11 +97,19 @@
     <string name="pad_5_text" translatable="false">5</string>
     <string name="backspace_pad" translatable="false">backspace</string>
     <string name="pin_digit" translatable="false">PIN digit</string>
-    <string name="indications_pin_setup">Enter at least 4 digits</string>
+    <string name="indications_pin_setup">Enter 4 digits</string>
     <string name="pin_no_equal">PIN does not match</string>
-    <string name="encrypt_message">Wait while the wallet is encrypted with the PIN</string>
+    <string name="encrypt_message">Wait while the wallet is encrypted</string>
     <string name="encrypt_wallet">Encrypting wallet</string>
     <string name="commit_pin">Confirm your PIN</string>
     <string name="error_pin">Wrong PIN</string>
     <string name="authenticate_title">Authentication</string>
+    <string name="validate_pin">Validiting</string>
+    <string name="validate_pin_text">Validiting PIN</string>
+    <string name="enter_pin">Enter your PIN</string>
+    <string name="loading_text">The wallet is loading, wait …</string>
+    <string name="transaction_title">Transaction</string>
+    <string name="from_address_text">From address</string>
+    <string name="datetime_text">Timestamp</string>
+    <string name="commit_text">Commits</string>
 </resources>

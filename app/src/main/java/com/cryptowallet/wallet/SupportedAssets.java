@@ -7,5 +7,10 @@ public enum SupportedAssets {
     /**
      * Bitcoin
      */
-    BTC
+    BTC,
+
+    /**
+     * Ethereum
+     */
+    ETH
 }

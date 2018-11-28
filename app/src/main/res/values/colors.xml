@@ -26,4 +26,7 @@
     <color name="darkSendColor">#EF9A9A</color>
     <color name="darkReceiveColor">#A5D6A7</color>
     <color name="darkAmountColor">#FF212121</color>
+
+
+    <color name="splashBackgroundColor">#EEEEEE</color>
 </resources>

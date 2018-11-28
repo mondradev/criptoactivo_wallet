@@ -18,12 +18,17 @@ import org.bitcoinj.core.FilteredBlock;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Peer;
+import org.bitcoinj.core.ScriptException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
+import org.bitcoinj.core.TransactionInput;
+import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.core.Utils;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.script.Script;
 import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
@@ -33,6 +38,7 @@ import org.spongycastle.crypto.params.KeyParameter;
 
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -86,7 +92,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     /**
      * Número máximo de conexiones administradas por el grupo de P2P.
      */
-    private int mMaxConnections = 5;
+    private int mMaxConnections = 10;
 
     /**
      *
@@ -189,11 +195,77 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         mSeed = seed;
     }
 
+    public static String getFromAddresses(Transaction tx, String coinbaseLabel,
+                                          String unknownAdress) {
+        StringBuilder builder = new StringBuilder();
+
+        BitcoinService service = get();
+        NetworkParameters params = service.getNetwork();
+
+        List<TransactionInput> inputs = tx.getInputs();
+
+        for (TransactionInput input : inputs) {
+            if (builder.length() > 0)
+                builder.append("\n");
+
+            try {
+
+                if (input.isCoinBase()) {
+                    builder.append(coinbaseLabel);
+                    continue;
+                }
+
+                Script script = input.getScriptSig();
+                byte[] key = script.getPubKey();
+
+                builder.append(Address
+                        .fromP2SHHash(params, Utils.sha256hash160(key)).toBase58());
+
+
+            } catch (ScriptException ex) {
+                get().mLogger.warn("Dirección no decodificada");
+                builder.append(unknownAdress);
+            }
+        }
+
+        return builder.toString();
+    }
+
+    public static String getToAddresses(Transaction tx) {
+        StringBuilder builder = new StringBuilder();
+        BitcoinService service = get();
+        NetworkParameters params = service.getNetwork();
+
+        Wallet wallet = service.getWallet();
+        List<TransactionOutput> outputs = tx.getOutputs();
+
+        for (TransactionOutput output : outputs) {
+            if (builder.length() > 0)
+                builder.append("\n");
+
+            Address address = output.getAddressFromP2SH(params);
+
+            if (address == null)
+                address = output.getAddressFromP2PKHScript(params);
+
+            if (address != null)
+                builder.append(address.toBase58());
+        }
+
+        return builder.toString();
+    }
+
+
     /**
      * Obtiene las 12 palabras de la billetera.
      */
-    public List<String> getSeedCode() {
+    public List<String> getSeedCode(@Nullable byte[] key) {
         DeterministicSeed seed = getWallet().getKeyChainSeed();
+
+        if (requireDecrypted())
+            return seed.decrypt(Objects.requireNonNull(getWallet().getKeyCrypter()),
+                    "", new KeyParameter(Objects.requireNonNull(key))).getMnemonicCode();
+
         return seed.getMnemonicCode();
     }
 
@@ -329,7 +401,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * @return Una transacción del pago.
      */
     @Override
-    public Transaction SendPay(@NonNull Coin value, @NonNull Address to, @NonNull Coin feePerKb,
+    public Transaction sendPay(@NonNull Coin value, @NonNull Address to, @NonNull Coin feePerKb,
                                @Nullable byte[] password) throws InsufficientMoneyException,
             KeyCrypterException {
         Wallet wallet = mKitApp.wallet();

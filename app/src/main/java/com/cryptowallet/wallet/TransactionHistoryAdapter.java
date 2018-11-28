@@ -1,5 +1,6 @@
 package com.cryptowallet.wallet;
 
+import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -7,10 +8,12 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.TransactionActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,7 +24,8 @@ import java.util.List;
  * Adaptador del historial de transacciones de la billetera.
  */
 public final class TransactionHistoryAdapter
-        extends RecyclerView.Adapter<TransactionHistoryAdapter.TransactionHistoryViewHolder> {
+        extends RecyclerView.Adapter<TransactionHistoryAdapter.TransactionHistoryViewHolder>
+        implements View.OnClickListener {
 
     /**
      * Lista de elementos.
@@ -38,6 +42,8 @@ public final class TransactionHistoryAdapter
      */
     private Handler mHandler = new Handler();
 
+    private ExchangeService.Currencies mCurrentCurrency = ExchangeService.Currencies.BTC;
+
     /**
      * Crea cada elemento visual que representa a un <code>GenericTransaction</code>.
      *
@@ -50,7 +56,6 @@ public final class TransactionHistoryAdapter
     public TransactionHistoryViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(viewGroup.getContext())
                 .inflate(R.layout.viewholder_generic_transaction, viewGroup, false);
-
         return new TransactionHistoryViewHolder(view);
     }
 
@@ -64,7 +69,7 @@ public final class TransactionHistoryAdapter
     @Override
     public void onBindViewHolder(@NonNull TransactionHistoryViewHolder viewHolder, int i) {
         GenericTransaction transaction = mItemList.get(i);
-        viewHolder.setGenericTransaction(transaction);
+        viewHolder.update(transaction);
 
         if (i == getItemCount() - 1) {
             viewHolder.hideDivider();
@@ -98,7 +103,7 @@ public final class TransactionHistoryAdapter
     /**
      * Muestra más elementos de la lista.
      */
-    void expandList() {
+    private void expandList() {
         if (mCurrentLimit == mItemList.size())
             return;
 
@@ -106,6 +111,23 @@ public final class TransactionHistoryAdapter
 
         if (mCurrentLimit > mItemList.size())
             mCurrentLimit = mItemList.size();
+
+        notifyDataSetChanged();
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (mCurrentCurrency) {
+            case BTC:
+                mCurrentCurrency = ExchangeService.Currencies.USD;
+                break;
+            case USD:
+                mCurrentCurrency = ExchangeService.Currencies.MXN;
+                break;
+            case MXN:
+                mCurrentCurrency = ExchangeService.Currencies.BTC;
+                break;
+        }
 
         notifyDataSetChanged();
     }
@@ -125,12 +147,15 @@ public final class TransactionHistoryAdapter
      * Esta clase representa un ViewHolder para mostrar los elementos del historial de
      * transacciones.
      */
-    final class TransactionHistoryViewHolder extends RecyclerView.ViewHolder {
+    final class TransactionHistoryViewHolder extends RecyclerView.ViewHolder
+            implements View.OnClickListener {
 
         /**
          * Contenedor del elemento de la lista.
          */
         private View mItemView;
+
+        private GenericTransaction mItem;
 
         /**
          * Crea una nueva instancia.
@@ -141,6 +166,8 @@ public final class TransactionHistoryAdapter
             super(itemView);
 
             mItemView = itemView;
+
+            itemView.setOnClickListener(this);
         }
 
 
@@ -149,35 +176,32 @@ public final class TransactionHistoryAdapter
          *
          * @param item Elemento de la lista.
          */
-        void setGenericTransaction(final GenericTransaction item) {
-            final TextView mStatus = mItemView.findViewById(R.id.mStatus);
+        void update(final GenericTransaction item) {
+            mItem = item;
 
+            final TextView mStatus = mItemView.findViewById(R.id.mStatus);
             TextView mOperKind = mItemView.findViewById(R.id.mOperationKind);
-            TextView mAmount = mItemView.findViewById(R.id.mAmount);
+            Button mAmount = mItemView.findViewById(R.id.mAmount);
             TextView mTime = mItemView.findViewById(R.id.mTime);
             ImageView mIcon = mItemView.findViewById(R.id.mIcon);
 
+            mAmount.setText(item.getAmount(mCurrentCurrency));
+
             mOperKind.setText(item.getOperationKind() == GenericTransaction.TxKind.RECEIVE
                     ? R.string.received_text : R.string.sent_text);
-
-            mAmount.setText(item.getAmount());
             mAmount.setBackground(item.getOperationKind() == GenericTransaction.TxKind.SEND
                     ? mItemView.getResources().getDrawable(R.drawable.bg_tx_send)
                     : mItemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
+            mAmount.setOnClickListener(TransactionHistoryAdapter.this);
 
             mTime.setText(item.getTimeToStringFriendly());
             mIcon.setImageDrawable(item.getImage());
 
-            if (item.isCommited())
-                mStatus.setVisibility(View.GONE);
-            else
-                mStatus.setVisibility(View.VISIBLE);
-
             item.setOnCommited(new Runnable() {
                 @Override
                 public void run() {
-                    mStatus.setVisibility(View.GONE);
+                    setCommitColor(mStatus, item.getCommits());
                 }
             });
             setCommitColor(mStatus, item.getCommits());
@@ -217,6 +241,17 @@ public final class TransactionHistoryAdapter
         void showDivider() {
             View mDivider = mItemView.findViewById(R.id.mDivider);
             mDivider.setVisibility(View.VISIBLE);
+        }
+
+
+        @Override
+        public void onClick(View v) {
+            if (mItem == null)
+                return;
+
+            Intent intent = new Intent(v.getContext(), TransactionActivity.class);
+            TransactionActivity.putTransaction(mItem);
+            v.getContext().startActivity(intent);
         }
     }
 

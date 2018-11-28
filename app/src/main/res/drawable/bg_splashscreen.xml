@@ -3,10 +3,12 @@
 
     <item android:drawable="@android:color/white" />
 
+    <item android:drawable="@drawable/bg_blockchain" />
+
     <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/img_cryptowallet" />
+            android:src="@drawable/ic_cryptowallet" />
     </item>
 
 </layer-list>

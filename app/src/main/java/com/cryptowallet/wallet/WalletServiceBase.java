@@ -75,7 +75,7 @@ public abstract class WalletServiceBase<Coin, Address, Transaction> extends Serv
      * @param feePerKb Comisiones por Kilobyte.
      * @return Una transacción del pago.
      */
-    public abstract Transaction SendPay(@NonNull Coin value,
+    public abstract Transaction sendPay(@NonNull Coin value,
                                         @NonNull Address to,
                                         @NonNull Coin feePerKb,
                                         @Nullable byte[] password)

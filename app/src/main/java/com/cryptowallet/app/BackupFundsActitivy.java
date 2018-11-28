@@ -1,6 +1,8 @@
 package com.cryptowallet.app;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -37,6 +39,7 @@ public class BackupFundsActitivy extends ActivityBase {
      * Palabras testeadas.
      */
     private List<Integer> mWordsTested = new ArrayList<>();
+    private byte[] mKey;
 
     /**
      * Este método es llamado cuando se crea la actividad.
@@ -49,6 +52,27 @@ public class BackupFundsActitivy extends ActivityBase {
         setContentView(R.layout.activity_backup_funds);
 
         setTitle(R.string.backup_funds_title);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (BitcoinService.get().requireDecrypted()
+                && (mKey == null || !BitcoinService.get().validatePin(mKey))) {
+            Intent intent = new Intent(this, LoginWalletActivity.class);
+            startActivityForResult(intent, 0);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+
+        if (data != null && data.hasExtra(ExtrasKey.PIN_DATA)) {
+            mKey = data.getByteArrayExtra(ExtrasKey.PIN_DATA);
+        } else
+            finish();
+
     }
 
     /**
@@ -85,7 +109,9 @@ public class BackupFundsActitivy extends ActivityBase {
 
             String word = mTestWord.getText().toString();
 
-            if (word.contentEquals(BitcoinService.get().getSeedCode().get(mWord))) {
+            if (word.contentEquals(BitcoinService.get().getSeedCode(
+                    BitcoinService.get().requireDecrypted() && mKey != null ? mKey : null
+            ).get(mWord))) {
                 mWord = getNextWords();
 
                 mTestWord.setHint(String.format(Locale.getDefault(),
@@ -107,7 +133,9 @@ public class BackupFundsActitivy extends ActivityBase {
 
             mCurrentWord++;
 
-            mSeed.setText(BitcoinService.get().getSeedCode().get(mCurrentWord));
+            mSeed.setText(BitcoinService.get().getSeedCode(
+                    BitcoinService.get().requireDecrypted() && mKey != null ? mKey : null
+            ).get(mCurrentWord));
         }
     }
 

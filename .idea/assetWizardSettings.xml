@@ -48,8 +48,9 @@
                                     <map>
                                       <entry key="backgroundAssetType" value="COLOR" />
                                       <entry key="backgroundColor" value="4caf50" />
-                                      <entry key="foregroundImage" value="C:\Users\javi_\Desktop\Artboard 6.png" />
+                                      <entry key="foregroundImage" value="C:\Users\javi_\Desktop\Recursos\img_cryptowallet.svg" />
                                       <entry key="legacyIconShape" value="CIRCLE" />
+                                      <entry key="previewDensity" value="XXXHIGH" />
                                       <entry key="showGrid" value="true" />
                                     </map>
                                   </option>
@@ -106,8 +107,11 @@
                         <option name="values">
                           <map>
                             <entry key="assetSourceType" value="FILE" />
-                            <entry key="outputName" value="ic_content_save_settings" />
-                            <entry key="sourceFile" value="C:\Users\javi_\Desktop\content-save-settings.svg" />
+                            <entry key="height" value="2208" />
+                            <entry key="outputName" value="bg_blockchain" />
+                            <entry key="overrideSize" value="true" />
+                            <entry key="sourceFile" value="C:\Users\javi_\Desktop\Recursos\bg_blockchain.svg" />
+                            <entry key="width" value="1242" />
                           </map>
                         </option>
                       </PersistentState>

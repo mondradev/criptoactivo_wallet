@@ -25,6 +25,7 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 import org.bitcoinj.core.Address;
+import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
@@ -329,7 +330,7 @@ public class SendPaymentsActivity extends ActivityBase
                 case BTC:
 
 
-                    Transaction tx = BitcoinService.get().SendPay(Coin.valueOf(mAmount),
+                    Transaction tx = BitcoinService.get().sendPay(Coin.valueOf(mAmount),
                             Address.fromBase58(BitcoinService.get().getNetwork(), mAddress),
                             Coin.valueOf(mFeePerKb), password);
 
@@ -392,8 +393,16 @@ public class SendPaymentsActivity extends ActivityBase
                         mAmountText.setText(uriParsed.getAmount().toPlainString());
 
                 } catch (BitcoinURIParseException e) {
-                    Helper.showSnackbar(mSendPayment, getString(R.string.qr_reader_error)
-                            + result.getContents());
+
+                    try {
+                        Address addressRead = Address.fromBase58(
+                                BitcoinService.get().getNetwork(), result.getContents());
+
+                        mAddressRecipient.setText(addressRead.toBase58());
+                    } catch (AddressFormatException ignored) {
+                        Helper.showSnackbar(mSendPayment, getString(R.string.qr_reader_error)
+                                + ": " + result.getContents());
+                    }
                 }
             }
         } else {

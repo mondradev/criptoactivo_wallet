@@ -9,31 +9,23 @@ import android.widget.TextView;
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.Helper;
+import com.cryptowallet.wallet.ExchangeService;
 import com.cryptowallet.wallet.GenericTransaction;
 import com.cryptowallet.wallet.TransactionHistoryAdapter;
 
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.ScriptException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
-import org.bitcoinj.core.Utils;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.wallet.Wallet;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.cryptowallet.wallet.GenericTransaction.GenericTransactionBuilder;
+import static com.cryptowallet.wallet.GenericTransaction.Builder;
 
 /**
  * Actividad que permite visualizar todas las transacciones de la billetera.
  */
-public class TransactionsActivity extends ActivityBase {
+public class TransactionHistoryActivity extends ActivityBase {
 
     /**
      * Adaptador de transacciones de la vista.
@@ -48,7 +40,7 @@ public class TransactionsActivity extends ActivityBase {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_transactions);
+        setContentView(R.layout.activity_history_transaction);
 
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowHomeEnabled(true);
         getSupportActionBar().setTitle(getString(R.string.history_title));
@@ -99,18 +91,20 @@ public class TransactionsActivity extends ActivityBase {
             long value = BitcoinService.get().getValueFromTx(tx);
             String fee = isPay ? tx.getFee().toFriendlyString() : "";
 
-            GenericTransactionBuilder builder
-                    = new GenericTransactionBuilder(this, R.mipmap.img_bitcoin)
+            final GenericTransaction gTx
+                    = new Builder(this, R.mipmap.img_bitcoin,
+                    ExchangeService.Currencies.BTC)
                     .setCommits(tx.getConfidence().getDepthInBlocks())
-                    .setAmount(Coin.valueOf(value).toFriendlyString())
+                    .setAmount(value)
                     .setFee(fee)
                     .setKind(Helper.getTxKind(isPay))
                     .setTime(tx.getUpdateTime())
-                    .setTxID(tx.getHashAsString());
-
-            getBtcAddressesAsString(tx, builder);
-
-            final GenericTransaction gTx = builder.build();
+                    .setTxID(tx.getHashAsString())
+                    .appendFromAddress(BitcoinService.getFromAddresses(tx,
+                            getString(R.string.coinbase_address),
+                            getString(R.string.unknown_address)))
+                    .appendToAddress(BitcoinService.getToAddresses(tx))
+                    .create();
 
             if (tx.getConfidence().getDepthInBlocks() < 7)
                 tx.getConfidence().addEventListener(new TransactionConfidence.Listener() {
@@ -129,60 +123,5 @@ public class TransactionsActivity extends ActivityBase {
         return genericTransactions;
     }
 
-    /**
-     * Obtiene las direcciones que intervienen en la transacción. Si es una transacción de envío, se
-     * obtendrán las direcciones de las transacciones de salidas y si es una transacción recibida,
-     * se obtienen las direcciones de las salidas a las direcciones que no nos pertenencen.
-     *
-     * @param tx      Transacción que contiene las direcciones.
-     * @param builder Constructor de una transacción genérica.
-     */
-    private void getBtcAddressesAsString(Transaction tx, GenericTransactionBuilder builder) {
-        BitcoinService service = BitcoinService.get();
-        NetworkParameters params = service.getNetwork();
 
-        boolean isPay = tx.getValue(service.getWallet()).isNegative();
-
-        if (isPay) {
-            Wallet wallet = BitcoinService.get().getWallet();
-            List<TransactionOutput> outputs = tx.getOutputs();
-
-            for (TransactionOutput output : outputs) {
-                if (output.isMine(wallet))
-                    continue;
-
-                Address address = output.getAddressFromP2SH(params);
-
-                if (address == null)
-                    address = output.getAddressFromP2PKHScript(params);
-
-                if (address != null)
-                    builder.appendAddress(address.toBase58());
-            }
-
-        } else {
-
-            List<TransactionInput> inputs = tx.getInputs();
-
-            for (TransactionInput input : inputs) {
-                try {
-
-                    if (input.isCoinBase()) {
-                        builder.appendAddress(getString(R.string.coinbase_address));
-                        continue;
-                    }
-
-                    Script script = input.getScriptSig();
-                    byte[] key = script.getPubKey();
-
-                    builder.appendAddress(Address
-                            .fromP2SHHash(params, Utils.sha256hash160(key)).toBase58());
-
-
-                } catch (ScriptException ex) {
-                    builder.appendAddress(getString(R.string.unknown_address));
-                }
-            }
-        }
-    }
 }

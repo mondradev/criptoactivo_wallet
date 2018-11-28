@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorPrimary"
+    android:background="@android:color/white"
     tools:context=".app.InitWalletActivity">
 
     <TextView
@@ -16,7 +16,7 @@
         android:layout_marginEnd="16dp"
         android:text="@string/app_name"
         android:textAlignment="center"
-        android:textColor="@android:color/white"
+        android:textColor="@color/colorPrimary"
         android:textSize="36sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -24,33 +24,34 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
-        android:id="@+id/imageView"
+        android:id="@+id/walletIcon"
         android:layout_width="200dp"
         android:layout_height="200dp"
         android:layout_marginStart="24dp"
         android:layout_marginTop="24dp"
         android:layout_marginEnd="24dp"
         android:contentDescription="@string/app_name"
+        android:elevation="8dp"
         android:scaleType="fitCenter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mTitle"
-        app:srcCompat="@mipmap/img_cryptowallet" />
+        android:src="@drawable/ic_cryptowallet" />
 
     <Button
         android:id="@+id/mCreateWallet"
         android:layout_width="0dp"
         android:layout_height="54dp"
         android:layout_marginStart="24dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="24dp"
         android:layout_marginEnd="24dp"
-        android:background="?attr/colorPrimaryDark"
+        android:background="@color/colorPrimary"
         android:onClick="handlerCreateWallet"
         android:text="@string/create_wallet"
         android:textColor="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
+        app:layout_constraintTop_toBottomOf="@+id/walletIcon" />
 
     <Button
         android:id="@+id/mRestoreWallet"
@@ -62,7 +63,7 @@
         android:layout_marginEnd="24dp"
         android:onClick="handlerRestoreWallet"
         android:text="@string/restore_wallet"
-        android:textColor="@android:color/white"
+        android:textColor="@color/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mCreateWallet" />

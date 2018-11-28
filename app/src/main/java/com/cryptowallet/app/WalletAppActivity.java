@@ -2,6 +2,7 @@ package com.cryptowallet.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
@@ -22,6 +23,7 @@ import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinListener;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.Helper;
+import com.cryptowallet.wallet.ExchangeService;
 import com.cryptowallet.wallet.GenericTransaction;
 import com.cryptowallet.wallet.RecentListAdapter;
 import com.cryptowallet.wallet.SupportedAssets;
@@ -29,6 +31,7 @@ import com.cryptowallet.wallet.SupportedAssets;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
+import org.bitcoinj.utils.Fiat;
 import org.bitcoinj.utils.Threading;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +64,24 @@ public class WalletAppActivity extends ActivityBase {
      */
     private RecentListAdapter mRecentsAdapter;
     /**
+     *
+     */
+    private ActionBarDrawerToggle mToggle;
+    private CountDownTimer mUpdateQrCountDown
+            = new CountDownTimer(5000, 1) {
+
+        @Override
+        public void onTick(long millisUntilFinished) {
+
+        }
+
+        @Override
+        public void onFinish() {
+            handlerRefreshCode(null);
+        }
+
+    };
+    /**
      * Escucha de los eventos de la billetera de bitcoin.
      */
     private BitcoinListener mListener = new BitcoinListener() {
@@ -89,7 +110,12 @@ public class WalletAppActivity extends ActivityBase {
             Threading.USER_THREAD.execute(new Runnable() {
                 @Override
                 public void run() {
+                    final Fiat balanceUsd = Fiat.valueOf("USD",
+                            ExchangeService.btcToUsd(balance.getValue()));
+
                     mBalanceText.setText(balance.toFriendlyString());
+                    TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
+                    mUsdBalance.setText(balanceUsd.toFriendlyString());
                 }
             });
         }
@@ -102,9 +128,14 @@ public class WalletAppActivity extends ActivityBase {
         @Override
         public void onReady(final BitcoinService service) {
             final Coin balance = service.getBalance();
+            final Fiat balanceUsd
+                    = Fiat.valueOf("MXN", ExchangeService.btcToMxn(balance.getValue()));
 
             mBalanceText.setText(balance.toFriendlyString());
             List<Transaction> transactions = service.getTransactionsByTime();
+
+            TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
+            mUsdBalance.setText(balanceUsd.toFriendlyString());
 
             for (final Transaction tx : transactions)
                 addToRecents(tx, service);
@@ -122,12 +153,21 @@ public class WalletAppActivity extends ActivityBase {
         private void addToRecents(final Transaction tx, final BitcoinService service) {
             boolean isPay = tx.getValue(service.getWallet()).isNegative();
 
-            final GenericTransaction item = new GenericTransaction.GenericTransactionBuilder(WalletAppActivity.this, R.mipmap.img_bitcoin)
+            final GenericTransaction item = new GenericTransaction.Builder(
+                    WalletAppActivity.this, R.mipmap.img_bitcoin,
+                    ExchangeService.Currencies.BTC)
                     .setKind(Helper.getTxKind(isPay))
                     .setTime(tx.getUpdateTime())
                     .setFee(isPay ? tx.getFee().toFriendlyString() : "")
-                    .setAmount(Helper.getBtcValue(tx, service).toFriendlyString())
-                    .build();
+                    .setAmount(service.getValueFromTx(tx))
+                    .setTxID(tx.getHashAsString())
+                    .setCommits(tx.getConfidence().getAppearedAtChainHeight())
+                    .appendFromAddress(BitcoinService.getFromAddresses(tx,
+                            getString(R.string.coinbase_address),
+                            getString(R.string.unknown_address)
+                    ))
+                    .appendToAddress(BitcoinService.getToAddresses(tx))
+                    .create();
 
             if (tx.getConfidence().getConfidenceType()
                     != TransactionConfidence.ConfidenceType.BUILDING) {
@@ -191,6 +231,8 @@ public class WalletAppActivity extends ActivityBase {
                 @Override
                 public void run() {
 
+                    mUpdateQrCountDown.cancel();
+
                     CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
                     if (mStatus.getVisibility() == View.GONE)
                         mStatus.setVisibility(View.VISIBLE);
@@ -211,6 +253,8 @@ public class WalletAppActivity extends ActivityBase {
             Threading.USER_THREAD.execute(new Runnable() {
                 @Override
                 public void run() {
+                    mUpdateQrCountDown.start();
+
                     CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
                     mStatus.setVisibility(View.VISIBLE);
 
@@ -221,10 +265,10 @@ public class WalletAppActivity extends ActivityBase {
         }
     };
 
-    /**
-     *
-     */
-    private ActionBarDrawerToggle mToggle;
+    public void handlerRefreshCode(View view) {
+        CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+        mStatus.setVisibility(View.GONE);
+    }
 
     /**
      * Este método se ejecuta cuando la actividad es creada.
@@ -362,7 +406,7 @@ public class WalletAppActivity extends ActivityBase {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.request_payment_menu, menu);
+        inflater.inflate(R.menu.mn_request_payment, menu);
         return true;
     }
 
@@ -453,7 +497,7 @@ public class WalletAppActivity extends ActivityBase {
      * @param view Componente que desencadena el evento Click.
      */
     public void handlerShowHistory(View view) {
-        Intent intent = new Intent(this, TransactionsActivity.class);
+        Intent intent = new Intent(this, TransactionHistoryActivity.class);
         startActivityForResult(intent, 0);
     }
 }

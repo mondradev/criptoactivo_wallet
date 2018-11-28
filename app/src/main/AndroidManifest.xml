@@ -13,8 +13,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
-
         <service
             android:name=".bitcoin.BitcoinService"
             android:exported="false"
@@ -25,9 +23,9 @@
             android:screenOrientation="portrait"
             android:stateNotNeeded="true"
             tools:replace="android:screenOrientation" />
-
         <activity
             android:name=".app.SplashActivity"
+            android:screenOrientation="portrait"
             android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,54 +44,80 @@
                     android:scheme="http" />
             </intent-filter>
         </activity>
-
-
         <activity
             android:name=".app.SendPaymentsActivity"
-            android:parentActivityName=".app.WalletAppActivity">
+            android:parentActivityName=".app.WalletAppActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
         <activity
             android:name=".app.ReceiveCoinsActivity"
-            android:parentActivityName=".app.WalletAppActivity">
+            android:parentActivityName=".app.WalletAppActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
         <activity
-            android:name=".app.TransactionsActivity"
-            android:parentActivityName=".app.WalletAppActivity">
+            android:name=".app.TransactionHistoryActivity"
+            android:parentActivityName=".app.WalletAppActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
-        <activity android:name=".app.WalletAppActivity" />
+        <activity
+            android:name=".app.WalletAppActivity"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".app.BackupFundsActitivy"
-            android:parentActivityName=".app.WalletAppActivity">
+            android:parentActivityName=".app.WalletAppActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
-        <activity android:name=".app.InitWalletActivity" />
-        <activity android:name=".app.RestoreWalletActivity">
+        <activity
+            android:name=".app.InitWalletActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".app.RestoreWalletActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
+                android:screenOrientation="portrait"
                 android:value=".app.InitWalletActivity" />
         </activity>
-        <activity android:name=".app.DeleteWalletActivity">
+        <activity
+            android:name=".app.DeleteWalletActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
-        <activity android:name=".app.SettingsActivity">
+        <activity
+            android:name=".app.SettingsActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
         </activity>
-        <activity android:name=".app.LoginWalletActivity" />
+        <activity
+            android:name=".app.LoginWalletActivity"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.WalletAppActivity" />
+        </activity>
+        <activity
+            android:name=".app.TransactionActivity"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.WalletAppActivity" />
+        </activity>
     </application>
 
 </manifest>

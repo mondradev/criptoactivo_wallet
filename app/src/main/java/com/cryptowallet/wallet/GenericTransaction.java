@@ -8,11 +8,14 @@ import android.support.annotation.DrawableRes;
 import com.cryptowallet.utils.Helper;
 
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * Provee de una clase que permite representar una transacción de manera generica.
  */
 public final class GenericTransaction {
+
+    private final ExchangeService.Currencies mCurrencyBase;
 
     /**
      * Tipo de operación (Envío|Recepción).
@@ -32,7 +35,7 @@ public final class GenericTransaction {
     /**
      * Monto de la transacción.
      */
-    private String mAmount;
+    private long mAmount;
 
     /**
      * Icono de la moneda o token.
@@ -57,7 +60,7 @@ public final class GenericTransaction {
     /**
      * Direcciones de la transacción.
      */
-    private String mAddress = "";
+    private String mToAddress = "";
 
     /**
      * Contexto de la aplicación.
@@ -69,15 +72,19 @@ public final class GenericTransaction {
      */
     private int mCommits = 0;
 
+    private String mFromAddress;
+
     /**
      * Crea una nueva instancia de <code>GenericTransaction</code>.
      *
      * @param context Contexto de la aplicación.
      * @param icon    Icono de la moneda o token.
      */
-    private GenericTransaction(Context context, Drawable icon) {
+    private GenericTransaction(Context context, Drawable icon,
+                               ExchangeService.Currencies currenciesBase) {
         mContext = context;
         mImage = icon;
+        mCurrencyBase = currenciesBase;
     }
 
     /**
@@ -130,8 +137,9 @@ public final class GenericTransaction {
      *
      * @return El monto de la transacción.
      */
-    public String getAmount() {
-        return mAmount;
+    public String getAmount(ExchangeService.Currencies symbol) {
+        return Objects.requireNonNull(ExchangeService.getExchange(symbol))
+                .ToStringFriendly(mCurrencyBase, mAmount);
     }
 
     /**
@@ -191,13 +199,12 @@ public final class GenericTransaction {
         return mTxID;
     }
 
-    /**
-     * Obtiene las direcciones de la transacción.
-     *
-     * @return Direcciones base58.
-     */
-    public String getAddress() {
-        return mAddress;
+    public String getFromAddress() {
+        return mFromAddress;
+    }
+
+    public String getToAddress() {
+        return mToAddress;
     }
 
     /**
@@ -208,10 +215,11 @@ public final class GenericTransaction {
         SEND
     }
 
+
     /**
      * Constructor de una transacción genérica.
      */
-    public static class GenericTransactionBuilder {
+    public static class Builder {
 
         /**
          * Instancia a crear.
@@ -225,8 +233,10 @@ public final class GenericTransaction {
          * @param context    Contexto de la aplicación.
          * @param assetImage Logo de la moneda.
          */
-        public GenericTransactionBuilder(Context context, @DrawableRes int assetImage) {
-            mTransaction = new GenericTransaction(context, context.getDrawable(assetImage));
+        public Builder(Context context, @DrawableRes int assetImage,
+                       ExchangeService.Currencies currencyBase) {
+            mTransaction = new GenericTransaction(
+                    context, context.getDrawable(assetImage), currencyBase);
         }
 
         /**
@@ -235,21 +245,8 @@ public final class GenericTransaction {
          * @param time Fecha/hora de la transacción.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setTime(Date time) {
+        public Builder setTime(Date time) {
             mTransaction.mTime = time;
-
-            return this;
-        }
-
-        /**
-         * Establece las direcciones de la transacción, si es un envío se agregan las direcciones
-         * de las salidas o de ser recepción son las direcciones de entrada.
-         *
-         * @param address Direcciones de la billetera.
-         * @return El constructor.
-         */
-        public GenericTransactionBuilder setAddress(String address) {
-            mTransaction.mAddress = address;
 
             return this;
         }
@@ -260,12 +257,28 @@ public final class GenericTransaction {
          * @param address Direción a agregar.
          * @return El constructor.
          */
-        public GenericTransactionBuilder appendAddress(String address) {
-            if (!mTransaction.mAddress.isEmpty())
-                mTransaction.mAddress += "\n";
+        public Builder appendToAddress(String address) {
+            if (!mTransaction.mToAddress.isEmpty())
+                mTransaction.mToAddress += "\n";
 
-            if (!mTransaction.mAddress.contains(address))
-                mTransaction.mAddress += address;
+            if (!mTransaction.mToAddress.contains(address))
+                mTransaction.mToAddress += address;
+
+            return this;
+        }
+
+        /**
+         * Añade la dirección a la transacción.
+         *
+         * @param address Direción a agregar.
+         * @return El constructor.
+         */
+        public Builder appendFromAddress(String address) {
+            if (!mTransaction.mFromAddress.isEmpty())
+                mTransaction.mFromAddress += "\n";
+
+            if (!mTransaction.mFromAddress.contains(address))
+                mTransaction.mFromAddress += address;
 
             return this;
         }
@@ -276,7 +289,7 @@ public final class GenericTransaction {
          * @param kind Tipo de operación.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setKind(TxKind kind) {
+        public Builder setKind(TxKind kind) {
             mTransaction.mOperationKind = kind;
 
             return this;
@@ -288,7 +301,7 @@ public final class GenericTransaction {
          * @param id Identificador.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setTxID(String id) {
+        public Builder setTxID(String id) {
             mTransaction.mTxID = id;
 
             return this;
@@ -300,7 +313,7 @@ public final class GenericTransaction {
          * @param commits Número de confirmaciones.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setCommits(int commits) {
+        public Builder setCommits(int commits) {
             mTransaction.mCommits = commits;
 
             return this;
@@ -309,12 +322,10 @@ public final class GenericTransaction {
         /**
          * Establece el monto de la transacción.
          *
-         * @param amount Monto total.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setAmount(String amount) {
-            mTransaction.mAmount = amount;
-
+        public Builder setAmount(long amountAsSmallestUnit) {
+            mTransaction.mAmount = amountAsSmallestUnit;
             return this;
         }
 
@@ -324,7 +335,7 @@ public final class GenericTransaction {
          * @param fee Comisión.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setFee(String fee) {
+        public Builder setFee(String fee) {
             mTransaction.mFee = fee;
 
             return this;
@@ -336,7 +347,7 @@ public final class GenericTransaction {
          * @param onCommited Acción a ejecutar cuando se confirma.
          * @return El constructor.
          */
-        public GenericTransactionBuilder setOnCommited(Runnable onCommited) {
+        public Builder setOnCommited(Runnable onCommited) {
             mTransaction.mOnCommited = onCommited;
 
             return this;
@@ -347,7 +358,7 @@ public final class GenericTransaction {
          *
          * @return Transacción resultado.
          */
-        public GenericTransaction build() {
+        public GenericTransaction create() {
             return mTransaction;
         }
 

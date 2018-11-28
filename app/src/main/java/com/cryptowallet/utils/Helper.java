@@ -60,6 +60,12 @@ public final class Helper {
         return isPay ? GenericTransaction.TxKind.SEND : GenericTransaction.TxKind.RECEIVE;
     }
 
+    public static boolean isNullOrEmpty(String text) {
+        if (text == null)
+            return true;
+        return text.isEmpty();
+    }
+
     /**
      * Obtiene una cadena que muestra una fecha/hora.
      *
@@ -301,5 +307,12 @@ public final class Helper {
 
     public static boolean between(int digit, int min, int max) {
         return min <= digit && digit <= max;
+    }
+
+    public static String concatAll(String[] pin) {
+        StringBuilder builder = new StringBuilder();
+        for (String aPin : pin) builder.append(aPin);
+
+        return builder.toString();
     }
 }
