@@ -5,10 +5,8 @@
 
     <item android:drawable="@drawable/bg_blockchain" />
 
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/ic_cryptowallet" />
-    </item>
+    <item
+        android:drawable="@drawable/ic_cryptowallet"
+        android:gravity="center" />
 
 </layer-list>

@@ -1,6 +1,7 @@
 package com.cryptowallet.wallet;
 
 import android.content.Intent;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -11,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.ExtrasKey;
 import com.cryptowallet.app.TransactionActivity;
 
 import java.util.ArrayList;
@@ -28,17 +30,17 @@ public final class RecentListAdapter
     /**
      * Lista de elementos.
      */
-    private List<GenericTransaction> mItemList = new ArrayList<>();
+    private List<GenericTransactionBase> mItemList = new ArrayList<>();
 
     /**
      *
      */
     private View mEmptyView;
 
-    private ExchangeService.Currencies mCurrentCurrency = ExchangeService.Currencies.BTC;
+    private SupportedAssets mCurrentCurrency = SupportedAssets.BTC;
 
     /**
-     * Crea cada elemento visual que representa a un <code>GenericTransaction</code>.
+     * Crea cada elemento visual que representa a un <code>{@link GenericTransactionBase}</code>.
      *
      * @param viewGroup Contenedor principal de transacciones.
      * @param i         Posición del elemento a crear.
@@ -54,7 +56,7 @@ public final class RecentListAdapter
     }
 
     /**
-     * Vincula la vista de los elementos con cada uno <code>GenericTransaction</code> que se encuentra de
+     * Vincula la vista de los elementos con cada uno <code>{@link GenericTransactionBase}</code> que se encuentra de
      * en la lista.
      *
      * @param recentItemHolder ViewHolder que se va a vincular.
@@ -62,7 +64,7 @@ public final class RecentListAdapter
      */
     @Override
     public void onBindViewHolder(@NonNull RecentItemHolder recentItemHolder, int i) {
-        GenericTransaction item = mItemList.get(i);
+        GenericTransactionBase item = mItemList.get(i);
         recentItemHolder.update(item);
 
         if (i == getItemCount() - 1)
@@ -76,12 +78,12 @@ public final class RecentListAdapter
      *
      * @param item Elemento nuevo.
      */
-    public void addItem(GenericTransaction item) {
+    public void addItem(GenericTransactionBase item) {
         mItemList.add(item);
-        Collections.sort(mItemList, new Comparator<GenericTransaction>() {
+        Collections.sort(mItemList, new Comparator<GenericTransactionBase>() {
             @Override
-            public int compare(GenericTransaction o1, GenericTransaction o2) {
-                return o2.getTime().compareTo(o1.getTime());
+            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
+                return o2.compareTo(o1);
             }
         });
 
@@ -119,13 +121,13 @@ public final class RecentListAdapter
     public void onClick(View v) {
         switch (mCurrentCurrency) {
             case BTC:
-                mCurrentCurrency = ExchangeService.Currencies.USD;
+                mCurrentCurrency = SupportedAssets.USD;
                 break;
             case USD:
-                mCurrentCurrency = ExchangeService.Currencies.MXN;
+                mCurrentCurrency = SupportedAssets.MXN;
                 break;
             case MXN:
-                mCurrentCurrency = ExchangeService.Currencies.BTC;
+                mCurrentCurrency = SupportedAssets.BTC;
                 break;
         }
 
@@ -143,7 +145,7 @@ public final class RecentListAdapter
          */
         private View mItemView;
 
-        private GenericTransaction mItem;
+        private GenericTransactionBase mItem;
 
         /**
          * Crea una nueva instancia.
@@ -173,7 +175,7 @@ public final class RecentListAdapter
             mDivider.setVisibility(View.GONE);
         }
 
-        void update(GenericTransaction item) {
+        void update(final GenericTransactionBase item) {
             mItem = item;
             final TextView mStatus = mItemView.findViewById(R.id.mStatus);
 
@@ -182,11 +184,10 @@ public final class RecentListAdapter
             TextView mTime = mItemView.findViewById(R.id.mTime);
             ImageView mIcon = mItemView.findViewById(R.id.mIcon);
 
-            mAmount.setText(item.getAmount(mCurrentCurrency));
-            mOperKind.setText(item.getOperationKind() == GenericTransaction.TxKind.RECEIVE
-                    ? R.string.received_text : R.string.sent_text);
+            mAmount.setText(item.getAmountToStringFriendly(mCurrentCurrency));
+            mOperKind.setText(item.getKindToStringFriendly());
 
-            mAmount.setBackground(item.getOperationKind() == GenericTransaction.TxKind.SEND
+            mAmount.setBackground(item.getKind() == GenericTransactionBase.Kind.SEND
                     ? mItemView.getResources().getDrawable(R.drawable.bg_tx_send)
                     : mItemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
@@ -195,16 +196,26 @@ public final class RecentListAdapter
             mTime.setText(item.getTimeToStringFriendly());
             mIcon.setImageDrawable(item.getImage());
 
-            item.setOnCommited(new Runnable() {
-                @Override
-                public void run() {
-                    mStatus.setVisibility(View.GONE);
-                }
-            });
-            if (item.isCommited())
-                mStatus.setVisibility(View.GONE);
-            else
+            if (item.getDepth() == 0) {
                 mStatus.setVisibility(View.VISIBLE);
+                item.setOnUpdateDepthListener(new GenericTransactionBase.OnUpdateDepthListener() {
+                    @Override
+                    public void onUpdate(GenericTransactionBase tx) {
+                        if (tx.getDepth() > 0) {
+
+                            new Handler().post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mStatus.setVisibility(View.GONE);
+                                    item.setOnUpdateDepthListener(null);
+                                }
+                            });
+
+                        }
+                    }
+                });
+            } else
+                mStatus.setVisibility(View.GONE);
         }
 
         @Override
@@ -213,7 +224,8 @@ public final class RecentListAdapter
                 return;
 
             Intent intent = new Intent(v.getContext(), TransactionActivity.class);
-            TransactionActivity.putTransaction(mItem);
+            intent.putExtra(ExtrasKey.TX_ID, mItem.getID());
+            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
             v.getContext().startActivity(intent);
         }
     }

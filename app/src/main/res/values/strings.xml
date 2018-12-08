@@ -72,8 +72,8 @@
     <string name="blockchain_status">Blockchain Status</string>
     <string name="last_block_date_text">Left blocks: %,8d%n</string>
     <string name="calculate_blocks">Calculating last block</string>
-    <string name="darkMode">Dark Theme</string>
-    <string name="lightMode">Light Theme</string>
+    <string name="darkMode">Dark</string>
+    <string name="lightMode">Light</string>
     <string name="general_title_setting">General</string>
     <string name="about_title_setting">About</string>
     <string name="network_title_setting">Network</string>
@@ -81,7 +81,6 @@
     <string name="use_only_wifi_setting">Blockchain only WI-FI</string>
     <string name="change_pin_setting">Change PIN</string>
     <string name="fingerprint_setting">Use fingerprint</string>
-    <string name="current_version_setting" translatable="false">0.8.2711</string>
     <string name="version_title_setting">Version</string>
     <string name="requires_authenticate_to_send">Requires authentication to send</string>
     <string name="pin_hint">PIN</string>
@@ -100,16 +99,37 @@
     <string name="indications_pin_setup">Enter 4 digits</string>
     <string name="pin_no_equal">PIN does not match</string>
     <string name="encrypt_message">Wait while the wallet is encrypted</string>
-    <string name="encrypt_wallet">Encrypting wallet</string>
+    <string name="encrypt_wallet">Encrypting</string>
     <string name="commit_pin">Confirm your PIN</string>
     <string name="error_pin">Wrong PIN</string>
     <string name="authenticate_title">Authentication</string>
     <string name="validate_pin">Validiting</string>
     <string name="validate_pin_text">Validiting PIN</string>
     <string name="enter_pin">Enter your PIN</string>
-    <string name="loading_text">The wallet is loading, wait …</string>
+    <string name="loading_text">The wallet is loading, wait…</string>
     <string name="transaction_title">Transaction</string>
-    <string name="from_address_text">From address</string>
+    <string name="inputs_text">Inputs</string>
     <string name="datetime_text">Timestamp</string>
     <string name="commit_text">Commits</string>
+    <string name="delete_warn">This option is irreversible. Make sure you have obtained the 12 words to be able to restore later to the deletion of this wallet.</string>
+    <string name="fail_to_delete">Couldn\'t delete the wallet</string>
+    <string name="deleting_text">Deleting wallet, please wait…</string>
+    <string name="deleting_title">Deleting</string>
+    <string name="outputs">Outputs</string>
+    <string name="unknown_version">Unknown Version</string>
+    <string name="notify_send">You have send %s</string>
+    <string name="fingerprint_description">Use fingerprint</string>
+    <string name="require_finger_permission">Fingerprint authentication permission not enabled</string>
+    <string name="no_lock_screen">Lock screen security not enabled in Settings</string>
+    <string name="require_finger_register">Register at least one fingerprint in Settings</string>
+    <string name="fingerprint_indication">Please place your fingertip on the scanner to authenticate</string>
+    <string name="init_pin">Use PIN</string>
+    <string name="address_title">My addresses</string>
+    <string name="select_theme">Theme Selector</string>
+    <string name="blueMode">Blue</string>
+    <string name="usd_fiat" translatable="false">USD</string>
+    <string name="mxn_fiat" translatable="false">MXN</string>
+    <string name="select_currency">Currency Selector</string>
+    <string name="theme_title_setting">Theme</string>
+    <string name="currency_title_setting">Currency</string>
 </resources>

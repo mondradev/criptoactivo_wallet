@@ -8,19 +8,16 @@ import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.utils.Helper;
-import com.cryptowallet.wallet.ExchangeService;
-import com.cryptowallet.wallet.GenericTransaction;
+import com.cryptowallet.bitcoin.BitcoinTransaction;
+import com.cryptowallet.wallet.GenericTransactionBase;
 import com.cryptowallet.wallet.TransactionHistoryAdapter;
 
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionConfidence;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.cryptowallet.wallet.GenericTransaction.Builder;
 
 /**
  * Actividad que permite visualizar todas las transacciones de la billetera.
@@ -69,7 +66,7 @@ public class TransactionHistoryActivity extends ActivityBase {
      */
     private void loadTransactions() {
 
-        for (GenericTransaction tx : getBtcTransactions())
+        for (GenericTransactionBase tx : getBtcTransactions())
             mTransactionsAdapter.addItem(tx);
 
         TextView historyEmptyLabel = findViewById(R.id.mEmptyHistory);
@@ -82,42 +79,12 @@ public class TransactionHistoryActivity extends ActivityBase {
      *
      * @return Lista de transaciones.
      */
-    private List<GenericTransaction> getBtcTransactions() {
+    private List<GenericTransactionBase> getBtcTransactions() {
         List<Transaction> transactions = BitcoinService.get().getTransactionsByTime();
-        List<GenericTransaction> genericTransactions = new ArrayList<>();
+        List<GenericTransactionBase> genericTransactions = new ArrayList<>();
 
         for (Transaction tx : transactions) {
-            boolean isPay = tx.getValue(BitcoinService.get().getWallet()).isNegative();
-            long value = BitcoinService.get().getValueFromTx(tx);
-            String fee = isPay ? tx.getFee().toFriendlyString() : "";
-
-            final GenericTransaction gTx
-                    = new Builder(this, R.mipmap.img_bitcoin,
-                    ExchangeService.Currencies.BTC)
-                    .setCommits(tx.getConfidence().getDepthInBlocks())
-                    .setAmount(value)
-                    .setFee(fee)
-                    .setKind(Helper.getTxKind(isPay))
-                    .setTime(tx.getUpdateTime())
-                    .setTxID(tx.getHashAsString())
-                    .appendFromAddress(BitcoinService.getFromAddresses(tx,
-                            getString(R.string.coinbase_address),
-                            getString(R.string.unknown_address)))
-                    .appendToAddress(BitcoinService.getToAddresses(tx))
-                    .create();
-
-            if (tx.getConfidence().getDepthInBlocks() < 7)
-                tx.getConfidence().addEventListener(new TransactionConfidence.Listener() {
-                    @Override
-                    public void onConfidenceChanged(TransactionConfidence confidence,
-                                                    ChangeReason reason) {
-                        if (confidence.getDepthInBlocks() > 7)
-                            confidence.removeEventListener(this);
-                        gTx.setCommits(confidence.getDepthInBlocks());
-                    }
-                });
-
-            genericTransactions.add(gTx);
+            genericTransactions.add(new BitcoinTransaction(this, tx));
         }
 
         return genericTransactions;

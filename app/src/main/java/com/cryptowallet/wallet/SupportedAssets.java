@@ -5,6 +5,16 @@ package com.cryptowallet.wallet;
  */
 public enum SupportedAssets {
     /**
+     * Pesos mexicanos
+     */
+    MXN,
+
+    /**
+     * Dolares estadounidenses
+     */
+    USD,
+
+    /**
      * Bitcoin
      */
     BTC,

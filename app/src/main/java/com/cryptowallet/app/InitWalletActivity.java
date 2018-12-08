@@ -54,6 +54,8 @@ public class InitWalletActivity extends ActivityBase {
 
             intent = new Intent(this, WalletAppActivity.class);
             startActivity(intent);
+
+            finish();
         }
 
     }

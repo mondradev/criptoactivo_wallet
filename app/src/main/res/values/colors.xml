@@ -29,4 +29,16 @@
 
 
     <color name="splashBackgroundColor">#EEEEEE</color>
+
+
+    <!-- Colores tema azul -->
+
+    <color name="blueColorPrimary">#4c2777</color>
+    <color name="blueColorPrimaryDark">#1e004a</color>
+    <color name="blueBackground">#192b60</color>
+    <color name="blueTextColor">#F5F5F5</color>
+    <color name="blueColorAccent">#473f95</color>
+    <color name="buttonRaiseTextColor">#FFF</color>
+    <color name="blueUnCommitColor">#EF9A9A</color>
+    <color name="cardviewBlueBackground">#3f71c0</color>
 </resources>

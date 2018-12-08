@@ -13,12 +13,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.ExtrasKey;
 import com.cryptowallet.app.TransactionActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Adaptador del historial de transacciones de la billetera.
@@ -27,25 +30,25 @@ public final class TransactionHistoryAdapter
         extends RecyclerView.Adapter<TransactionHistoryAdapter.TransactionHistoryViewHolder>
         implements View.OnClickListener {
 
+    private static final int PAGE_SIZE = 20;
     /**
      * Lista de elementos.
      */
-    private List<GenericTransaction> mItemList = new ArrayList<>();
-
+    private List<GenericTransactionBase> mItemList = new ArrayList<>();
     /**
      * Cantidad de elementos a mostrar.
      */
-    private int mCurrentLimit = 10;
-
+    private int mCurrentLimit = 20;
     /**
      * Permite enviar procesos al hilo principal.
      */
     private Handler mHandler = new Handler();
-
-    private ExchangeService.Currencies mCurrentCurrency = ExchangeService.Currencies.BTC;
+    private SupportedAssets mCurrentCurrency = SupportedAssets.BTC;
+    private CopyOnWriteArrayList<View.OnClickListener> mUpdateAmountListeners
+            = new CopyOnWriteArrayList<>();
 
     /**
-     * Crea cada elemento visual que representa a un <code>GenericTransaction</code>.
+     * Crea cada elemento visual que representa a un <code>{@link GenericTransactionBase}</code>.
      *
      * @param viewGroup Contenedor principal de transacciones.
      * @param i         Posición del elemento a crear.
@@ -56,11 +59,20 @@ public final class TransactionHistoryAdapter
     public TransactionHistoryViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(viewGroup.getContext())
                 .inflate(R.layout.viewholder_generic_transaction, viewGroup, false);
-        return new TransactionHistoryViewHolder(view);
+
+        final TransactionHistoryViewHolder holder = new TransactionHistoryViewHolder(view);
+        mUpdateAmountListeners.add(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                holder.updateAmount();
+            }
+        });
+
+        return holder;
     }
 
     /**
-     * Vincula la vista de los elementos con cada uno <code>GenericTransaction</code> que se encuentra de
+     * Vincula la vista de los elementos con cada uno <code>{@link GenericTransactionBase}</code> que se encuentra de
      * en la lista.
      *
      * @param viewHolder ViewHolder que se va a vincular.
@@ -68,7 +80,7 @@ public final class TransactionHistoryAdapter
      */
     @Override
     public void onBindViewHolder(@NonNull TransactionHistoryViewHolder viewHolder, int i) {
-        GenericTransaction transaction = mItemList.get(i);
+        GenericTransactionBase transaction = mItemList.get(i);
         viewHolder.update(transaction);
 
         if (i == getItemCount() - 1) {
@@ -88,12 +100,12 @@ public final class TransactionHistoryAdapter
      *
      * @param item Elemento nuevo.
      */
-    public void addItem(GenericTransaction item) {
+    public void addItem(GenericTransactionBase item) {
         mItemList.add(item);
-        Collections.sort(mItemList, new Comparator<GenericTransaction>() {
+        Collections.sort(mItemList, new Comparator<GenericTransactionBase>() {
             @Override
-            public int compare(GenericTransaction o1, GenericTransaction o2) {
-                return o2.getTime().compareTo(o1.getTime());
+            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
+                return o2.compareTo(o1);
             }
         });
 
@@ -107,7 +119,7 @@ public final class TransactionHistoryAdapter
         if (mCurrentLimit == mItemList.size())
             return;
 
-        mCurrentLimit += 10;
+        mCurrentLimit += PAGE_SIZE;
 
         if (mCurrentLimit > mItemList.size())
             mCurrentLimit = mItemList.size();
@@ -119,17 +131,27 @@ public final class TransactionHistoryAdapter
     public void onClick(View v) {
         switch (mCurrentCurrency) {
             case BTC:
-                mCurrentCurrency = ExchangeService.Currencies.USD;
+                mCurrentCurrency = SupportedAssets.USD;
                 break;
             case USD:
-                mCurrentCurrency = ExchangeService.Currencies.MXN;
+                mCurrentCurrency = SupportedAssets.MXN;
                 break;
             case MXN:
-                mCurrentCurrency = ExchangeService.Currencies.BTC;
+                mCurrentCurrency = SupportedAssets.BTC;
                 break;
         }
 
-        notifyDataSetChanged();
+        updateAmount();
+    }
+
+    private void updateAmount() {
+        for (View.OnClickListener listener : mUpdateAmountListeners)
+            listener.onClick(null);
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        mUpdateAmountListeners.clear();
     }
 
     /**
@@ -155,7 +177,7 @@ public final class TransactionHistoryAdapter
          */
         private View mItemView;
 
-        private GenericTransaction mItem;
+        private GenericTransactionBase mItem;
 
         /**
          * Crea una nueva instancia.
@@ -176,7 +198,12 @@ public final class TransactionHistoryAdapter
          *
          * @param item Elemento de la lista.
          */
-        void update(final GenericTransaction item) {
+        void update(final GenericTransactionBase item) {
+            Objects.requireNonNull(item);
+
+            if (mItem != null && item.getID().contentEquals(mItem.getID()))
+                return;
+
             mItem = item;
 
             final TextView mStatus = mItemView.findViewById(R.id.mStatus);
@@ -185,11 +212,10 @@ public final class TransactionHistoryAdapter
             TextView mTime = mItemView.findViewById(R.id.mTime);
             ImageView mIcon = mItemView.findViewById(R.id.mIcon);
 
-            mAmount.setText(item.getAmount(mCurrentCurrency));
+            mAmount.setText(item.getAmountToStringFriendly(mCurrentCurrency));
 
-            mOperKind.setText(item.getOperationKind() == GenericTransaction.TxKind.RECEIVE
-                    ? R.string.received_text : R.string.sent_text);
-            mAmount.setBackground(item.getOperationKind() == GenericTransaction.TxKind.SEND
+            mOperKind.setText(item.getKindToStringFriendly());
+            mAmount.setBackground(item.getKind() == GenericTransactionBase.Kind.SEND
                     ? mItemView.getResources().getDrawable(R.drawable.bg_tx_send)
                     : mItemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
@@ -198,13 +224,13 @@ public final class TransactionHistoryAdapter
             mTime.setText(item.getTimeToStringFriendly());
             mIcon.setImageDrawable(item.getImage());
 
-            item.setOnCommited(new Runnable() {
+            item.setOnUpdateDepthListener(new GenericTransactionBase.OnUpdateDepthListener() {
                 @Override
-                public void run() {
-                    setCommitColor(mStatus, item.getCommits());
+                public void onUpdate(GenericTransactionBase tx) {
+                    setCommitColor(mStatus, tx.getDepth());
                 }
             });
-            setCommitColor(mStatus, item.getCommits());
+            setCommitColor(mStatus, item.getDepth());
         }
 
         /**
@@ -213,18 +239,24 @@ public final class TransactionHistoryAdapter
          * @param mCommits Componente de texto.
          * @param commits  Confirmaciones de la transacciones.
          */
-        void setCommitColor(TextView mCommits, int commits) {
+        void setCommitColor(final TextView mCommits, final int commits) {
 
-            mCommits.setText(commits > 6 ? "6+" : Integer.toString(commits));
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mCommits.setText(commits > 6 ? "6+" : Integer.toString(commits));
 
-            Resources a = mCommits.getContext().getResources();
+                    Resources a = mCommits.getContext().getResources();
 
-            int uncommit = a.getColor(R.color.unCommitColor);
-            int commitedPlus = a.getColor(R.color.plusCommitColor);
-            int commited = a.getColor(R.color.commitColor);
+                    int uncommit = a.getColor(R.color.unCommitColor);
+                    int commitedPlus = a.getColor(R.color.plusCommitColor);
+                    int commited = a.getColor(R.color.commitColor);
 
 
-            mCommits.setTextColor(commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited);
+                    mCommits.setTextColor(
+                            commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited);
+                }
+            });
         }
 
         /**
@@ -250,8 +282,14 @@ public final class TransactionHistoryAdapter
                 return;
 
             Intent intent = new Intent(v.getContext(), TransactionActivity.class);
-            TransactionActivity.putTransaction(mItem);
+            intent.putExtra(ExtrasKey.TX_ID, mItem.getID());
+            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
             v.getContext().startActivity(intent);
+        }
+
+        void updateAmount() {
+            Button mAmount = mItemView.findViewById(R.id.mAmount);
+            mAmount.setText(mItem.getAmountToStringFriendly(mCurrentCurrency));
         }
     }
 

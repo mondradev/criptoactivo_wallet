@@ -14,6 +14,7 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="24dp"
         android:text="@string/indications_restore_text"
+        android:textAlignment="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -42,6 +43,7 @@
             android:padding="16dp"
             android:text="@string/btc_description_text"
             android:textAlignment="center"
+            android:textColor="@color/buttonRaiseTextColor"
             android:textSize="18sp"
             android:textStyle="bold"
             android:visibility="gone" />
@@ -62,12 +64,13 @@
     <Button
         android:id="@+id/mShowNextWord"
         android:layout_width="0dp"
-        android:layout_height="56dp"
+        android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:onClick="handlerStartOrNextWord"
         android:text="@string/start_word_text"
+        android:textColor="?attr/buttonTextColor"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout" />

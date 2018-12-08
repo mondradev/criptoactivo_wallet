@@ -337,18 +337,24 @@ public class SendPaymentsActivity extends ActivityBase
                     BitcoinService.get().broadCastTx(Objects.requireNonNull(tx), new BroadcastListener<Transaction>() {
                         @Override
                         public void onCompleted(Transaction tx) {
+                            Intent intent = new Intent(
+                                    getApplicationContext(), TransactionActivity.class);
+                            intent.putExtra(ExtrasKey.TX_ID, tx.getHashAsString());
+                            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
+
                             Helper.sendLargeTextNotificationOs(getApplicationContext(),
                                     R.mipmap.img_bitcoin,
                                     getString(R.string.app_name),
                                     getString(R.string.nofity_propagated),
                                     getString(R.string.nofity_propagated).concat("\n")
                                             .concat(String.format(getString(R.string.transaction_id),
-                                                    tx.getHash()))
+                                                    tx.getHash())),
+                                    intent
                             );
                         }
                     });
                     Intent result = new Intent();
-                    result.putExtra(ExtrasKey.TX_VALUE, BitcoinService.get().getValueFromTx(tx));
+                    result.putExtra(ExtrasKey.TX_ID, BitcoinService.get().getValueFromTx(tx));
                     result.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
                     result.putExtra(ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
                     setResult(Activity.RESULT_OK, result);

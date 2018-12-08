@@ -3,7 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.cryptowallet">
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
     <application
         android:allowBackup="true"
@@ -11,8 +13,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:supportsRtl="true">
         <service
             android:name=".bitcoin.BitcoinService"
             android:exported="false"
@@ -106,13 +107,12 @@
         </activity>
         <activity
             android:name=".app.LoginWalletActivity"
-            android:screenOrientation="portrait">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".app.WalletAppActivity" />
-        </activity>
+            android:screenOrientation="portrait" />
         <activity
             android:name=".app.TransactionActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".app.AddressViewerActivity"
             android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"

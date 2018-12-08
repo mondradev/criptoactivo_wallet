@@ -9,36 +9,29 @@ import android.widget.EditText;
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.Helper;
-import com.google.common.base.Joiner;
 
 import org.bitcoinj.crypto.MnemonicException;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.UnreadableWalletException;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class RestoreWalletActivity extends ActivityBase {
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_restore_wallet);
+        setTitle(R.string.restore_wallet);
 
-
-        EditText mWord1 = findViewById(R.id.mSeedWords);
-        mWord1.setFocusable(true);
+        EditText mWords = findViewById(R.id.mSeedWords);
+        mWords.setFocusable(true);
     }
 
     public void handlerRestore(View view) {
-        List<String> words = new ArrayList<>();
-
         EditText mSeedWords = findViewById(R.id.mSeedWords);
 
-        words.add(mSeedWords.getText().toString());
-
         try {
-            String seedStr = Joiner.on(" ").join(words);
+            String seedStr = mSeedWords.getText().toString();
             DeterministicSeed seed = new DeterministicSeed(
                     seedStr,
                     null,
@@ -61,4 +54,5 @@ public class RestoreWalletActivity extends ActivityBase {
         } catch (UnreadableWalletException ignored) {
         }
     }
+
 }

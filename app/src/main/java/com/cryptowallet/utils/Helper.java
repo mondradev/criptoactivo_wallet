@@ -1,7 +1,9 @@
 package com.cryptowallet.utils;
 
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -17,17 +19,12 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.cryptowallet.R;
-import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.wallet.GenericTransaction;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.Transaction;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -50,15 +47,6 @@ public final class Helper {
      */
     private static int notifyID = 0;
 
-    /**
-     * Obtiene el tipo de transacción.
-     *
-     * @param isPay Es un pago.
-     * @return Tipo de transacción.
-     */
-    public static GenericTransaction.TxKind getTxKind(boolean isPay) {
-        return isPay ? GenericTransaction.TxKind.SEND : GenericTransaction.TxKind.RECEIVE;
-    }
 
     public static boolean isNullOrEmpty(String text) {
         if (text == null)
@@ -115,29 +103,6 @@ public final class Helper {
         return calendar.get(Calendar.YEAR) == today.get(Calendar.YEAR)
                 && calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH)
                 && calendar.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH);
-    }
-
-    /**
-     * Obtiene el valor absoluto de una transacción.
-     *
-     * @param tx      Transacción a obtener su valor.
-     * @param service Servicio de la billetera.
-     * @return Un valor absoluto que fue gastado o recibido en la transacción.
-     */
-    public static Coin getBtcValue(Transaction tx, BitcoinService service) {
-        return getAbsolute(tx.getValue(service.getWallet()).isNegative()
-                ? tx.getValue(service.getWallet()).add(tx.getFee())
-                : tx.getValueSentToMe(service.getWallet()));
-    }
-
-    /**
-     * Obtiene el valor absoluto de la cantidad especificada.
-     *
-     * @param coin Valor a evaluar.
-     * @return Un valor absoluto.
-     */
-    private static Coin getAbsolute(Coin coin) {
-        return coin.isNegative() ? coin.multiply(-1) : coin;
     }
 
     /**
@@ -200,12 +165,15 @@ public final class Helper {
      * @param title   Título de la aplicación.
      * @param message Mensaje de la aplicación.
      */
-    public static void sendNotificationOs(Context context, String title, String message) {
+    public static void sendNotificationOs(Context context,
+                                          String title,
+                                          String message,
+                                          Intent onTap) {
         if (message == null || message.isEmpty())
             return;
 
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher_foreground)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_cryptowallet)
                 .setContentTitle(title)
                 .setContentText(message)
                 .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
@@ -214,9 +182,17 @@ public final class Helper {
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
 
+        if (onTap != null) {
+            onTap.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            PendingIntent pendingIntent
+                    = PendingIntent.getActivity(context, 0, onTap, 0);
+
+            builder.setContentIntent(pendingIntent);
+        }
+
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationCompat.notify(notifyID, mBuilder.build());
+        notificationCompat.notify(notifyID, builder.build());
 
         notifyID++;
     }
@@ -230,12 +206,16 @@ public final class Helper {
      * @param message   Mensaje de la aplicación.
      * @param largeText Resto del mensaje de la notificación.
      */
-    public static void sendLargeTextNotificationOs(Context context, @DrawableRes int assetIcon,
-                                                   String title, String message, String largeText) {
+    public static void sendLargeTextNotificationOs(Context context,
+                                                   @DrawableRes int assetIcon,
+                                                   String title,
+                                                   String message,
+                                                   String largeText,
+                                                   Intent onTap) {
         if (message == null || message.isEmpty())
             return;
 
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(assetIcon)
                 .setContentTitle(title)
                 .setContentText(message)
@@ -246,9 +226,19 @@ public final class Helper {
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
 
+
+        if (onTap != null) {
+            onTap.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            PendingIntent pendingIntent
+                    = PendingIntent.getActivity(context, 0, onTap,
+                    PendingIntent.FLAG_UPDATE_CURRENT);
+
+            builder.setContentIntent(pendingIntent);
+        }
+
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationCompat.notify(notifyID, mBuilder.build());
+        notificationCompat.notify(notifyID, builder.build());
 
         notifyID++;
     }

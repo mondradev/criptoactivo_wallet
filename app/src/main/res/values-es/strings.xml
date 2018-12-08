@@ -25,7 +25,7 @@
     <string name="time_sample_text">hoy @ 08:00 AM</string>
     <string name="loading_title_text">Cargando</string>
     <string name="fee_sample_text">Comisión: 0.00003 BTC</string>
-    <string name="loading_text">Se está cargando la billetera, espere....</string>
+    <string name="loading_text">Se está cargando la billetera, espere…</string>
     <string name="today_text">hoy</string>
     <string name="yesterday_text">ayer</string>
     <string name="qrcode_description">Lector QR</string>
@@ -65,8 +65,8 @@
     <string name="blockchain_status">Estado de Blockchain</string>
     <string name="last_block_date_text">Bloques restantes: %,8d%n</string>
     <string name="calculate_blocks">Calculando último bloque</string>
-    <string name="darkMode">Tema oscuro</string>
-    <string name="lightMode">Tema claro</string>
+    <string name="darkMode">Oscuro</string>
+    <string name="lightMode">Claro</string>
     <string name="general_title_setting">General</string>
     <string name="about_title_setting">Acerca de</string>
     <string name="network_title_setting">Red</string>
@@ -80,7 +80,7 @@
     <string name="indications_pin_setup">Especifique 4 digitos</string>
     <string name="pin_no_equal">El PIN especificado no coincide</string>
     <string name="encrypt_message">Espere mientras la billetera es encriptada</string>
-    <string name="encrypt_wallet">Encriptando billetera</string>
+    <string name="encrypt_wallet">Encriptando</string>
     <string name="commit_pin">Confirme su PIN</string>
     <string name="error_pin">PIN incorrecto</string>
     <string name="authenticate_title">Autenticación</string>
@@ -88,7 +88,26 @@
     <string name="validate_pin_text">Validando el PIN</string>
     <string name="enter_pin">Ingrese su PIN</string>
     <string name="transaction_title">Transacción</string>
-    <string name="from_address_text">Dirección origen</string>
+    <string name="inputs_text">Entradas</string>
     <string name="datetime_text">Fecha/Hora</string>
     <string name="commit_text">Confirmaciones</string>
+    <string name="delete_warn">Esta opción es irreversible. Asegurese de haber obtenido las 12 palabras para poder restaurar posteriormente al borrado de esta billetera.</string>
+    <string name="fail_to_delete">No se logró borrar la billetera</string>
+    <string name="deleting_text">Eliminando la billetera, espere por favor…</string>
+    <string name="deleting_title">Eliminando</string>
+    <string name="outputs">Salidas</string>
+    <string name="unknown_version">Versión desconocida</string>
+    <string name="notify_send">Has enviado %s</string>
+    <string name="require_finger_permission">Requiere permiso para usar la huella digital</string>
+    <string name="require_finger_register">Requiere que registre al menos una huella en el sistema</string>
+    <string name="no_lock_screen">Se requiere usar pantalla de bloqueo</string>
+    <string name="fingerprint_description">Usar huella dactilar</string>
+    <string name="fingerprint_indication">Por favor coloca la punta de tu dedo en el sensor para autenticar</string>
+    <string name="init_pin">Usar PIN</string>
+    <string name="address_title">Mis direcciones</string>
+    <string name="select_theme">Selector de tema</string>
+    <string name="blueMode">Azul</string>
+    <string name="select_currency">Selector de divisa</string>
+    <string name="theme_title_setting">Tema</string>
+    <string name="currency_title_setting">Divisa</string>
 </resources>

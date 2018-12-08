@@ -11,5 +11,6 @@
         <attr name="sendColor" format="color" />
         <attr name="receiveColor" format="color" />
         <attr name="amountColor" format="color" />
+        <attr name="buttonTextColor" format="color" />
     </declare-styleable>
 </resources>

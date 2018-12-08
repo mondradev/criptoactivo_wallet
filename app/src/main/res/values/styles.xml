@@ -16,7 +16,9 @@
         <item name="snackBarColor">@color/snackBarColor</item>
         <item name="receiveColor">@color/receiveColor</item>
         <item name="sendColor">@color/sendColor</item>
+        <item name="cardViewStyle">@style/CardView.Light</item>
         <item name="amountColor">@color/amountColor</item>
+        <item name="buttonTextColor">@color/buttonRaiseTextColor</item>
     </style>
 
     <style name="AppTheme.Button.Borderless.Colored" parent="Base.Widget.AppCompat.Button.Borderless.Colored">
@@ -51,8 +53,35 @@
         <item name="amountColor">@color/darkAmountColor</item>
     </style>
 
+    <style name="AppTheme.Blue" parent="AppTheme">
+        <item name="colorPrimary">@color/blueColorPrimary</item>
+        <item name="colorPrimaryDark">@color/blueColorPrimaryDark</item>
+        <item name="colorAccent">@color/blueColorAccent</item>
+        <item name="textPrimaryColor">@color/blueTextColor</item>
+        <item name="android:colorBackground">@color/blueBackground</item>
+        <item name="colorButtonNormal">@color/blueBackground</item>
+        <item name="unCommitColor">@color/blueUnCommitColor</item>
+        <item name="android:windowBackground">@color/blueBackground</item>
+        <item name="colorBackgroundFloating">@color/blueBackground</item>
+        <item name="android:itemBackground">@color/blueBackground</item>
+        <item name="buttonTextColor">@color/buttonRaiseTextColor</item>
+        <item name="cardViewStyle">@style/AppTheme.Blue.CardView</item>
+        <item name="android:textColorSecondary">@color/blueTextColor</item>
+        <item name="android:textColorPrimary">@color/blueTextColor</item>
+        <item name="android:alertDialogStyle">@style/AppTheme.Blue.Dialog</item>
+    </style>
+
+    <style name="AppTheme.Blue.Dialog" parent="AlertDialog.AppCompat.Light">
+        <item name="android:background">@color/blueTextColor</item>
+    </style>
+
+    <style name="AppTheme.Blue.CardView">
+        <item name="cardBackgroundColor">@color/cardviewBlueBackground</item>
+    </style>
+
     <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@drawable/bg_splashscreen</item>
     </style>
+
 
 </resources>

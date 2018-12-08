@@ -1,10 +1,19 @@
 package com.cryptowallet.app;
 
+import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.hardware.fingerprint.FingerprintManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.StringRes;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
+import android.util.Base64;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -12,21 +21,28 @@ import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
+import com.cryptowallet.security.FingerprintHandler;
+import com.cryptowallet.security.Security;
 import com.cryptowallet.utils.Helper;
 import com.cryptowallet.utils.IdealPasswordParameter;
 
-import org.bitcoinj.core.Context;
-import org.bitcoinj.crypto.KeyCrypter;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
 import org.bitcoinj.utils.Threading;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import java.util.Objects;
 
+import javax.crypto.Cipher;
+
 public class LoginWalletActivity extends ActivityBase {
+
 
     private static final int MIN_LENGTH = 4;
     private final int MAX_ATTEMP = 3;
+
+    private org.bitcoinj.core.Context mContext
+            = org.bitcoinj.core.Context.getOrCreate(BitcoinService.get().getNetwork());
+
     private boolean mRegMode;
     private boolean mToCommit;
     private int mCountDigit;
@@ -38,15 +54,8 @@ public class LoginWalletActivity extends ActivityBase {
     private boolean mRequirePin = false;
     private int mAttemp;
     private boolean mHasError = false;
-    private Context mContext = Context.getOrCreate(BitcoinService.get().getNetwork());
-
-    private static byte[] getBytes(String[] pin) {
-        String pinText = Helper.concatAll(pin);
-        KeyCrypter scrypt = BitcoinService.get().getWallet().getKeyCrypter();
-        KeyParameter key = Objects.requireNonNull(scrypt).deriveKey(pinText);
-
-        return key.getKey();
-    }
+    private String mHashKey = "";
+    private boolean mRegFingerprint;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,12 +64,9 @@ public class LoginWalletActivity extends ActivityBase {
 
         setTitle(R.string.authenticate_title);
 
-        Intent intent = getIntent();
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
 
-        if (intent.hasExtra(ExtrasKey.REG_PIN)) {
-            mRegMode = true;
-            mRequirePin = BitcoinService.get().requireDecrypted();
-        }
+        Intent intent = getIntent();
 
         mPinDigitViews[0] = findViewById(R.id.mPin1);
         mPinDigitViews[1] = findViewById(R.id.mPin2);
@@ -71,8 +77,98 @@ public class LoginWalletActivity extends ActivityBase {
                 .setCancelable(false)
                 .create();
 
-        setInfo(R.string.enter_pin);
+        // Registrando PIN
+        mRegMode = intent.getBooleanExtra(ExtrasKey.REG_PIN, false);
+        mRegFingerprint = intent.getBooleanExtra(ExtrasKey.REG_FINGER, false);
+        mRequirePin = BitcoinService.get().requireDecrypted();
 
+        if (mRequirePin && AppPreference.useFingerprint(this))
+            loadFingerprint();
+        else if (!mRegMode || mRequirePin || mRegFingerprint)
+            setInfo(R.string.enter_pin);
+        else
+            setInfo(R.string.indications_pin_setup);
+
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
+    private void loadFingerprint() {
+
+        findViewById(R.id.mUsePin).setVisibility(View.GONE);
+        findViewById(R.id.mFingerprintLayout).setVisibility(View.VISIBLE);
+
+        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        FingerprintManager fingerprintManager
+                = (FingerprintManager) getSystemService(FINGERPRINT_SERVICE);
+
+        if (fingerprintManager.isHardwareDetected()) {
+            if (ActivityCompat.checkSelfPermission(this,
+                    Manifest.permission.USE_FINGERPRINT) != PackageManager.PERMISSION_GRANTED) {
+                Helper.showSnackbar(findViewById(R.id.mLoginContainer),
+                        getString(R.string.require_finger_permission));
+            } else {
+
+                if (!fingerprintManager.hasEnrolledFingerprints()) {
+                    Helper.showSnackbar(findViewById(R.id.mLoginContainer),
+                            getString(R.string.require_finger_register));
+                } else {
+
+                    if (!keyguardManager.isKeyguardSecure()) {
+                        Helper.showSnackbar(findViewById(R.id.mLoginContainer),
+                                getString(R.string.no_lock_screen));
+                    } else {
+                        Security.get().createKeyIfRequire();
+
+                        FingerprintManager.CryptoObject cryptoObject
+                                = new FingerprintManager.CryptoObject(
+                                Security.get().requestCipher(LoginWalletActivity.this,
+                                        !mRegFingerprint));
+
+                        new FingerprintHandler(this) {
+
+                            @Override
+                            public void onAuthenticationSucceeded(
+                                    FingerprintManager.AuthenticationResult result) {
+                                Cipher cipher = result.getCryptoObject().getCipher();
+
+                                Intent response = new Intent();
+                                byte[] dataPin;
+                                if (mRegFingerprint) {
+                                    dataPin = Base64.decode(Helper.concatAll(mPinValues), Base64.DEFAULT);
+                                    Security.get().encryptePin(
+                                            LoginWalletActivity.this, cipher, dataPin);
+                                    mHashKey = Security.get().getKeyAsString();
+                                    dataPin = Security.get().getKey();
+                                    AppPreference.useFingerprint(
+                                            LoginWalletActivity.this, true);
+                                } else {
+                                    Security.get().decryptKey(
+                                            LoginWalletActivity.this, cipher);
+
+                                    dataPin = Objects
+                                            .requireNonNull(BitcoinService.get().getWallet()
+                                                    .getKeyCrypter())
+                                            .deriveKey(Security.get().getKeyAsString()).getKey();
+
+                                }
+
+                                response.putExtra(ExtrasKey.PIN_DATA, dataPin);
+                                LoginWalletActivity.this.setResult(Activity.RESULT_OK, response);
+                                LoginWalletActivity.this.finish();
+
+                            }
+
+                            @Override
+                            public void onAuthenticationFailed() {
+                                LoginWalletActivity.this.setResult(Activity.RESULT_FIRST_USER);
+                                LoginWalletActivity.this.finish();
+                            }
+
+                        }.startAuth(fingerprintManager, cryptoObject);
+                    }
+                }
+            }
+        }
     }
 
     public void handlerPad(View view) {
@@ -106,8 +202,16 @@ public class LoginWalletActivity extends ActivityBase {
                         mHasError = true;
 
                         cleanPin();
-                    } else
+                    } else {
+                        byte[] dataPin = Base64.decode(Helper.concatAll(mPinValues),
+                                Base64.DEFAULT);
+
+                        Security.get().setKey(dataPin);
+
+                        mHashKey = Security.get().getKeyAsString();
+
                         encryptWallet();
+                    }
 
                 } else {
                     mCountDigit = 0;
@@ -129,6 +233,9 @@ public class LoginWalletActivity extends ActivityBase {
     }
 
     private void validatePin() {
+
+        if (!BitcoinService.get().requireDecrypted())
+            return;
 
         mAlertDialog.setTitle(R.string.validate_pin);
         mAlertDialog.setMessage(getString(R.string.validate_pin_text));
@@ -203,6 +310,14 @@ public class LoginWalletActivity extends ActivityBase {
         return true;
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == 16908332) {
+            finish();
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
 
     private boolean hasMinLenght(int currentLength) {
         return currentLength == MIN_LENGTH;
@@ -228,17 +343,39 @@ public class LoginWalletActivity extends ActivityBase {
         @Override
         public void run() {
 
-            Context.propagate(mLoginWallet.mContext);
+            org.bitcoinj.core.Context.propagate(mLoginWallet.mContext);
 
-            byte[] dataPin = getBytes(mLoginWallet.mPinValues);
+            byte[] dataPin;
+            String hash;
+
+            if (mLoginWallet.mHashKey.isEmpty()) {
+                dataPin = Base64.decode(Helper.concatAll(mLoginWallet.mPinValues), Base64.DEFAULT);
+                Security.get().setKey(dataPin);
+                hash = Security.get().getKeyAsString();
+            } else
+                hash = mLoginWallet.mHashKey;
+
+            dataPin = Objects.requireNonNull(BitcoinService.get().getWallet().getKeyCrypter())
+                    .deriveKey(hash).getKey();
 
             if (BitcoinService.get().validatePin(dataPin)) {
 
-                if (mLoginWallet.mRequirePin) {
-                    mLoginWallet.setInfo(R.string.indications_pin_setup);
-                    mLoginWallet.mKeyPrev = dataPin;
-                    mLoginWallet.mCountDigit = 0;
-                    mLoginWallet.cleanPin();
+                if (mLoginWallet.mRequirePin
+                        && (mLoginWallet.mRegFingerprint || mLoginWallet.mRegMode)) {
+
+                    if (mLoginWallet.mRegFingerprint) {
+                        Threading.USER_THREAD.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                mLoginWallet.loadFingerprint();
+                            }
+                        });
+                    } else {
+                        mLoginWallet.mKeyPrev = dataPin;
+                        mLoginWallet.setInfo(R.string.indications_pin_setup);
+                        mLoginWallet.mCountDigit = 0;
+                        mLoginWallet.cleanPin();
+                    }
                 } else {
                     Intent intent = new Intent();
                     intent.putExtra(ExtrasKey.PIN_DATA, dataPin);
@@ -275,20 +412,21 @@ public class LoginWalletActivity extends ActivityBase {
 
         @Override
         public void run() {
-            Context.propagate(mLoginWallet.mContext);
+            org.bitcoinj.core.Context.propagate(mLoginWallet.mContext);
 
             IdealPasswordParameter idealParameter
-                    = new IdealPasswordParameter(Helper.concatAll(mLoginWallet.mPinValues));
+                    = new IdealPasswordParameter(mLoginWallet.mHashKey);
             KeyCrypterScrypt scrypt = new KeyCrypterScrypt(idealParameter.realIterations);
 
             if (BitcoinService.get().requireDecrypted())
                 BitcoinService.get().getWallet().decrypt(new KeyParameter(mLoginWallet.mKeyPrev));
 
             BitcoinService.get().getWallet()
-                    .encrypt(scrypt, scrypt.deriveKey(Helper.concatAll(mLoginWallet.mPinValues)));
+                    .encrypt(scrypt, scrypt.deriveKey(mLoginWallet.mHashKey));
 
             mLoginWallet.mAlertDialog.dismiss();
 
+            mLoginWallet.setResult(Activity.RESULT_OK);
             mLoginWallet.finish();
         }
     }

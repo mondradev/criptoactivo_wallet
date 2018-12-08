@@ -1,12 +1,19 @@
 package com.cryptowallet.bitcoin;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.AppPreference;
+import com.cryptowallet.app.ExtrasKey;
+import com.cryptowallet.app.TransactionActivity;
+import com.cryptowallet.utils.ConnectionManager;
 import com.cryptowallet.utils.Helper;
 import com.cryptowallet.wallet.BroadcastListener;
+import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -18,13 +25,16 @@ import org.bitcoinj.core.FilteredBlock;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Peer;
+import org.bitcoinj.core.PeerGroup;
 import org.bitcoinj.core.ScriptException;
+import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.core.Utils;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
+import org.bitcoinj.core.listeners.PeerConnectedEventListener;
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
@@ -34,14 +44,21 @@ import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
+import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
 
 /**
  * Ofrece un servicio de billetera de Bitcoin permitiendo recibir y enviar pagos, consultar saldo y
@@ -59,6 +76,8 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      */
     private final static CopyOnWriteArrayList<BitcoinListener> mListeners
             = new CopyOnWriteArrayList<>();
+
+    private static Logger mLogger = LoggerFactory.getLogger(BitcoinService.class);
 
     /**
      * Semila de la billetera.
@@ -93,7 +112,6 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      * Número máximo de conexiones administradas por el grupo de P2P.
      */
     private int mMaxConnections = 10;
-
     /**
      *
      */
@@ -109,6 +127,11 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     .toFriendlyString();
             String messge = String.format(getString(R.string.notify_receive), btcValue);
             String template = "%s\nTxID: %s";
+            String id = tx.getHashAsString();
+
+            Intent intent = new Intent(BitcoinService.get(), TransactionActivity.class);
+            intent.putExtra(ExtrasKey.TX_ID, id);
+            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
 
             Helper.sendLargeTextNotificationOs(
                     getApplicationContext(),
@@ -117,17 +140,50 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     messge,
                     String.format(template,
                             messge,
-                            tx.getHash()
-                    )
+                            id
+                    ),
+                    intent
             );
         }
     };
+    private WalletCoinsSentEventListener mSentNotifier
+            = new WalletCoinsSentEventListener() {
+        @Override
+        public void onCoinsSent(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
+
+            if (tx.getValue(wallet).isNegative())
+                return;
+
+            String btcValue = Coin.valueOf(getValueFromTx(tx))
+                    .toFriendlyString();
+            String messge = String.format(getString(R.string.notify_send), btcValue);
+            String template = "%s\nTxID: %s";
+            String id = tx.getHashAsString();
+
+            Intent intent = new Intent(BitcoinService.get(), TransactionActivity.class);
+            intent.putExtra(ExtrasKey.TX_ID, id);
+            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
+
+            Helper.sendLargeTextNotificationOs(
+                    getApplicationContext(),
+                    R.mipmap.img_bitcoin,
+                    getString(R.string.app_name),
+                    messge,
+                    String.format(template,
+                            messge,
+                            id
+                    ),
+                    intent
+            );
+        }
+    };
+    private Intent mIntent;
+    private boolean mCanConnect = true;
 
     /**
      * Crea una instancia de WalletServiceBase.
      */
     public BitcoinService() {
-        super("bitcoin-service");
         mService = this;
 
         final Handler handler = new Handler();
@@ -215,15 +271,24 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     continue;
                 }
 
-                Script script = input.getScriptSig();
-                byte[] key = script.getPubKey();
+                Address address;
 
-                builder.append(Address
-                        .fromP2SHHash(params, Utils.sha256hash160(key)).toBase58());
+                if (input.getConnectedOutput() != null) {
+                    address = input.getConnectedOutput().getAddressFromP2SH(params);
+                    if (address == null)
+                        address = input.getConnectedOutput().getAddressFromP2PKHScript(params);
+                } else {
+                    Script script = input.getScriptSig();
+                    byte[] key = script.getPubKey();
+                    address = Address.fromP2SHHash(params, Utils.sha256hash160(key));
+                }
+
+                if (address != null)
+                    builder.append(address.toBase58());
 
 
             } catch (ScriptException ex) {
-                get().mLogger.warn("Dirección no decodificada");
+                mLogger.warn("Dirección no decodificada");
                 builder.append(unknownAdress);
             }
         }
@@ -236,7 +301,6 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         BitcoinService service = get();
         NetworkParameters params = service.getNetwork();
 
-        Wallet wallet = service.getWallet();
         List<TransactionOutput> outputs = tx.getOutputs();
 
         for (TransactionOutput output : outputs) {
@@ -255,6 +319,25 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         return builder.toString();
     }
 
+    public static boolean isPay(Transaction tx) {
+        return tx.getValue(get().getWallet()).isNegative();
+    }
+
+    public static boolean isRunning() {
+        if (mService == null)
+            return true;
+
+        return mService.isInitialized();
+    }
+
+    public Transaction getTransaction(String txID) {
+        mLogger.info("Buscando transacción: {}", txID);
+        return getWallet().getTransaction(Sha256Hash.wrap(txID));
+    }
+
+    public PeerGroup getPeerGroup() {
+        return mKitApp.peerGroup();
+    }
 
     /**
      * Obtiene las 12 palabras de la billetera.
@@ -285,7 +368,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     public void onCreate() {
         super.onCreate();
 
-        if (mService.isInitialized())
+        if (isRunning())
             return;
 
         String dataDir = getApplicationInfo().dataDir;
@@ -298,7 +381,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
              */
             @Override
             protected void onSetupCompleted() {
-                peerGroup().setStallThreshold(10, 1024 * 50);
+                peerGroup().setStallThreshold(10, 1024 * 20);
                 peerGroup().setMaxConnections(mMaxConnections);
                 setInitialized();
 
@@ -320,6 +403,46 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                 }
 
                 wallet().addCoinsReceivedEventListener(mReceivedNotifier);
+                wallet().addCoinsSentEventListener(mSentNotifier);
+
+                peerGroup().addConnectedEventListener(new PeerConnectedEventListener() {
+                    @Override
+                    public void onPeerConnected(Peer peer, int peerCount) {
+                        if (!mCanConnect) {
+                            mLogger.info("Cerrando punto: {}, Estado de la conexión: {}", peer, mCanConnect);
+                            peer.close();
+                        }
+                    }
+                });
+
+                Context context = BitcoinService.get().getApplicationContext();
+
+                if (AppPreference.useOnlyWifi(context)
+                        && !ConnectionManager.isWifiConnected(context))
+                    disconnect();
+
+                ConnectionManager.registerHandlerConnection(BitcoinService.this,
+                        new ConnectionManager.OnChangeConnectionState() {
+                            @Override
+                            public void onConnect(ConnectionManager.NetworkInterface network) {
+                                if (AppPreference.useOnlyWifi(BitcoinService.this.getApplicationContext()))
+                                    if (network == ConnectionManager.NetworkInterface.WIFI) {
+                                        mLogger.info("Solo wifi: Conectando");
+                                        connect();
+                                    } else
+                                        disconnect();
+                            }
+
+                            @Override
+                            public void onDisconnect(ConnectionManager.NetworkInterface network) {
+                                if (AppPreference.useOnlyWifi(BitcoinService.this.getApplicationContext()))
+                                    if (network == ConnectionManager.NetworkInterface.WIFI) {
+                                        mLogger.info("Solo wifi: Desconectando");
+                                        disconnect();
+                                    } else
+                                        connect();
+                            }
+                        });
             }
         };
 
@@ -348,6 +471,8 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                      */
                     @Override
                     public void onChainDownloadStarted(Peer peer, int blocksLeft) {
+                        if (!mCanConnect) return;
+
                         super.onChainDownloadStarted(peer, blocksLeft);
                         this.mBlocksLeft = blocksLeft;
                         get().mSyncronizedBlockchain = false;
@@ -366,6 +491,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     public void onBlocksDownloaded(Peer peer, Block block,
                                                    @Nullable FilteredBlock filteredBlock,
                                                    int blocksLeft) {
+                        if (!mCanConnect) return;
                         super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
                         for (BitcoinListener listener : mListeners)
                             listener.onBlocksDownloaded(BitcoinService.this, blocksLeft,
@@ -377,13 +503,32 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                      */
                     @Override
                     protected void doneDownload() {
+                        if (!mCanConnect) return;
                         get().mSyncronizedBlockchain = true;
                         for (BitcoinListener listener : mListeners)
                             listener.onCompletedDownloaded(BitcoinService.this);
                     }
-                }).setUserAgent("CryptoWallet", "0.8.2311_beta")
-                .startAsync();
+                })
+                .setUserAgent("CryptoWallet",
+                        AppPreference.getVesion(getApplicationContext()).toString());
+
+        mKitApp.startAsync();
     }
+
+    public void disconnect() {
+        mLogger.info("Desconectando puntos remotos");
+
+        mCanConnect = false;
+
+        for (Peer peer : getPeerGroup().getConnectedPeers())
+            peer.close();
+    }
+
+    public void connect() {
+        mLogger.info("Conectando puntos remotos");
+        mCanConnect = true;
+    }
+
 
     /**
      * @return
@@ -484,7 +629,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      */
     @Override
     public Coin getBalance() {
-        return mKitApp.wallet().getBalance(Wallet.BalanceType.ESTIMATED_SPENDABLE);
+        return mKitApp.wallet().getBalance();
     }
 
     /**
@@ -497,6 +642,28 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         return mKitApp.wallet().getTransactionsByTime();
     }
 
+    public void handlerWalletChange() {
+        Executors.newSingleThreadExecutor().execute(
+                new FutureTask<>(new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        for (BitcoinListener listener : mListeners)
+                            listener.onWalletChanged(BitcoinService.this);
+
+                        return null;
+                    }
+                }));
+
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        int state = super.onStartCommand(intent, flags, startId);
+        mIntent = intent;
+
+        return state;
+    }
+
     /**
      * Valida si la dirección especificada es correcta.
      *
@@ -506,8 +673,8 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     @Override
     public boolean validateAddress(String address) {
         try {
-            Address.fromBase58(mNetworkParameters, address);
-            return true;
+            Address a = Address.fromBase58(mNetworkParameters, address);
+            return !getWallet().getIssuedReceiveAddresses().contains(a);
         } catch (AddressFormatException ex) {
             return false;
         }
@@ -536,13 +703,47 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
         return getWallet().checkAESKey(new KeyParameter(pin));
     }
 
+    @Override
+    public void shutdown() {
+        mKitApp.stopAsync();
+        mKitApp.awaitTerminated();
+
+        getApplicationContext().stopService(mIntent);
+    }
+
+    @Override
+    public void deleteWallet() throws IOException {
+        if (mKitApp.isRunning())
+            shutdown();
+
+        String dataDir = getApplicationInfo().dataDir;
+        String prefix = PREFIX;
+        String walletExt = ".wallet";
+        String blockExt = ".spvchain";
+
+        File walletFile = new File(dataDir, prefix.concat(walletExt));
+        File blockFile = new File(dataDir, prefix.concat(blockExt));
+
+        mLogger.info("Billetera a eliminar: " + walletFile.getAbsolutePath());
+        mLogger.info("Blockchain a eliminar: " + blockFile.getAbsolutePath());
+
+        if (walletFile.exists())
+            if (!walletFile.delete())
+                throw new IOException("No se puede eliminar el archivo de la billetera.");
+
+        if (blockFile.exists())
+            if (!blockFile.delete())
+                throw new IOException("No se puede eliminar el archivo de la blockchain.");
+
+    }
+
     /**
      * Este método se llama cuando el servicio es destruido.
      */
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mKitApp.stopAsync();
+        shutdown();
     }
 
     /**

@@ -7,9 +7,8 @@ import android.support.annotation.NonNull;
 
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.crypto.KeyCrypterException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -21,23 +20,9 @@ import javax.annotation.Nullable;
 public abstract class WalletServiceBase<Coin, Address, Transaction> extends Service {
 
     /**
-     * Instancia que controla los logs.
-     */
-    protected Logger mLogger;
-
-    /**
      * Indica si la billeta fue inicializada.
      */
     private boolean mInitialized;
-
-    /**
-     * Crea una instancia de WalletServiceBase.
-     *
-     * @param name Nombre usado por el hilo.
-     */
-    public WalletServiceBase(String name) {
-        mLogger = LoggerFactory.getLogger(name);
-    }
 
     /**
      * Provee de un enlace a este servicio para comunicar con los clientes que lo requieren.
@@ -123,4 +108,8 @@ public abstract class WalletServiceBase<Coin, Address, Transaction> extends Serv
     public abstract boolean requireDecrypted();
 
     public abstract boolean validatePin(byte[] pin);
+
+    public abstract void shutdown();
+
+    public abstract void deleteWallet() throws IOException;
 }
