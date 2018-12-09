@@ -8,9 +8,9 @@ import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
 import com.cryptowallet.app.AppPreference;
+import com.cryptowallet.utils.Helper;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
@@ -53,8 +53,7 @@ public final class Security {
         if (mKey == null)
             return "";
 
-        return String.format("%0" + (mKey.length * 2) + "X",
-                new BigInteger(1, mKey));
+        return Helper.hexToString(mKey);
     }
 
     public byte[] getKey() {

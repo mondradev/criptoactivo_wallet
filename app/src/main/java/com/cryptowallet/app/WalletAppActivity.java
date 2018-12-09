@@ -3,10 +3,12 @@ package com.cryptowallet.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.CardView;
@@ -24,6 +26,7 @@ import com.cryptowallet.bitcoin.BitcoinListener;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.bitcoin.BitcoinTransaction;
 import com.cryptowallet.utils.Helper;
+import com.cryptowallet.utils.IdealPasswordParameter;
 import com.cryptowallet.wallet.ExchangeService;
 import com.cryptowallet.wallet.GenericTransactionBase;
 import com.cryptowallet.wallet.RecentListAdapter;
@@ -31,14 +34,14 @@ import com.cryptowallet.wallet.SupportedAssets;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.utils.Fiat;
-import org.bitcoinj.utils.Threading;
+import org.bitcoinj.crypto.KeyCrypterScrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executors;
 
 /**
  * Actividad principal de la billetera. Desde esta actividad se establece el flujo de trabajo de
@@ -81,6 +84,33 @@ public class WalletAppActivity extends ActivityBase {
         }
 
     };
+    private Handler mHandler = new Handler();
+    private ExchangeService.ExchangeServiceListener mExchangeListener
+            = new ExchangeService.ExchangeServiceListener() {
+        @Override
+        public void onResponse(SupportedAssets asset, long smallestUnit) {
+            SupportedAssets currentAsset = SupportedAssets.valueOf(
+                    AppPreference.getSelectedCurrency(WalletAppActivity.this));
+
+            if (asset != currentAsset || !BitcoinService.isRunning())
+                return;
+
+            org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
+
+            final String balanceFiat = ExchangeService
+                    .btcToSelectedFiat(WalletAppActivity.this,
+                            BitcoinService.get().getBalance().getValue());
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
+                    mUsdBalance.setText(balanceFiat);
+                }
+            });
+
+        }
+    };
     /**
      * Escucha de los eventos de la billetera de bitcoin.
      */
@@ -108,35 +138,45 @@ public class WalletAppActivity extends ActivityBase {
          * Este método se ejecuta cuando el saldo de la billetera ha cambiado.
          *
          * @param service Servicio de la billetera.
-         * @param balance Balance nuevo en la unidad más pequeña de la moneda o token.
          */
         @Override
-        public void onBalanceChanged(BitcoinService service, final Coin balance) {
-            Threading.USER_THREAD.execute(new Runnable() {
+        public void onBalanceChanged(final BitcoinService service, final Coin ignored) {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    final Fiat balanceUsd = Fiat.valueOf("USD",
-                            ExchangeService.btcToUsd(balance.getValue()));
+                    Coin newBalance = service.getBalance();
 
-                    mBalanceText.setText(balance.toFriendlyString());
+                    SupportedAssets assets = SupportedAssets.valueOf(
+                            AppPreference.getSelectedCurrency(WalletAppActivity.this));
+
+                    String balanceFiat
+                            = ExchangeService.getExchange(assets)
+                            .ToStringFriendly(SupportedAssets.BTC, newBalance.getValue());
+
+                    mBalanceText.setText(newBalance.toFriendlyString());
                     TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
-                    mUsdBalance.setText(balanceUsd.toFriendlyString());
+                    mUsdBalance.setText(balanceFiat);
                 }
             });
         }
 
         @Override
-        public void onCommited(BitcoinService service, Transaction tx) {
-            final Coin balance = service.getBalance();
-            Threading.USER_THREAD.execute(new Runnable() {
+        public void onCommited(final BitcoinService service, Transaction tx) {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    final Fiat balanceUsd = Fiat.valueOf("USD",
-                            ExchangeService.btcToUsd(balance.getValue()));
+                    Coin balance = service.getBalance();
+
+                    SupportedAssets assets = SupportedAssets.valueOf(
+                            AppPreference.getSelectedCurrency(WalletAppActivity.this));
+
+                    String balanceFiat
+                            = ExchangeService.getExchange(assets)
+                            .ToStringFriendly(SupportedAssets.BTC, balance.getValue());
 
                     mBalanceText.setText(balance.toFriendlyString());
                     TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
-                    mUsdBalance.setText(balanceUsd.toFriendlyString());
+                    mUsdBalance.setText(balanceFiat);
                 }
             });
         }
@@ -148,20 +188,39 @@ public class WalletAppActivity extends ActivityBase {
          */
         @Override
         public void onReady(final BitcoinService service) {
-            final Coin balance = service.getBalance();
-            final String balanceFiat = ExchangeService
-                    .btcToSelectedFiat(WalletAppActivity.this, balance.getValue());
+            Coin balance = service.getBalance();
 
             mBalanceText.setText(balance.toFriendlyString());
             List<Transaction> transactions = service.getTransactionsByTime();
 
-            TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
-            mUsdBalance.setText(balanceFiat);
+            ExchangeService.addEventListener(mExchangeListener);
 
             for (final Transaction tx : transactions)
                 addToRecents(tx);
 
-            if (mDialogOnLoad != null)
+            Intent intent = WalletAppActivity.this.getIntent();
+
+            if (intent.hasExtra(ExtrasKey.PIN_DATA)) {
+                final byte[] key = intent.getByteArrayExtra(ExtrasKey.PIN_DATA);
+
+                Executors.newSingleThreadExecutor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
+
+                        IdealPasswordParameter idealParameter
+                                = new IdealPasswordParameter(Helper.hexToString(key));
+
+                        KeyCrypterScrypt scrypt = new KeyCrypterScrypt(idealParameter.realIterations);
+
+                        BitcoinService.get().getWallet()
+                                .encrypt(scrypt, scrypt.deriveKey(Helper.hexToString(key)));
+
+                        if (mDialogOnLoad != null)
+                            mDialogOnLoad.dismiss();
+                    }
+                });
+            } else if (mDialogOnLoad != null)
                 mDialogOnLoad.dismiss();
         }
 
@@ -174,7 +233,7 @@ public class WalletAppActivity extends ActivityBase {
             final GenericTransactionBase item
                     = new BitcoinTransaction(WalletAppActivity.this, tx);
 
-            mRecentsAdapter.addItem(item);
+            mRecentsAdapter.add(item);
         }
 
         /**
@@ -192,10 +251,11 @@ public class WalletAppActivity extends ActivityBase {
                     WalletAppActivity.this,
                     getString(R.string.app_name),
                     getString(R.string.blockchain_downloaded),
-                    null
+                    null,
+                    100001
             );
 
-            Threading.USER_THREAD.execute(new Runnable() {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
@@ -206,17 +266,11 @@ public class WalletAppActivity extends ActivityBase {
             });
         }
 
-        /**
-         * @param service
-         * @param leftBlocks
-         * @param totalBlocksToDownload
-         * @param blockTime
-         */
         @Override
         public void onBlocksDownloaded(BitcoinService service, final int leftBlocks,
                                        final int totalBlocksToDownload, final Date blockTime) {
 
-            Threading.USER_THREAD.execute(new Runnable() {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
 
@@ -240,7 +294,7 @@ public class WalletAppActivity extends ActivityBase {
         public void onStartDownload(BitcoinService bitcoinService, int blocksTodownload) {
             mInitDownload = true;
 
-            Threading.USER_THREAD.execute(new Runnable() {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     mUpdateQrCountDown.start();
@@ -267,6 +321,8 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_wallet_app);
 
@@ -337,6 +393,32 @@ public class WalletAppActivity extends ActivityBase {
 
         mRecentsAdapter.setEmptyView(findViewById(R.id.mEmptyRecents));
 
+        final SwipeRefreshLayout mSwipeRefreshData = findViewById(R.id.mSwipeRefreshData);
+
+        mSwipeRefreshData.setColorSchemeColors(
+                Helper.getColorFromTheme(this, R.attr.textIconsColor));
+
+        mSwipeRefreshData.setProgressBackgroundColorSchemeColor(
+                Helper.getColorFromTheme(this, R.attr.colorAccent));
+
+        mSwipeRefreshData.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                BitcoinService.get().handlerWalletChange();
+                ExchangeService.reloadMarketPrice();
+
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mRecentsAdapter.clear();
+                        mRecentsAdapter.addAll(BitcoinTransaction
+                                .getTransactionsByTime(WalletAppActivity.this));
+                        mSwipeRefreshData.setRefreshing(false);
+                    }
+                });
+            }
+        });
+
         BitcoinService.addEventListener(mListener);
 
         mLogger.info("Actividad principal creada");
@@ -391,6 +473,7 @@ public class WalletAppActivity extends ActivityBase {
     protected void onDestroy() {
         super.onDestroy();
         BitcoinService.removeEventListener(mListener);
+        ExchangeService.removeEventListener(mExchangeListener);
 
         mLogger.info("Actividad principal destruida");
     }

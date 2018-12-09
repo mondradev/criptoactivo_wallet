@@ -33,6 +33,7 @@ import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 
+import java.util.Locale;
 import java.util.Objects;
 
 import static com.cryptowallet.app.ExtrasKey.PIN_DATA;
@@ -331,7 +332,7 @@ public class SendPaymentsActivity extends ActivityBase
 
 
                     Transaction tx = BitcoinService.get().sendPay(Coin.valueOf(mAmount),
-                            Address.fromBase58(BitcoinService.get().getNetwork(), mAddress),
+                            Address.fromBase58(BitcoinService.getNetwork(), mAddress),
                             Coin.valueOf(mFeePerKb), password);
 
                     BitcoinService.get().broadCastTx(Objects.requireNonNull(tx), new BroadcastListener<Transaction>() {
@@ -361,8 +362,11 @@ public class SendPaymentsActivity extends ActivityBase
                     finish();
                     break;
             }
-        } catch (InsufficientMoneyException ignored) {
-
+        } catch (InsufficientMoneyException money) {
+            Helper.showSnackbar(findViewById(R.id.mSendPayment),
+                    String.format(Locale.getDefault(),
+                            getString(R.string.insufficient_money),
+                            Objects.requireNonNull(money.missing).toFriendlyString()));
         } catch (KeyCrypterException ignored) {
 
         }
@@ -402,7 +406,7 @@ public class SendPaymentsActivity extends ActivityBase
 
                     try {
                         Address addressRead = Address.fromBase58(
-                                BitcoinService.get().getNetwork(), result.getContents());
+                                BitcoinService.getNetwork(), result.getContents());
 
                         mAddressRecipient.setText(addressRead.toBase58());
                     } catch (AddressFormatException ignored) {

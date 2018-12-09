@@ -61,12 +61,12 @@ public class TransactionActivity extends ActivityBase implements GenericTransact
         mAmount.setText(mTransaction.getAmountToStringFriendly(SupportedAssets.BTC));
 
         mAmount.setTextColor(mTransaction.getKind() == GenericTransactionBase.Kind.SEND
-                ? getResources().getColor(R.color.sendColor)
-                : getResources().getColor(R.color.receiveColor));
+                ? getResources().getColor(R.color.send_tx_color)
+                : getResources().getColor(R.color.receive_tx_color));
 
         mKind.setTextColor(mTransaction.getKind() == GenericTransactionBase.Kind.SEND
-                ? getResources().getColor(R.color.sendColor)
-                : getResources().getColor(R.color.receiveColor));
+                ? getResources().getColor(R.color.send_tx_color)
+                : getResources().getColor(R.color.receive_tx_color));
 
         mTransaction.setOnUpdateDepthListener(this);
 

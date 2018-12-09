@@ -2,8 +2,10 @@ package com.cryptowallet.utils;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -11,14 +13,19 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.support.annotation.AttrRes;
+import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewCompat;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.bitcoin.BitcoinService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -26,17 +33,22 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /***
  * Provee de funciones auxiliares que pueden usarse en diferentes clases.
  */
 public final class Helper {
+
+    public static final org.bitcoinj.core.Context BITCOIN_CONTEXT
+            = new org.bitcoinj.core.Context(BitcoinService.getNetwork());
 
     /**
      * Identificador de la aplicación.
@@ -150,6 +162,9 @@ public final class Helper {
         layoutParams.setMargins(16, 16, 16, 16);
 
         snackView.setBackground(reference.getContext().getDrawable(R.drawable.bg_snackbar));
+        ((TextView) snackView.findViewById(android.support.design.R.id.snackbar_text))
+                .setTextColor(getColorFromTheme(reference.getContext(), R.attr.textIconsColor));
+
         ViewCompat.setElevation(snackView, 6);
 
         if (listener != null && caption != null && !caption.isEmpty())
@@ -168,7 +183,7 @@ public final class Helper {
     public static void sendNotificationOs(Context context,
                                           String title,
                                           String message,
-                                          Intent onTap) {
+                                          Intent onTap, int staticNotify) {
         if (message == null || message.isEmpty())
             return;
 
@@ -177,7 +192,7 @@ public final class Helper {
                 .setContentTitle(title)
                 .setContentText(message)
                 .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
-                .setColor(context.getResources().getColor(R.color.colorPrimary))
+                .setColor(context.getResources().getColor(R.color.light_primary))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setSound(RingtoneManager
                         .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
@@ -186,6 +201,56 @@ public final class Helper {
             onTap.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             PendingIntent pendingIntent
                     = PendingIntent.getActivity(context, 0, onTap, 0);
+
+            builder.setContentIntent(pendingIntent);
+        }
+
+        NotificationManager notificationCompat
+                = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationCompat.notify(staticNotify == 0 ? notifyID : staticNotify, builder.build());
+
+        if (notifyID > 9999) notifyID = 0;
+        else notifyID++;
+    }
+
+
+    /**
+     * Envía una notificación al sistema operativo.
+     *
+     * @param context   Contexto de la aplicación.
+     * @param assetIcon Icono del activo involucrádo.
+     */
+    public static void sendReceiveMoneyNotification(Context context,
+                                                    @DrawableRes int assetIcon,
+                                                    String amount,
+                                                    String txID,
+                                                    Intent onTap) {
+        String message = String.format(context.getString(R.string.notify_receive), amount);
+        String template = "%s\nTxID: %s";
+
+        Uri soundUri = Uri.parse(String.format(Locale.getDefault(), "%s://%s/%d",
+                ContentResolver.SCHEME_ANDROID_RESOURCE,
+                context.getPackageName(),
+                R.raw.receive_money));
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(assetIcon)
+                .setContentTitle(context.getString(R.string.app_name))
+                .setContentText(message)
+                .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
+                .setColor(context.getResources().getColor(R.color.light_primary))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(String.format(template,
+                        message, txID
+                )))
+                .setSound(soundUri);
+
+
+        if (onTap != null) {
+            onTap.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            PendingIntent pendingIntent
+                    = PendingIntent.getActivity(context, 0, onTap,
+                    PendingIntent.FLAG_UPDATE_CURRENT);
 
             builder.setContentIntent(pendingIntent);
         }
@@ -220,7 +285,7 @@ public final class Helper {
                 .setContentTitle(title)
                 .setContentText(message)
                 .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
-                .setColor(context.getResources().getColor(R.color.colorPrimary))
+                .setColor(context.getResources().getColor(R.color.light_primary))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(largeText))
                 .setSound(RingtoneManager
@@ -304,5 +369,21 @@ public final class Helper {
         for (String aPin : pin) builder.append(aPin);
 
         return builder.toString();
+    }
+
+    public static @ColorInt
+    int getColorFromTheme(Context context, @AttrRes int attr) {
+        Objects.requireNonNull(context);
+        TypedValue value = new TypedValue();
+
+        Resources.Theme theme = context.getTheme();
+        theme.resolveAttribute(attr, value, true);
+
+        return value.data;
+    }
+
+    public static String hexToString(byte[] mKey) {
+        return String.format("%0" + (mKey.length * 2) + "X",
+                new BigInteger(1, mKey));
     }
 }

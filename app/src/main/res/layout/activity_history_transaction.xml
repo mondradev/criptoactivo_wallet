@@ -6,29 +6,35 @@
     android:layout_height="match_parent"
     tools:context=".app.TransactionHistoryActivity">
 
-
-    <android.support.v7.widget.RecyclerView
-        android:id="@+id/mTransactionsHistory"
+    <android.support.v4.widget.SwipeRefreshLayout
+        android:id="@+id/mSwipeRefreshTx"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:scrollbars="vertical"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:listitem="@layout/viewholder_generic_transaction" />
+        android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/mEmptyHistory"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="40dp"
-        android:paddingBottom="40dp"
-        android:text="@string/empty_recents_text"
-        android:textAlignment="center"
-        android:textSize="18sp"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/mTransactionsHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:listitem="@layout/viewholder_generic_transaction" />
+
+        <TextView
+            android:id="@+id/mEmptyHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="40dp"
+            android:paddingBottom="40dp"
+            android:text="@string/empty_recents_text"
+            android:textAlignment="center"
+            android:textSize="18sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </android.support.v4.widget.SwipeRefreshLayout>
 </android.support.constraint.ConstraintLayout>

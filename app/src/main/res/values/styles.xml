@@ -1,86 +1,154 @@
 <resources>
 
-    <!-- Base application theme. -->
+    <!-- Splash background -->
+    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_splashscreen</item>
+    </style>
+
+    <!-- Light Theme -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="textPrimaryColor">?attr/colorPrimary</item>
-        <item name="textAccentColor">?attr/colorAccent</item>
-        <item name="android:textColor">?android:attr/textColorSecondary</item>
-        <item name="unCommitColor">@color/unCommitColor</item>
-        <item name="commitColor">@color/commitColor</item>
-        <item name="plusCommitColor">@color/plusCommitColor</item>
-        <item name="dividersColor">@color/dividersColor</item>
-        <item name="android:colorButtonNormal">?attr/colorPrimary</item>
-        <item name="snackBarColor">@color/snackBarColor</item>
-        <item name="receiveColor">@color/receiveColor</item>
-        <item name="sendColor">@color/sendColor</item>
+        <item name="android:windowBackground">@color/light_background</item>
+        <item name="colorPrimary">@color/light_primary</item>
+        <item name="colorPrimaryDark">@color/light_darkPrimary</item>
+        <item name="colorAccent">@color/light_accent</item>
+        <item name="android:textColor">@color/light_primary_text</item>
+        <item name="colorButtonNormal">@color/light_background</item>
+        <item name="android:textColorSecondaryInverse">@color/light_secondary_text</item>
+        <item name="android:textColorSecondary">@color/light_secondary_text</item>
+        <item name="android:textColorPrimary">@color/light_primary_text</item>
+        <item name="android:colorForeground">@color/light_text_icons</item>
+        <item name="android:navigationBarColor">@color/light_darkPrimary</item>
+        <item name="android:colorBackground">@color/light_background</item>
+        <item name="android:textColorPrimaryInverse">@color/light_secondary_text</item>
+        <item name="textIconsColor">@color/light_text_icons</item>
+        <item name="dividerColor">@color/light_divider</item>
+
+        <item name="uncommitTxColor">@color/light_uncommit_tx</item>
+        <item name="commitTxColor">@color/light_commit_tx</item>
+        <item name="plusCommitTxColor">@color/light_pluscommit_tx</item>
+
+        <item name="snackbarColor">@color/light_snackbar_bg</item>
+
         <item name="cardViewStyle">@style/CardView.Light</item>
-        <item name="amountColor">@color/amountColor</item>
-        <item name="buttonTextColor">@color/buttonRaiseTextColor</item>
+        <item name="android:borderlessButtonStyle">@style/AppTheme.Button.Borderless.Colored</item>
+        <item name="buttonStyle">@style/AppTheme.Button</item>
+
+        <item name="mainTextColor">?attr/colorPrimary</item>
+
     </style>
 
     <style name="AppTheme.Button.Borderless.Colored" parent="Base.Widget.AppCompat.Button.Borderless.Colored">
-        <item name="android:textColor">?attr/textAccentColor</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+    </style>
+
+    <style name="AppTheme.Button" parent="Base.Widget.AppCompat.Button">
+        <item name="android:background">@color/light_primary</item>
+        <item name="android:textColor">@color/light_text_icons</item>
     </style>
 
     <style name="AppTheme.Button.Item" parent="AppTheme.Button.Borderless.Colored">
-        <item name="android:textAlignment">viewStart</item>
-        <item name="android:paddingStart">0dp</item>
-        <item name="android:textStyle">normal</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:textAlignment">textStart</item>
         <item name="android:fontFamily">sans-serif</item>
     </style>
 
+
+    <!-- Dark Theme -->
     <style name="AppTheme.Dark" parent="AppTheme">
-        <item name="colorPrimary">@color/darkColorPrimary</item>
-        <item name="colorPrimaryDark">@color/darkColorPrimaryDark</item>
-        <item name="colorAccent">@color/darkColorAccent</item>
-        <item name="android:textColorSecondary">@color/darkTextColor</item>
-        <item name="android:textColorPrimary">@color/darkTextColor</item>
-        <item name="android:colorBackground">@color/darkBackground</item>
-        <item name="android:colorForeground">@android:color/white</item>
-        <item name="colorButtonNormal">@color/darkBackground</item>
+        <item name="android:windowBackground">@color/dark_background</item>
+        <item name="colorPrimary">@color/dark_primary</item>
+        <item name="colorPrimaryDark">@color/dark_darkPrimary</item>
+        <item name="colorAccent">@color/dark_accent</item>
+        <item name="android:textColor">@color/dark_primary_text</item>
+        <item name="android:textColorSecondary">@color/dark_secondary_text</item>
+        <item name="android:textColorHint">@color/dark_secondary_text</item>
+        <item name="colorButtonNormal">@color/dark_background</item>
+        <item name="android:colorBackground">@color/dark_background</item>
+        <item name="android:textColorPrimary">@color/dark_primary_text</item>
+        <item name="android:textColorPrimaryInverse">@color/dark_secondary_text</item>
+        <item name="android:textColorSecondaryInverse">@color/dark_secondary_text</item>
+        <item name="android:navigationBarColor">@color/dark_darkPrimary</item>
+        <item name="android:colorForeground">@color/dark_text_icons</item>
+        <item name="colorBackgroundFloating">@color/dark_cardBackground</item>
+
+
+        <item name="textIconsColor">@color/dark_text_icons</item>
+
+        <item name="uncommitTxColor">@color/dark_uncommit_tx</item>
+        <item name="commitTxColor">@color/dark_commit_tx</item>
+        <item name="plusCommitTxColor">@color/dark_pluscommit_tx</item>
+
+        <item name="itemIconTint">@color/dark_text_icons</item>
+        <item name="dividerColor">@color/dark_divider</item>
+        <item name="snackbarColor">@color/dark_snackbar_bg</item>
+
         <item name="cardViewStyle">@style/CardView.Dark</item>
-        <item name="android:windowBackground">@color/darkBackground</item>
-        <item name="dividersColor">@color/darkDividersColor</item>
-        <item name="android:textColorHint">@color/darkDividersColor</item>
-        <item name="colorBackgroundFloating">@color/darkBackground</item>
-        <item name="android:itemBackground">@color/darkBackground</item>
-        <item name="snackBarColor">@color/darkSnackbarBackground</item>
-        <item name="receiveColor">@color/darkReceiveColor</item>
-        <item name="sendColor">@color/darkSendColor</item>
-        <item name="amountColor">@color/darkAmountColor</item>
+        <item name="buttonStyle">@style/AppTheme.Dark.Button</item>
+        <item name="alertDialogTheme">@style/AppTheme.Dark.Dialog.Alert</item>
+
     </style>
 
+    <style name="AppTheme.Dark.Dialog.Alert" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorBackgroundFloating">@color/dark_cardBackground</item>
+        <item name="android:textColorPrimary">@color/dark_primary_text</item>
+        <item name="textColorAlertDialogListItem">@color/dark_primary_text</item>
+    </style>
+
+
+    <style name="AppTheme.Dark.Button" parent="Base.Widget.AppCompat.Button">
+        <item name="android:background">@color/dark_primary</item>
+        <item name="android:textColor">@color/dark_text_icons</item>
+    </style>
+
+
+    <!-- Blue Theme -->
     <style name="AppTheme.Blue" parent="AppTheme">
-        <item name="colorPrimary">@color/blueColorPrimary</item>
-        <item name="colorPrimaryDark">@color/blueColorPrimaryDark</item>
-        <item name="colorAccent">@color/blueColorAccent</item>
-        <item name="textPrimaryColor">@color/blueTextColor</item>
-        <item name="android:colorBackground">@color/blueBackground</item>
-        <item name="colorButtonNormal">@color/blueBackground</item>
-        <item name="unCommitColor">@color/blueUnCommitColor</item>
-        <item name="android:windowBackground">@color/blueBackground</item>
-        <item name="colorBackgroundFloating">@color/blueBackground</item>
-        <item name="android:itemBackground">@color/blueBackground</item>
-        <item name="buttonTextColor">@color/buttonRaiseTextColor</item>
+        <item name="android:windowBackground">@color/blue_background</item>
+        <item name="colorPrimary">@color/blue_primary</item>
+        <item name="colorPrimaryDark">@color/blue_darkPrimary</item>
+        <item name="colorAccent">@color/blue_accent</item>
+        <item name="android:textColor">@color/blue_primary_text</item>
+        <item name="android:textColorSecondary">@color/blue_secondary_text</item>
+        <item name="android:textColorHint">@color/blue_secondary_text</item>
+        <item name="android:textColorPrimary">@color/blue_primary_text</item>
+        <item name="android:colorBackground">@color/blue_background</item>
+        <item name="colorButtonNormal">@color/blue_background</item>
+        <item name="android:textColorPrimaryInverse">@color/blue_secondary_text</item>
+        <item name="android:navigationBarColor">@color/blue_darkPrimary</item>
+        <item name="android:colorForeground">@color/blue_text_icons</item>
+        <item name="android:textColorSecondaryInverse">@color/blue_secondary_text</item>
+        <item name="colorBackgroundFloating">@color/blue_cardBackground</item>
+
+        <item name="textIconsColor">@color/blue_text_icons</item>
+
+        <item name="uncommitTxColor">@color/blue_uncommit_tx</item>
+        <item name="commitTxColor">@color/blue_commit_tx</item>
+        <item name="plusCommitTxColor">@color/blue_pluscommit_tx</item>
+
+        <item name="itemIconTint">@color/blue_text_icons</item>
+        <item name="snackbarColor">@color/blue_snackbar_bg</item>
+
+        <item name="dividerColor">@color/blue_divider</item>
         <item name="cardViewStyle">@style/AppTheme.Blue.CardView</item>
-        <item name="android:textColorSecondary">@color/blueTextColor</item>
-        <item name="android:textColorPrimary">@color/blueTextColor</item>
-        <item name="android:alertDialogStyle">@style/AppTheme.Blue.Dialog</item>
+        <item name="buttonStyle">@style/AppTheme.Blue.Button</item>
+        <item name="alertDialogTheme">@style/AppTheme.Blue.Dialog.Alert</item>
+
+        <item name="mainTextColor">?attr/textIconsColor</item>
     </style>
 
-    <style name="AppTheme.Blue.Dialog" parent="AlertDialog.AppCompat.Light">
-        <item name="android:background">@color/blueTextColor</item>
+    <style name="AppTheme.Blue.Dialog.Alert" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorBackgroundFloating">@color/blue_cardBackground</item>
+        <item name="android:textColorPrimary">@color/blue_primary_text</item>
+        <item name="textColorAlertDialogListItem">@color/blue_primary_text</item>
+    </style>
+
+    <style name="AppTheme.Blue.Button" parent="Base.Widget.AppCompat.Button">
+        <item name="android:background">@color/blue_primary</item>
+        <item name="android:textColor">@color/blue_text_icons</item>
     </style>
 
     <style name="AppTheme.Blue.CardView">
-        <item name="cardBackgroundColor">@color/cardviewBlueBackground</item>
-    </style>
-
-    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">@drawable/bg_splashscreen</item>
+        <item name="cardBackgroundColor">@color/blue_cardBackground</item>
     </style>
 
 

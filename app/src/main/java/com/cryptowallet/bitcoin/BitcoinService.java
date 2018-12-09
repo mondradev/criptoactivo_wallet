@@ -32,13 +32,11 @@ import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
-import org.bitcoinj.core.Utils;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.PeerConnectedEventListener;
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
-import org.bitcoinj.script.Script;
 import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
@@ -53,12 +51,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
 
 /**
  * Ofrece un servicio de billetera de Bitcoin permitiendo recibir y enviar pagos, consultar saldo y
@@ -89,25 +85,21 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      */
     private static BitcoinService mService;
     /**
+     * Parametros de la red utilizada en Bitcoin.
+     */
+    private static NetworkParameters mNetworkParameters = TestNet3Params.get();
+    /**
      * Prefijo utilizado para los archivos de la billetera.
      */
     private final String PREFIX = "bitcoin.data";
-
     /**
      * Instancia de kit de billetera.
      */
     private WalletAppKit mKitApp;
-
     /**
      *
      */
     private boolean mSyncronizedBlockchain = false;
-
-    /**
-     * Parametros de la red utilizada en Bitcoin.
-     */
-    private NetworkParameters mNetworkParameters = TestNet3Params.get();
-
     /**
      * Número máximo de conexiones administradas por el grupo de P2P.
      */
@@ -125,23 +117,18 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
             String btcValue = Coin.valueOf(getValueFromTx(tx))
                     .toFriendlyString();
-            String messge = String.format(getString(R.string.notify_receive), btcValue);
-            String template = "%s\nTxID: %s";
+
             String id = tx.getHashAsString();
 
             Intent intent = new Intent(BitcoinService.get(), TransactionActivity.class);
             intent.putExtra(ExtrasKey.TX_ID, id);
             intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
 
-            Helper.sendLargeTextNotificationOs(
+            Helper.sendReceiveMoneyNotification(
                     getApplicationContext(),
                     R.mipmap.img_bitcoin,
-                    getString(R.string.app_name),
-                    messge,
-                    String.format(template,
-                            messge,
-                            id
-                    ),
+                    btcValue,
+                    id,
                     intent
             );
         }
@@ -177,7 +164,9 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
             );
         }
     };
+
     private Intent mIntent;
+
     private boolean mCanConnect = true;
 
     /**
@@ -255,14 +244,11 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                                           String unknownAdress) {
         StringBuilder builder = new StringBuilder();
 
-        BitcoinService service = get();
-        NetworkParameters params = service.getNetwork();
+        NetworkParameters params = getNetwork();
 
         List<TransactionInput> inputs = tx.getInputs();
 
         for (TransactionInput input : inputs) {
-            if (builder.length() > 0)
-                builder.append("\n");
 
             try {
 
@@ -271,25 +257,30 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                     continue;
                 }
 
-                Address address;
+                Address address = null;
 
                 if (input.getConnectedOutput() != null) {
-                    address = input.getConnectedOutput().getAddressFromP2SH(params);
+                    address = input.getConnectedOutput().getAddressFromP2PKHScript(params);
+
                     if (address == null)
-                        address = input.getConnectedOutput().getAddressFromP2PKHScript(params);
-                } else {
-                    Script script = input.getScriptSig();
-                    byte[] key = script.getPubKey();
-                    address = Address.fromP2SHHash(params, Utils.sha256hash160(key));
+                        address = input.getConnectedOutput().getAddressFromP2SH(params);
                 }
 
-                if (address != null)
-                    builder.append(address.toBase58());
+                if (address != null) {
+                    if (!builder.toString().contains(address.toBase58())) {
+                        if (builder.length() > 0 && !builder.toString().endsWith("\n"))
+                            builder.append("\n");
 
+                        builder.append(address.toBase58());
+                    }
+                } else
+                    throw new ScriptException("Can´t get from address");
 
             } catch (ScriptException ex) {
                 mLogger.warn("Dirección no decodificada");
                 builder.append(unknownAdress);
+
+                break;
             }
         }
 
@@ -298,22 +289,30 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
     public static String getToAddresses(Transaction tx) {
         StringBuilder builder = new StringBuilder();
-        BitcoinService service = get();
-        NetworkParameters params = service.getNetwork();
+        Wallet wallet = get().getWallet();
+        NetworkParameters params = getNetwork();
+        Boolean isPay = isPay(tx);
 
         List<TransactionOutput> outputs = tx.getOutputs();
 
         for (TransactionOutput output : outputs) {
-            if (builder.length() > 0)
-                builder.append("\n");
+
+            if (isPay && output.isMine(wallet))
+                continue;
+            else if (!isPay && !output.isMine(wallet))
+                continue;
 
             Address address = output.getAddressFromP2SH(params);
 
             if (address == null)
                 address = output.getAddressFromP2PKHScript(params);
 
-            if (address != null)
+            if (address != null) {
+                if (builder.length() > 0)
+                    builder.append("\n");
+
                 builder.append(address.toBase58());
+            }
         }
 
         return builder.toString();
@@ -325,9 +324,18 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
     public static boolean isRunning() {
         if (mService == null)
-            return true;
+            return false;
 
         return mService.isInitialized();
+    }
+
+    /**
+     * Obtiene los parametros de la red conectada.
+     *
+     * @return Los parametros de la red.
+     */
+    public static NetworkParameters getNetwork() {
+        return mNetworkParameters;
     }
 
     public Transaction getTransaction(String txID) {
@@ -411,6 +419,7 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
                         if (!mCanConnect) {
                             mLogger.info("Cerrando punto: {}, Estado de la conexión: {}", peer, mCanConnect);
                             peer.close();
+                            peer.connectionClosed();
                         }
                     }
                 });
@@ -520,15 +529,16 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
         mCanConnect = false;
 
-        for (Peer peer : getPeerGroup().getConnectedPeers())
+        for (Peer peer : getPeerGroup().getConnectedPeers()) {
             peer.close();
+            peer.connectionClosed();
+        }
     }
 
     public void connect() {
         mLogger.info("Conectando puntos remotos");
         mCanConnect = true;
     }
-
 
     /**
      * @return
@@ -629,7 +639,9 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
      */
     @Override
     public Coin getBalance() {
-        return mKitApp.wallet().getBalance();
+        Coin balance = mKitApp.wallet().getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE);
+        mLogger.info("Saldo actual: {}", balance.toFriendlyString());
+        return balance;
     }
 
     /**
@@ -643,16 +655,14 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     }
 
     public void handlerWalletChange() {
-        Executors.newSingleThreadExecutor().execute(
-                new FutureTask<>(new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        for (BitcoinListener listener : mListeners)
-                            listener.onWalletChanged(BitcoinService.this);
-
-                        return null;
-                    }
-                }));
+        Executors.newSingleThreadExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
+                org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
+                for (BitcoinListener listener : mListeners)
+                    listener.onBalanceChanged(BitcoinService.this, getBalance());
+            }
+        });
 
     }
 
@@ -713,28 +723,45 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
 
     @Override
     public void deleteWallet() throws IOException {
-        if (mKitApp.isRunning())
-            shutdown();
+        try {
+            mLogger.info("Desactivando los servicios de Bitcoin");
 
-        String dataDir = getApplicationInfo().dataDir;
-        String prefix = PREFIX;
-        String walletExt = ".wallet";
-        String blockExt = ".spvchain";
+            if (mKitApp.isRunning())
+                shutdown();
 
-        File walletFile = new File(dataDir, prefix.concat(walletExt));
-        File blockFile = new File(dataDir, prefix.concat(blockExt));
+            String dataDir = getApplicationInfo().dataDir;
+            String prefix = PREFIX;
+            String walletExt = ".wallet";
+            String blockExt = ".spvchain";
 
-        mLogger.info("Billetera a eliminar: " + walletFile.getAbsolutePath());
-        mLogger.info("Blockchain a eliminar: " + blockFile.getAbsolutePath());
+            File walletFile = new File(dataDir, prefix.concat(walletExt));
+            File blockFile = new File(dataDir, prefix.concat(blockExt));
 
-        if (walletFile.exists())
-            if (!walletFile.delete())
-                throw new IOException("No se puede eliminar el archivo de la billetera.");
+            Thread.sleep(5000);
 
-        if (blockFile.exists())
-            if (!blockFile.delete())
-                throw new IOException("No se puede eliminar el archivo de la blockchain.");
+            mLogger.info("Billetera a eliminar: " + walletFile.getAbsolutePath());
+            mLogger.info("Blockchain a eliminar: " + blockFile.getAbsolutePath());
 
+            if (walletFile.exists())
+                if (!walletFile.delete())
+                    throw new IOException("No se puede eliminar el archivo de la billetera.");
+
+            if (blockFile.exists())
+                if (!blockFile.delete())
+                    throw new IOException("No se puede eliminar el archivo de la blockchain.");
+
+            mService = null;
+
+        } catch (InterruptedException ignored) {
+        }
+    }
+
+    @Override
+    public void disconnectPeers() {
+        for (Peer peer : getPeerGroup().getConnectedPeers()) {
+            peer.close();
+            peer.connectionClosed();
+        }
     }
 
     /**
@@ -744,15 +771,6 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     public void onDestroy() {
         super.onDestroy();
         shutdown();
-    }
-
-    /**
-     * Obtiene los parametros de la red conectada.
-     *
-     * @return Los parametros de la red.
-     */
-    public NetworkParameters getNetwork() {
-        return mNetworkParameters;
     }
 
     /**

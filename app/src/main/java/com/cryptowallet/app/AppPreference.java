@@ -195,6 +195,11 @@ public final class AppPreference {
         return preferences.getString("selected_currency", "USD");
     }
 
+    public static void clear(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit().clear().apply();
+    }
+
     @StringDef(value = {"USD", "MXN"})
     @interface CurrencyFiat {
     }

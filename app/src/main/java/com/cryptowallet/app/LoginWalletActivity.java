@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.StringRes;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
@@ -27,7 +28,6 @@ import com.cryptowallet.utils.Helper;
 import com.cryptowallet.utils.IdealPasswordParameter;
 
 import org.bitcoinj.crypto.KeyCrypterScrypt;
-import org.bitcoinj.utils.Threading;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import java.util.Objects;
@@ -36,12 +36,7 @@ import javax.crypto.Cipher;
 
 public class LoginWalletActivity extends ActivityBase {
 
-
     private static final int MIN_LENGTH = 4;
-    private final int MAX_ATTEMP = 3;
-
-    private org.bitcoinj.core.Context mContext
-            = org.bitcoinj.core.Context.getOrCreate(BitcoinService.get().getNetwork());
 
     private boolean mRegMode;
     private boolean mToCommit;
@@ -56,6 +51,7 @@ public class LoginWalletActivity extends ActivityBase {
     private boolean mHasError = false;
     private String mHashKey = "";
     private boolean mRegFingerprint;
+    private Handler mHandler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +76,9 @@ public class LoginWalletActivity extends ActivityBase {
         // Registrando PIN
         mRegMode = intent.getBooleanExtra(ExtrasKey.REG_PIN, false);
         mRegFingerprint = intent.getBooleanExtra(ExtrasKey.REG_FINGER, false);
-        mRequirePin = BitcoinService.get().requireDecrypted();
+
+        if (BitcoinService.isRunning())
+            mRequirePin = BitcoinService.get().requireDecrypted();
 
         if (mRequirePin && AppPreference.useFingerprint(this))
             loadFingerprint();
@@ -210,7 +208,16 @@ public class LoginWalletActivity extends ActivityBase {
 
                         mHashKey = Security.get().getKeyAsString();
 
-                        encryptWallet();
+                        if (BitcoinService.isRunning())
+                            encryptWallet();
+                        else {
+                            setResult(Activity.RESULT_OK,
+                                    new Intent().putExtra(
+                                            ExtrasKey.PIN_DATA,
+                                            Security.get().getKey())
+                            );
+                            finish();
+                        }
                     }
 
                 } else {
@@ -242,13 +249,12 @@ public class LoginWalletActivity extends ActivityBase {
         mAlertDialog.show();
 
         new ValidatePinThread()
-                .setLoginWallet(this)
                 .start();
 
     }
 
     private void hideInfo() {
-        Threading.USER_THREAD.execute(new Runnable() {
+        mHandler.post(new Runnable() {
             @Override
             public void run() {
                 TextView mInfoLabel = findViewById(R.id.mInfo);
@@ -258,7 +264,7 @@ public class LoginWalletActivity extends ActivityBase {
     }
 
     private void setInfo(@StringRes final int idRes) {
-        Threading.USER_THREAD.execute(new Runnable() {
+        mHandler.post(new Runnable() {
             @Override
             public void run() {
                 TextView mInfoLabel = findViewById(R.id.mInfo);
@@ -270,13 +276,13 @@ public class LoginWalletActivity extends ActivityBase {
     }
 
     private void cleanPin() {
-        Threading.USER_THREAD.execute(new Runnable() {
-            @Override
-            public void run() {
-                for (ImageView pin : mPinDigitViews)
+        for (final ImageView pin : mPinDigitViews)
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
                     pin.setImageDrawable(getDrawable(R.drawable.br_pin));
-            }
-        });
+                }
+            });
     }
 
     private void fillPin(int digit) {
@@ -295,7 +301,6 @@ public class LoginWalletActivity extends ActivityBase {
         mAlertDialog.show();
 
         new EncryptWalletThread()
-                .setLoginWallet(this)
                 .start();
     }
 
@@ -331,103 +336,97 @@ public class LoginWalletActivity extends ActivityBase {
         }
     }
 
-    private static class ValidatePinThread extends Thread {
-
-        private LoginWalletActivity mLoginWallet;
-
-        ValidatePinThread setLoginWallet(LoginWalletActivity mLoginWallet) {
-            this.mLoginWallet = mLoginWallet;
-            return this;
-        }
+    private class ValidatePinThread extends Thread {
+        
 
         @Override
         public void run() {
 
-            org.bitcoinj.core.Context.propagate(mLoginWallet.mContext);
+            if (!BitcoinService.isRunning())
+                return;
+
+            org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
 
             byte[] dataPin;
             String hash;
 
-            if (mLoginWallet.mHashKey.isEmpty()) {
-                dataPin = Base64.decode(Helper.concatAll(mLoginWallet.mPinValues), Base64.DEFAULT);
+            if (mHashKey.isEmpty()) {
+                dataPin = Base64.decode(Helper.concatAll(mPinValues), Base64.DEFAULT);
                 Security.get().setKey(dataPin);
                 hash = Security.get().getKeyAsString();
             } else
-                hash = mLoginWallet.mHashKey;
+                hash = mHashKey;
 
             dataPin = Objects.requireNonNull(BitcoinService.get().getWallet().getKeyCrypter())
                     .deriveKey(hash).getKey();
 
             if (BitcoinService.get().validatePin(dataPin)) {
 
-                if (mLoginWallet.mRequirePin
-                        && (mLoginWallet.mRegFingerprint || mLoginWallet.mRegMode)) {
+                if (mRequirePin
+                        && (mRegFingerprint || mRegMode)) {
 
-                    if (mLoginWallet.mRegFingerprint) {
-                        Threading.USER_THREAD.execute(new Runnable() {
+                    if (mRegFingerprint) {
+                        mHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                mLoginWallet.loadFingerprint();
+                                loadFingerprint();
                             }
                         });
                     } else {
-                        mLoginWallet.mKeyPrev = dataPin;
-                        mLoginWallet.setInfo(R.string.indications_pin_setup);
-                        mLoginWallet.mCountDigit = 0;
-                        mLoginWallet.cleanPin();
+                        mKeyPrev = dataPin;
+                        setInfo(R.string.indications_pin_setup);
+                        mCountDigit = 0;
+                        cleanPin();
                     }
                 } else {
                     Intent intent = new Intent();
                     intent.putExtra(ExtrasKey.PIN_DATA, dataPin);
-                    mLoginWallet.setResult(Activity.RESULT_OK, intent);
+                    setResult(Activity.RESULT_OK, intent);
 
-                    mLoginWallet.finish();
+                    finish();
                 }
             } else {
 
-                mLoginWallet.setInfo(R.string.error_pin);
-                mLoginWallet.mHasError = true;
-                mLoginWallet.mCountDigit = 0;
-                mLoginWallet.mPinValues = new String[4];
-                mLoginWallet.mAttemp++;
+                setInfo(R.string.error_pin);
+                mHasError = true;
+                mCountDigit = 0;
+                mPinValues = new String[4];
+                mAttemp++;
 
-                if (mLoginWallet.mAttemp >= mLoginWallet.MAX_ATTEMP)
-                    mLoginWallet.finish();
+                int MAX_ATTEMP = 3;
+                if (mAttemp >= MAX_ATTEMP)
+                    finish();
                 else
-                    mLoginWallet.cleanPin();
+                    cleanPin();
             }
 
-            mLoginWallet.mAlertDialog.dismiss();
+            mAlertDialog.dismiss();
         }
     }
 
-    private static class EncryptWalletThread extends Thread {
-
-        private LoginWalletActivity mLoginWallet;
-
-        EncryptWalletThread setLoginWallet(LoginWalletActivity mLoginWallet) {
-            this.mLoginWallet = mLoginWallet;
-            return this;
-        }
+    private class EncryptWalletThread extends Thread {
 
         @Override
         public void run() {
-            org.bitcoinj.core.Context.propagate(mLoginWallet.mContext);
+            if (!BitcoinService.isRunning())
+                return;
+
+            org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
 
             IdealPasswordParameter idealParameter
-                    = new IdealPasswordParameter(mLoginWallet.mHashKey);
+                    = new IdealPasswordParameter(mHashKey);
             KeyCrypterScrypt scrypt = new KeyCrypterScrypt(idealParameter.realIterations);
 
             if (BitcoinService.get().requireDecrypted())
-                BitcoinService.get().getWallet().decrypt(new KeyParameter(mLoginWallet.mKeyPrev));
+                BitcoinService.get().getWallet().decrypt(new KeyParameter(mKeyPrev));
 
             BitcoinService.get().getWallet()
-                    .encrypt(scrypt, scrypt.deriveKey(mLoginWallet.mHashKey));
+                    .encrypt(scrypt, scrypt.deriveKey(mHashKey));
 
-            mLoginWallet.mAlertDialog.dismiss();
+            mAlertDialog.dismiss();
 
-            mLoginWallet.setResult(Activity.RESULT_OK);
-            mLoginWallet.finish();
+            setResult(Activity.RESULT_OK);
+            finish();
         }
     }
 

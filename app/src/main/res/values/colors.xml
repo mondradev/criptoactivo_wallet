@@ -1,44 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <color name="colorPrimary">#4caf4f</color>
-    <color name="colorPrimaryDark">#1b5e1f</color>
-    <color name="colorAccent">#FFAB40</color>
-    <color name="snackBarColor">#212121</color>
-    <color name="dividersColor">#1F000000</color>
-    <color name="unCommitColor">#F44336</color>
-    <color name="commitColor">#FFC107</color>
-    <color name="plusCommitColor">#4CAF50</color>
-    <color name="sendColor">#F44336</color>
-    <color name="receiveColor">#4CAF50</color>
-    <color name="amountColor">@android:color/white</color>
-
-
-    <!-- Colores de fondo oscuro -->
-
-    <color name="darkColorPrimary">#C62828</color>
-    <color name="darkColorPrimaryDark">#B71C1C</color>
-    <color name="darkColorAccent">#DD2C00</color>
-    <color name="darkBackground">#FF212121</color>
-    <color name="darkTextColor">#E0E0E0</color>
-    <color name="darkDividersColor">#FF424242</color>
-    <color name="darkSnackbarBackground">#FF616161</color>
-    <color name="darkSendColor">#EF9A9A</color>
-    <color name="darkReceiveColor">#A5D6A7</color>
-    <color name="darkAmountColor">#FF212121</color>
-
-
+    <!-- Splash background -->
     <color name="splashBackgroundColor">#EEEEEE</color>
 
+    <!-- Light Theme -->
+    <color name="light_primary">#4caf50</color>
+    <color name="light_darkPrimary">#388E3C</color>
+    <color name="light_accent">#FF9800</color>
+    <color name="light_text_icons">#FFFFFF</color>
+    <color name="light_primary_text">#212121</color>
+    <color name="light_secondary_text">#757575</color>
+    <color name="light_divider">#BDBDBD</color>
 
-    <!-- Colores tema azul -->
+    <color name="light_uncommit_tx">#F44336</color>
+    <color name="light_commit_tx">#FFC107</color>
+    <color name="light_pluscommit_tx">#4CAF50</color>
 
-    <color name="blueColorPrimary">#4c2777</color>
-    <color name="blueColorPrimaryDark">#1e004a</color>
-    <color name="blueBackground">#192b60</color>
-    <color name="blueTextColor">#F5F5F5</color>
-    <color name="blueColorAccent">#473f95</color>
-    <color name="buttonRaiseTextColor">#FFF</color>
-    <color name="blueUnCommitColor">#EF9A9A</color>
-    <color name="cardviewBlueBackground">#3f71c0</color>
+    <color name="light_amount_tx">@color/light_text_icons</color>
+
+    <color name="light_snackbar_bg">#212121</color>
+    <color name="light_background">#EEEEEE</color>
+
+    <!-- Dark Theme -->
+    <color name="dark_primary">#D32F2F</color>
+    <color name="dark_darkPrimary">#B71C1C</color>
+    <color name="dark_accent">#009688</color>
+    <color name="dark_text_icons">#FFFFFF</color>
+    <color name="dark_primary_text">#F5F5F5</color>
+    <color name="dark_secondary_text">#757575</color>
+    <color name="dark_divider">#616161</color>
+
+    <color name="dark_uncommit_tx">#F44336</color>
+    <color name="dark_commit_tx">#FFC107</color>
+    <color name="dark_pluscommit_tx">#4CAF50</color>
+
+    <color name="dark_amount_tx">@color/dark_text_icons</color>
+
+    <color name="dark_snackbar_bg">#757575</color>
+    <color name="dark_background">#212121</color>
+
+    <color name="dark_cardBackground">#424242</color>
+
+    <!-- Blue Theme -->
+    <color name="blue_primary">#4c2777</color>
+    <color name="blue_darkPrimary">#1E004a</color>
+    <color name="blue_accent">#473f95</color>
+    <color name="blue_text_icons">#FFFFFF</color>
+    <color name="blue_primary_text">#F5F5F5</color>
+    <color name="blue_secondary_text">#1565C0</color>
+    <color name="blue_divider">#1565C0</color>
+
+    <color name="blue_uncommit_tx">#EF9A9A</color>
+    <color name="blue_commit_tx">#FFC107</color>
+    <color name="blue_pluscommit_tx">#4CAF50</color>
+
+    <color name="blue_amount_tx">@color/blue_text_icons</color>
+
+    <color name="blue_snackbar_bg">#473f95</color>
+    <color name="blue_background">#192b60</color>
+    <color name="blue_cardBackground">#3f71c0</color>
+
+    <!-- Send/Receive Colors -->
+
+    <color name="send_tx_color">#F44336</color>
+    <color name="receive_tx_color">#4CAF50</color>
+
 </resources>

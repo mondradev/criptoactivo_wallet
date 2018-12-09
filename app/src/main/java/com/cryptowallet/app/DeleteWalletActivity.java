@@ -46,12 +46,13 @@ public class DeleteWalletActivity extends ActivityBase {
             BitcoinService.get().shutdown();
             BitcoinService.get().deleteWallet();
 
-            AppPreference.enableTheme(DeleteWalletActivity.this);
+            AppPreference.clear(DeleteWalletActivity.this);
 
             Intent intent = new Intent(DeleteWalletActivity.this,
                     InitWalletActivity.class);
 
-            mAlertDialog.dismiss();
+            if (mAlertDialog.isShowing())
+                mAlertDialog.dismiss();
 
             startActivity(intent);
             finish();

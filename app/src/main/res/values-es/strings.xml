@@ -88,14 +88,14 @@
     <string name="validate_pin_text">Validando el PIN</string>
     <string name="enter_pin">Ingrese su PIN</string>
     <string name="transaction_title">Transacción</string>
-    <string name="inputs_text">Entradas</string>
+    <string name="inputs_text">Desde</string>
     <string name="datetime_text">Fecha/Hora</string>
     <string name="commit_text">Confirmaciones</string>
     <string name="delete_warn">Esta opción es irreversible. Asegurese de haber obtenido las 12 palabras para poder restaurar posteriormente al borrado de esta billetera.</string>
     <string name="fail_to_delete">No se logró borrar la billetera</string>
     <string name="deleting_text">Eliminando la billetera, espere por favor…</string>
     <string name="deleting_title">Eliminando</string>
-    <string name="outputs">Salidas</string>
+    <string name="outputs">Para</string>
     <string name="unknown_version">Versión desconocida</string>
     <string name="notify_send">Has enviado %s</string>
     <string name="require_finger_permission">Requiere permiso para usar la huella digital</string>
@@ -104,10 +104,14 @@
     <string name="fingerprint_description">Usar huella dactilar</string>
     <string name="fingerprint_indication">Por favor coloca la punta de tu dedo en el sensor para autenticar</string>
     <string name="init_pin">Usar PIN</string>
-    <string name="address_title">Mis direcciones</string>
+    <string name="address_title">Direcciones</string>
     <string name="select_theme">Selector de tema</string>
     <string name="blueMode">Azul</string>
     <string name="select_currency">Selector de divisa</string>
     <string name="theme_title_setting">Tema</string>
     <string name="currency_title_setting">Divisa</string>
+    <string name="restoring_wallet">Restaurando</string>
+    <string name="restoring_message">Espere mientras se restaura la billetera…</string>
+    <string name="insufficient_money">Saldo insuficiente, se requiere %s</string>
+    <string name="reconnect_setting">Reconectar red</string>
 </resources>

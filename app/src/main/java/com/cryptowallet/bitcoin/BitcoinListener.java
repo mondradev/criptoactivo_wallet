@@ -108,8 +108,8 @@ public abstract class BitcoinListener extends WalletListenerBase<Coin, Transacti
      * @param service Servicio de la billetera.
      */
     @Override
-    public void onWalletChanged(BitcoinService service) {
-
+    public final void onWalletChanged(BitcoinService service) {
+        onBalanceChanged(service, service.getBalance());
     }
 
     /**

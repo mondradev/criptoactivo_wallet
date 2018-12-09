@@ -63,14 +63,19 @@ public class SettingsActivity extends ActivityBase {
         ((CheckBox) findViewById(R.id.mOnlyWifi))
                 .setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                        mLogger.info("Usar solo conexión WiFi: {}", isChecked);
-                        AppPreference.useOnlyWifi(buttonView.getContext(), isChecked);
+                    public void onCheckedChanged(CompoundButton buttonView, boolean onlyWifi) {
+                        AppPreference.useOnlyWifi(buttonView.getContext(), onlyWifi);
 
-                        if (isChecked
-                                && !ConnectionManager.isWifiConnected(buttonView.getContext()))
+                        boolean wifiConnected = ConnectionManager
+                                .isWifiConnected(buttonView.getContext());
+
+                        mLogger.info("Usar solo conexión WiFi: {}, WiFi Estado: {}",
+                                onlyWifi, wifiConnected);
+
+                        if (onlyWifi
+                                && !wifiConnected)
                             BitcoinService.get().disconnect();
-                        else if (!isChecked)
+                        else if (!onlyWifi)
                             BitcoinService.get().connect();
                     }
                 });
@@ -231,5 +236,9 @@ public class SettingsActivity extends ActivityBase {
                 }).create();
 
         dialog.show();
+    }
+
+    public void handlerReconnect(View view) {
+        BitcoinService.get().disconnectPeers();
     }
 }

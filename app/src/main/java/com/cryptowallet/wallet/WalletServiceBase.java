@@ -112,4 +112,6 @@ public abstract class WalletServiceBase<Coin, Address, Transaction> extends Serv
     public abstract void shutdown();
 
     public abstract void deleteWallet() throws IOException;
+
+    public abstract void disconnectPeers();
 }

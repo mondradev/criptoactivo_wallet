@@ -20,7 +20,7 @@
     <string name="request_payment_text">Request</string>
     <string name="qrcode_menu_text">Receive payments</string>
     <string name="balance_sample_text" translatable="false">0.00 BTC</string>
-    <string name="balance_fiat_sample_text" translatable="false">0.00 USD</string>
+    <string name="balance_fiat_sample_text" translatable="false">0.00</string>
     <string name="empty_recents_text">No transactions yet</string>
     <string name="btc_description_text" translatable="false">Bitcoin</string>
     <string name="operation_kind_sample">Received</string>
@@ -108,14 +108,14 @@
     <string name="enter_pin">Enter your PIN</string>
     <string name="loading_text">The wallet is loading, wait…</string>
     <string name="transaction_title">Transaction</string>
-    <string name="inputs_text">Inputs</string>
+    <string name="inputs_text">From</string>
     <string name="datetime_text">Timestamp</string>
     <string name="commit_text">Commits</string>
     <string name="delete_warn">This option is irreversible. Make sure you have obtained the 12 words to be able to restore later to the deletion of this wallet.</string>
     <string name="fail_to_delete">Couldn\'t delete the wallet</string>
     <string name="deleting_text">Deleting wallet, please wait…</string>
     <string name="deleting_title">Deleting</string>
-    <string name="outputs">Outputs</string>
+    <string name="outputs">To</string>
     <string name="unknown_version">Unknown Version</string>
     <string name="notify_send">You have send %s</string>
     <string name="fingerprint_description">Use fingerprint</string>
@@ -124,7 +124,7 @@
     <string name="require_finger_register">Register at least one fingerprint in Settings</string>
     <string name="fingerprint_indication">Please place your fingertip on the scanner to authenticate</string>
     <string name="init_pin">Use PIN</string>
-    <string name="address_title">My addresses</string>
+    <string name="address_title">Addresses</string>
     <string name="select_theme">Theme Selector</string>
     <string name="blueMode">Blue</string>
     <string name="usd_fiat" translatable="false">USD</string>
@@ -132,4 +132,8 @@
     <string name="select_currency">Currency Selector</string>
     <string name="theme_title_setting">Theme</string>
     <string name="currency_title_setting">Currency</string>
+    <string name="restoring_wallet">Restoring</string>
+    <string name="restoring_message">Wait while the wallet is restored…</string>
+    <string name="insufficient_money">Insufficient money, requires %s</string>
+    <string name="reconnect_setting">Reconnect network</string>
 </resources>

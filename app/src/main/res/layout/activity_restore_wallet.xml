@@ -44,7 +44,6 @@
         android:layout_marginEnd="16dp"
         android:onClick="handlerRestore"
         android:text="@string/restore_wallet"
-        android:textColor="?attr/buttonTextColor"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"

@@ -42,17 +42,23 @@ public class InitWalletActivity extends ActivityBase {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable final Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (data != null && data.hasExtra(ExtrasKey.RESTORED_WALLET)
-                && data.getBooleanExtra(ExtrasKey.RESTORED_WALLET, false)) {
+        if (data != null && data.getBooleanExtra(ExtrasKey.RESTORED_WALLET, false)) {
 
             Intent intent;
-            intent = new Intent(this, BitcoinService.class);
+            intent = new Intent(InitWalletActivity.this,
+                    BitcoinService.class);
             startService(intent);
 
-            intent = new Intent(this, WalletAppActivity.class);
+            intent = new Intent(InitWalletActivity.this,
+                    WalletAppActivity.class);
+
+            if (data.hasExtra(ExtrasKey.PIN_DATA))
+                intent.putExtra(ExtrasKey.PIN_DATA,
+                        data.getByteArrayExtra(ExtrasKey.PIN_DATA));
+
             startActivity(intent);
 
             finish();

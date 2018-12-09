@@ -13,7 +13,9 @@ import org.bitcoinj.core.TransactionConfidence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  *
@@ -36,6 +38,19 @@ public final class BitcoinTransaction extends GenericTransactionBase {
         mTx = tx;
         if (getDepth() < 7)
             tx.getConfidence().addEventListener(new ConfidencialListener());
+    }
+
+    public static List<GenericTransactionBase> getTransactionsByTime(Context context) {
+        if (!BitcoinService.isRunning())
+            return new ArrayList<>();
+
+        List<Transaction> transactions = BitcoinService.get().getTransactionsByTime();
+        List<GenericTransactionBase> bitcoinTransactions = new ArrayList<>();
+
+        for (Transaction tx : transactions)
+            bitcoinTransactions.add(new BitcoinTransaction(context, tx));
+
+        return bitcoinTransactions;
     }
 
     @Override

@@ -13,8 +13,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.AppPreference;
 import com.cryptowallet.app.ExtrasKey;
 import com.cryptowallet.app.TransactionActivity;
+import com.cryptowallet.utils.Helper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +48,7 @@ public final class TransactionHistoryAdapter
     private SupportedAssets mCurrentCurrency = SupportedAssets.BTC;
     private CopyOnWriteArrayList<View.OnClickListener> mUpdateAmountListeners
             = new CopyOnWriteArrayList<>();
+    private TextView mEmptyView;
 
     /**
      * Crea cada elemento visual que representa a un <code>{@link GenericTransactionBase}</code>.
@@ -100,7 +103,7 @@ public final class TransactionHistoryAdapter
      *
      * @param item Elemento nuevo.
      */
-    public void addItem(GenericTransactionBase item) {
+    public void add(GenericTransactionBase item) {
         mItemList.add(item);
         Collections.sort(mItemList, new Comparator<GenericTransactionBase>() {
             @Override
@@ -110,6 +113,22 @@ public final class TransactionHistoryAdapter
         });
 
         notifyDataSetChanged();
+
+        hideEmptyText();
+    }
+
+    public void setEmptyTextView(TextView emptyTextView) {
+        mEmptyView = emptyTextView;
+    }
+
+    private void hideEmptyText() {
+        if (mEmptyView != null)
+            mEmptyView.setVisibility(View.GONE);
+    }
+
+    private void showEmptyText() {
+        if (mEmptyView != null)
+            mEmptyView.setVisibility(View.VISIBLE);
     }
 
     /**
@@ -129,17 +148,11 @@ public final class TransactionHistoryAdapter
 
     @Override
     public void onClick(View v) {
-        switch (mCurrentCurrency) {
-            case BTC:
-                mCurrentCurrency = SupportedAssets.USD;
-                break;
-            case USD:
-                mCurrentCurrency = SupportedAssets.MXN;
-                break;
-            case MXN:
-                mCurrentCurrency = SupportedAssets.BTC;
-                break;
-        }
+
+        String assetName = AppPreference.getSelectedCurrency(v.getContext());
+        SupportedAssets asset = SupportedAssets.valueOf(assetName);
+
+        mCurrentCurrency = mCurrentCurrency == asset ? SupportedAssets.BTC : asset;
 
         updateAmount();
     }
@@ -162,6 +175,28 @@ public final class TransactionHistoryAdapter
     @Override
     public int getItemCount() {
         return mItemList.size() > mCurrentLimit ? mCurrentLimit : mItemList.size();
+    }
+
+    public void clear() {
+        mItemList.clear();
+        showEmptyText();
+        notifyDataSetChanged();
+    }
+
+    public void addAll(List<GenericTransactionBase> collection) {
+        mItemList.addAll(collection);
+
+        Collections.sort(mItemList, new Comparator<GenericTransactionBase>() {
+            @Override
+            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
+                return o2.compareTo(o1);
+            }
+        });
+
+        notifyDataSetChanged();
+
+        if (mItemList.size() > 0)
+            hideEmptyText();
     }
 
 
@@ -248,13 +283,24 @@ public final class TransactionHistoryAdapter
 
                     Resources a = mCommits.getContext().getResources();
 
-                    int uncommit = a.getColor(R.color.unCommitColor);
-                    int commitedPlus = a.getColor(R.color.plusCommitColor);
-                    int commited = a.getColor(R.color.commitColor);
+                    int uncommit = Helper.getColorFromTheme(
+                            mCommits.getContext(),
+                            R.attr.uncommitTxColor
+                    );
+                    int commited = Helper.getColorFromTheme(
+                            mCommits.getContext(),
+                            R.attr.commitTxColor
+                    );
+                    int commitedPlus = Helper.getColorFromTheme(
+                            mCommits.getContext(),
+                            R.attr.plusCommitTxColor
+                    );
 
 
                     mCommits.setTextColor(
-                            commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited);
+                            commits == 0
+                                    ? uncommit : commits > 6
+                                    ? commitedPlus : commited);
                 }
             });
         }

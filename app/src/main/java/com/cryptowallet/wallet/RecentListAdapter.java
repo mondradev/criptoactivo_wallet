@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.AppPreference;
 import com.cryptowallet.app.ExtrasKey;
 import com.cryptowallet.app.TransactionActivity;
 
@@ -73,12 +74,40 @@ public final class RecentListAdapter
             recentItemHolder.showDivider();
     }
 
+    public void clear() {
+        mItemList.clear();
+
+        if (mEmptyView != null)
+            mEmptyView.setVisibility(View.VISIBLE);
+
+        notifyDataSetChanged();
+    }
+
+    /**
+     * Añade nuevos elementos a la lista.
+     */
+    public void addAll(List<GenericTransactionBase> collection) {
+        mItemList.addAll(collection);
+
+        Collections.sort(mItemList, new Comparator<GenericTransactionBase>() {
+            @Override
+            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
+                return o2.compareTo(o1);
+            }
+        });
+
+        notifyDataSetChanged();
+
+        if (mEmptyView != null && mItemList.size() > 0)
+            mEmptyView.setVisibility(View.GONE);
+    }
+
     /**
      * Añade nuevos elementos a la lista.
      *
      * @param item Elemento nuevo.
      */
-    public void addItem(GenericTransactionBase item) {
+    public void add(GenericTransactionBase item) {
         mItemList.add(item);
         Collections.sort(mItemList, new Comparator<GenericTransactionBase>() {
             @Override
@@ -119,17 +148,10 @@ public final class RecentListAdapter
 
     @Override
     public void onClick(View v) {
-        switch (mCurrentCurrency) {
-            case BTC:
-                mCurrentCurrency = SupportedAssets.USD;
-                break;
-            case USD:
-                mCurrentCurrency = SupportedAssets.MXN;
-                break;
-            case MXN:
-                mCurrentCurrency = SupportedAssets.BTC;
-                break;
-        }
+        String assetName = AppPreference.getSelectedCurrency(v.getContext());
+        SupportedAssets asset = SupportedAssets.valueOf(assetName);
+
+        mCurrentCurrency = mCurrentCurrency == asset ? SupportedAssets.BTC : asset;
 
         notifyDataSetChanged();
     }

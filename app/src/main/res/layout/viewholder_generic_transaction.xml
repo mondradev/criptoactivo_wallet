@@ -40,7 +40,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="18dp"
         android:text="@string/status_sample_text"
-        android:textColor="?attr/unCommitColor"
+        android:textColor="?attr/uncommitTxColor"
         android:textSize="12sp"
         android:textStyle="bold"
         app:layout_constraintStart_toEndOf="@+id/mOperationKind"
@@ -72,7 +72,7 @@
         android:layout_marginEnd="16dp"
         android:background="@drawable/bg_tx_receive"
         android:text="@string/amount_sample_text"
-        android:textColor="?attr/amountColor"
+        android:textColor="?attr/textIconsColor"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -83,7 +83,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:background="?attr/dividersColor"
+        android:background="?attr/dividerColor"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mTime" />
