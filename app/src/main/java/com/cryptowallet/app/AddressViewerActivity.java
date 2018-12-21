@@ -5,18 +5,27 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 
 import com.cryptowallet.R;
-import com.cryptowallet.bitcoin.BitcoinAddress;
-import com.cryptowallet.wallet.AddressBalance;
-import com.cryptowallet.wallet.AddressesAdapter;
+import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.widgets.IAddressBalance;
+import com.cryptowallet.wallet.widgets.adapters.AddressesViewerAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Esta actividad permite la visualización de todas las direcciones han recibido pagos.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.1
+ */
 public class AddressViewerActivity extends ActivityBase {
 
-    private AddressesAdapter mAddress;
-
+    /**
+     * Este método es llamado cuando se crea por primera vez la actividad.
+     *
+     * @param savedInstanceState Estado guardado de la aplicación.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -24,7 +33,7 @@ public class AddressViewerActivity extends ActivityBase {
 
         setTitle(R.string.address_title);
 
-        mAddress = new AddressesAdapter(loadAddress());
+        AddressesViewerAdapter mAddress = new AddressesViewerAdapter(loadAddress());
         RecyclerView recyclerView = findViewById(R.id.mAddressesRecycler);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
 
@@ -33,17 +42,22 @@ public class AddressViewerActivity extends ActivityBase {
         recyclerView.setAdapter(mAddress);
     }
 
-    private AddressBalance[] loadAddress() {
-        List<AddressBalance> addressBalances = new ArrayList<>();
+    /**
+     * Carga las direcciones de todas los activos soportados de la billetera.
+     *
+     * @return Lista de direcciones.
+     */
+    private List<IAddressBalance> loadAddress() {
+        List<IAddressBalance> addressBalances = new ArrayList<>();
 
         for (SupportedAssets assets : SupportedAssets.values()) {
             switch (assets) {
                 case BTC:
-                    addressBalances.addAll(BitcoinAddress.getAll());
+                    addressBalances.addAll(BitcoinService.get().getAddresses());
                     break;
             }
         }
 
-        return addressBalances.toArray(new AddressBalance[0]);
+        return addressBalances;
     }
 }

@@ -2,6 +2,7 @@ package com.cryptowallet.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.Button;
@@ -10,14 +11,19 @@ import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
+import com.cryptowallet.wallet.IRequestKey;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Esta actividad permite obtener las 12 palabras de la billetera.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.1
  */
 public class BackupFundsActitivy extends ActivityBase {
 
@@ -35,11 +41,26 @@ public class BackupFundsActitivy extends ActivityBase {
      * Error de ingreso de palabras.
      */
     private int mError;
+
     /**
      * Palabras testeadas.
      */
     private List<Integer> mWordsTested = new ArrayList<>();
-    private byte[] mKey;
+
+    /**
+     * Handler que permite la ejecución en el hilo principal.
+     */
+    private Handler mHandler = new Handler();
+
+    /**
+     * Datos de la llave.
+     */
+    private volatile byte[] mKey;
+
+    /**
+     * Palabras de la billetera.
+     */
+    private volatile List<String> mSeed;
 
     /**
      * Este método es llamado cuando se crea la actividad.
@@ -54,17 +75,61 @@ public class BackupFundsActitivy extends ActivityBase {
         setTitle(R.string.backup_funds_title);
     }
 
+    /**
+     * Este método es llamado cuando la aplicación reanuda la actividad.
+     */
     @Override
     protected void onResume() {
         super.onResume();
 
-        if (BitcoinService.get().requireDecrypted()
-                && (mKey == null || !BitcoinService.get().validatePin(mKey))) {
-            Intent intent = new Intent(this, LoginWalletActivity.class);
-            startActivityForResult(intent, 0);
-        }
+        if (BitcoinService.isRunning()) {
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+
+                    mSeed = BitcoinService.get().getSeedWords(new IRequestKey() {
+                        /**
+                         * Este método es llamado cuando se requiere obtener la clave de la billetera.
+                         *
+                         * @return La clave de la billetera.
+                         */
+                        @Override
+                        public byte[] onRequest() {
+                            try {
+
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Intent intent = new Intent(BackupFundsActitivy.this,
+                                                LoginWalletActivity.class);
+                                        startActivityForResult(intent, 0);
+                                    }
+                                });
+
+                                wait();
+
+                                return mKey;
+                            } catch (InterruptedException ignored) {
+
+                            }
+                            return null;
+                        }
+                    });
+
+                }
+            });
+
+        } else
+            finish();
     }
 
+    /**
+     * Este método es llamado cuando la actividad llamada con anterioridad devuelve un resultado.
+     *
+     * @param requestCode Código de petición.
+     * @param resultCode  Código de resultado.
+     * @param data        Información devuelta.
+     */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
 
@@ -82,20 +147,20 @@ public class BackupFundsActitivy extends ActivityBase {
      * @param view Componente que desencadena que el evento Click.
      */
     public void handlerStartOrNextWord(View view) {
-        TextView mSeed = findViewById(R.id.mSeed);
+        TextView seedView = findViewById(R.id.mSeed);
         Button mNextWord = findViewById(R.id.mShowNextWord);
         EditText mTestWord = findViewById(R.id.mTestWord);
 
         if (mCurrentWord == -1) {
             mNextWord.setText(R.string.next_word_text);
-            mSeed.setVisibility(View.VISIBLE);
+            seedView.setVisibility(View.VISIBLE);
         }
 
         if (mCurrentWord > 13)
             finish();
         else if (mCurrentWord == 11) {
             mNextWord.setText(R.string.test_words);
-            mSeed.setVisibility(View.GONE);
+            seedView.setVisibility(View.GONE);
             mTestWord.setVisibility(View.VISIBLE);
 
             mWord = getNextWords();
@@ -109,9 +174,7 @@ public class BackupFundsActitivy extends ActivityBase {
 
             String word = mTestWord.getText().toString();
 
-            if (word.contentEquals(BitcoinService.get().getSeedCode(
-                    BitcoinService.get().requireDecrypted() && mKey != null ? mKey : null
-            ).get(mWord))) {
+            if (word.contentEquals(this.mSeed.get(mWord))) {
                 mWord = getNextWords();
 
                 mTestWord.setHint(String.format(Locale.getDefault(),
@@ -133,9 +196,7 @@ public class BackupFundsActitivy extends ActivityBase {
 
             mCurrentWord++;
 
-            mSeed.setText(BitcoinService.get().getSeedCode(
-                    BitcoinService.get().requireDecrypted() && mKey != null ? mKey : null
-            ).get(mCurrentWord));
+            seedView.setText(this.mSeed.get(mCurrentWord));
         }
     }
 

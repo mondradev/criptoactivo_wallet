@@ -1,54 +1,56 @@
 package com.cryptowallet.bitcoin;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
-import com.cryptowallet.R;
-import com.cryptowallet.app.AppPreference;
-import com.cryptowallet.app.ExtrasKey;
-import com.cryptowallet.app.TransactionActivity;
-import com.cryptowallet.utils.ConnectionManager;
-import com.cryptowallet.utils.Helper;
-import com.cryptowallet.wallet.BroadcastListener;
+import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.BlockchainStatus;
+import com.cryptowallet.wallet.IRequestKey;
+import com.cryptowallet.wallet.IWalletListener;
+import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
+import com.cryptowallet.wallet.widgets.GenericTransactionBase;
+import com.cryptowallet.wallet.widgets.IAddressBalance;
+import com.cryptowallet.wallet.widgets.ICoinFormatter;
+import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
-import org.bitcoinj.core.Block;
+import org.bitcoinj.core.BlockChain;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.FilteredBlock;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Peer;
 import org.bitcoinj.core.PeerGroup;
-import org.bitcoinj.core.ScriptException;
 import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionConfidence;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
-import org.bitcoinj.core.listeners.PeerConnectedEventListener;
+import org.bitcoinj.crypto.KeyCrypter;
 import org.bitcoinj.crypto.KeyCrypterException;
-import org.bitcoinj.kits.WalletAppKit;
+import org.bitcoinj.crypto.KeyCrypterScrypt;
 import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.store.BlockStore;
+import org.bitcoinj.store.BlockStoreException;
+import org.bitcoinj.store.SPVBlockStore;
 import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.SendRequest;
+import org.bitcoinj.wallet.UnreadableWalletException;
 import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.listeners.WalletChangeEventListener;
 import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
 import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.params.KeyParameter;
+import org.spongycastle.util.encoders.Hex;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -56,11 +58,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import javax.annotation.Nullable;
+
 /**
  * Ofrece un servicio de billetera de Bitcoin permitiendo recibir y enviar pagos, consultar saldo y
  * ver transacciones pasadas.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.1
  */
-public final class BitcoinService extends WalletServiceBase<Coin, Address, Transaction> {
+public final class BitcoinService extends WalletServiceBase {
 
     /**
      * Valor del BTC en satoshis.
@@ -68,730 +75,796 @@ public final class BitcoinService extends WalletServiceBase<Coin, Address, Trans
     public static final long BTC_IN_SATOSHIS = 100000000;
 
     /**
+     * Parametro de red.
+     */
+    public static final NetworkParameters NETWORK_PARAM = TestNet3Params.get();
+
+    /**
      * Lista de escucha de eventos de la billetera.
      */
-    private final static CopyOnWriteArrayList<BitcoinListener> mListeners
+    private final static CopyOnWriteArrayList<IWalletListener> mListeners
             = new CopyOnWriteArrayList<>();
 
-    private static Logger mLogger = LoggerFactory.getLogger(BitcoinService.class);
+    /**
+     * Extensión de los archivos utilizados en la billetera de Bitcoin.
+     */
+    private final static String FILE_EXT = ".btc";
 
     /**
-     * Semila de la billetera.
+     * Indica si el servicio de la billetera se encuentra en ejecución.
      */
-    private static String mSeed = "";
+    private static boolean mRunning = false;
 
     /**
-     * Servicio de la billetera.
+     * Billetera de bitcoin.
      */
-    private static BitcoinService mService;
+    private Wallet mWallet;
+
     /**
-     * Parametros de la red utilizada en Bitcoin.
+     * Grupo de puntos remotos.
      */
-    private static NetworkParameters mNetworkParameters = TestNet3Params.get();
+    private PeerGroup mPeerGroup;
+
     /**
-     * Prefijo utilizado para los archivos de la billetera.
+     * Directorio de la aplicación.
      */
-    private final String PREFIX = "bitcoin.data";
+    private String mDirectory;
+
     /**
-     * Instancia de kit de billetera.
+     * Almacén de bloques.
      */
-    private WalletAppKit mKitApp;
+    private BlockStore mStore;
+
     /**
+     * Cadena de bloques.
+     */
+    private BlockChain mChain;
+
+    /**
+     * Crea una nueva instancia de billetera.
      *
+     * @param asset El activo de la billetera.
      */
-    private boolean mSyncronizedBlockchain = false;
+    protected BitcoinService(SupportedAssets asset) {
+        super(asset);
+
+        registerAsset(getAsset(), this);
+    }
+
     /**
-     * Número máximo de conexiones administradas por el grupo de P2P.
-     */
-    private int mMaxConnections = 10;
-    /**
+     * Obtiene la instancia del servicio de la billetera de Bitcoin.
      *
+     * @return Servicio de la billetera.
      */
-    private WalletCoinsReceivedEventListener mReceivedNotifier
-            = new WalletCoinsReceivedEventListener() {
-        @Override
-        public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
-
-            if (tx.getValue(wallet).isNegative())
-                return;
-
-            String btcValue = Coin.valueOf(getValueFromTx(tx))
-                    .toFriendlyString();
-
-            String id = tx.getHashAsString();
-
-            Intent intent = new Intent(BitcoinService.get(), TransactionActivity.class);
-            intent.putExtra(ExtrasKey.TX_ID, id);
-            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
-
-            Helper.sendReceiveMoneyNotification(
-                    getApplicationContext(),
-                    R.mipmap.img_bitcoin,
-                    btcValue,
-                    id,
-                    intent
-            );
-        }
-    };
-    private WalletCoinsSentEventListener mSentNotifier
-            = new WalletCoinsSentEventListener() {
-        @Override
-        public void onCoinsSent(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
-
-            if (tx.getValue(wallet).isNegative())
-                return;
-
-            String btcValue = Coin.valueOf(getValueFromTx(tx))
-                    .toFriendlyString();
-            String messge = String.format(getString(R.string.notify_send), btcValue);
-            String template = "%s\nTxID: %s";
-            String id = tx.getHashAsString();
-
-            Intent intent = new Intent(BitcoinService.get(), TransactionActivity.class);
-            intent.putExtra(ExtrasKey.TX_ID, id);
-            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
-
-            Helper.sendLargeTextNotificationOs(
-                    getApplicationContext(),
-                    R.mipmap.img_bitcoin,
-                    getString(R.string.app_name),
-                    messge,
-                    String.format(template,
-                            messge,
-                            id
-                    ),
-                    intent
-            );
-        }
-    };
-
-    private Intent mIntent;
-
-    private boolean mCanConnect = true;
+    public static BitcoinService get() {
+        return (BitcoinService) WalletServiceBase.get(SupportedAssets.BTC);
+    }
 
     /**
-     * Crea una instancia de WalletServiceBase.
+     * Notifica a los escuchas que la transacción ha sido confirmada hasta 7.
+     *
+     * @param transaction Transacción confirmada.
      */
-    public BitcoinService() {
-        mService = this;
+    public static void notifyOnCommited(final BitcoinTransaction transaction) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onCommited(BitcoinService.get(), transaction);
+                }
+            });
+    }
 
+    /**
+     * Obtiene un valor que indica si el servicio de la billetera está en ejecución.
+     *
+     * @return Un valor true cuando la billetera está en ejecución.
+     */
+    public static boolean isRunning() {
+        return mRunning;
+    }
+
+    /**
+     * Agrega un escucha de los eventos de la billetera.
+     *
+     * @param listener Escucha que se desea añadir.
+     */
+    public static void addEventListener(IWalletListener listener) {
+        if (mListeners.contains(listener))
+            return;
+
+        mListeners.add(listener);
+
+        notifyOnReady(listener);
+    }
+
+    /**
+     * Remueve un escucha de los eventos de la billetera.
+     *
+     * @param listener Escucha que se desea remover.
+     */
+    public static void removeEventListener(IWalletListener listener) {
+        if (!mListeners.contains(listener))
+            return;
+
+        mListeners.remove(listener);
+    }
+
+
+    /**
+     * Notifica al escucha que la billetera fue inicializada.
+     *
+     * @param listener Escucha a notificar.
+     */
+    private static void notifyOnReady(IWalletListener listener) {
+        if (mRunning)
+            listener.onReady(BitcoinService.get());
+    }
+
+    /**
+     * Notifica a los escuchas de eventos que ocurrió un error en la billetera.
+     *
+     * @param e Excepción producida que se notificará.
+     */
+    private static void notifyOnException(final Exception e) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onException(BitcoinService.get(), e);
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas de eventos que una transacción ha sido propagada en la red.
+     *
+     * @param transaction Transacción propagada.
+     */
+    private static void notifyOnPropagated(final Transaction transaction) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onPropagated(BitcoinService.get(),
+                            new BitcoinTransaction(transaction, BitcoinService.get().mWallet));
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas que la billetera fue inicializada.
+     */
+    private static void notifyOnReady() {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onReady(BitcoinService.get());
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas que la descarga ha finalizado.
+     */
+    private static void notifyOnCompletedDownload() {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onCompletedDownloaded(BitcoinService.get());
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas que la descarga ha comenzado.
+     *
+     * @param blocks Total de bloques a descargar.
+     */
+    private static void notifyOnStartDownload(final int blocks) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onStartDownload(BitcoinService.get(),
+                            BlockchainStatus.create(blocks, null));
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas el progreso de la descarga.
+     *
+     * @param blocksSoFar Bloques restantes a descargar.
+     * @param date        Fecha del último bloque descargado.
+     */
+    private static void notifyOnDownloaded(final int blocksSoFar, final Date date) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onBlocksDownloaded(BitcoinService.get(),
+                            BlockchainStatus.create(blocksSoFar, date));
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas que la billetera ha recibido pagos.
+     *
+     * @param transaction Transacción que envía pagos a esta billetera.
+     */
+    private static void notifyOnReceived(final BitcoinTransaction transaction) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onReceived(BitcoinService.get(), transaction);
+                    listener.onBalanceChanged(BitcoinService.get(),
+                            BitcoinService.get().getBalance());
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escuchas que la billetera ha enviado pagos.
+     *
+     * @param transaction Transacción que envía pagos fuera de esta billetera.
+     */
+    private static void notifyOnSent(final BitcoinTransaction transaction) {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onSent(BitcoinService.get(), transaction);
+                    listener.onBalanceChanged(BitcoinService.get(),
+                            BitcoinService.get().getBalance());
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escucha que el servicio ha inicializado.
+     */
+    private static void nofityOnStarted() {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onStarted(BitcoinService.get());
+                }
+            });
+    }
+
+    /**
+     * Notifica a los escucha que la billetera ha cambiado.
+     */
+    public static void notifyOnBalanceChange() {
+        for (final IWalletListener listener : mListeners)
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    listener.onBalanceChanged(BitcoinService.get(),
+                            BitcoinService.get().getBalance());
+                }
+            });
+    }
+
+    /**
+     * Este método es llamado cuando el sistema inicia el servicio por primera vez.
+     */
+    @Override
+    public void onCreate() {
         final Handler handler = new Handler();
+
         Threading.USER_THREAD = new Executor() {
             @Override
             public void execute(Runnable command) {
                 handler.post(command);
             }
         };
+
+        mDirectory = getApplicationContext().getApplicationInfo().dataDir;
+
+        Objects.requireNonNull(mDirectory);
     }
 
     /**
-     * Agrega un escucha de eventos para la clase.
+     * Configura los escuchas de eventos.
      *
-     * @param listener Escucha de eventos.
+     * @param wallet Billetera a configurar.
      */
-    public static void addEventListener(BitcoinListener listener) {
-        if (listener == null)
-            return;
-
-        if (mListeners.contains(listener))
-            return;
-
-        mListeners.add(listener);
-
-        if (get() != null) {
-            if (get().isInitialized()) {
-                listener.onReady(get());
-                get().getWallet().addCoinsSentEventListener(listener);
-                get().getWallet().addChangeEventListener(listener);
-                get().getWallet().addReorganizeEventListener(listener);
-                get().getWallet().addCoinsReceivedEventListener(listener);
-            }
-            if (get().isSyncronizedBlockchain())
-                listener.onCompletedDownloaded(get());
-        }
-
-
-    }
-
-    /**
-     * Obtiene la instancia del servicio en ejecución.
-     *
-     * @return Instancia del servicio.
-     */
-    public static BitcoinService get() {
-        return mService;
-    }
-
-    /**
-     * Remueve el escucha de eventos del servicio.
-     *
-     * @param listener Escucha de eventos.
-     */
-    public static void removeEventListener(BitcoinListener listener) {
-        mListeners.remove(listener);
-    }
-
-    /**
-     * Establece la semila de la billetera.
-     *
-     * @param seed Semilla.
-     */
-    public static void setSeed(String seed) {
-        mSeed = seed;
-    }
-
-    public static String getFromAddresses(Transaction tx, String coinbaseLabel,
-                                          String unknownAdress) {
-        StringBuilder builder = new StringBuilder();
-
-        NetworkParameters params = getNetwork();
-
-        List<TransactionInput> inputs = tx.getInputs();
-
-        for (TransactionInput input : inputs) {
-
-            try {
-
-                if (input.isCoinBase()) {
-                    builder.append(coinbaseLabel);
-                    continue;
-                }
-
-                Address address = null;
-
-                if (input.getConnectedOutput() != null) {
-                    address = input.getConnectedOutput().getAddressFromP2PKHScript(params);
-
-                    if (address == null)
-                        address = input.getConnectedOutput().getAddressFromP2SH(params);
-                }
-
-                if (address != null) {
-                    if (!builder.toString().contains(address.toBase58())) {
-                        if (builder.length() > 0 && !builder.toString().endsWith("\n"))
-                            builder.append("\n");
-
-                        builder.append(address.toBase58());
-                    }
-                } else
-                    throw new ScriptException("Can´t get from address");
-
-            } catch (ScriptException ex) {
-                mLogger.warn("Dirección no decodificada");
-                builder.append(unknownAdress);
-
-                break;
-            }
-        }
-
-        return builder.toString();
-    }
-
-    public static String getToAddresses(Transaction tx) {
-        StringBuilder builder = new StringBuilder();
-        Wallet wallet = get().getWallet();
-        NetworkParameters params = getNetwork();
-        Boolean isPay = isPay(tx);
-
-        List<TransactionOutput> outputs = tx.getOutputs();
-
-        for (TransactionOutput output : outputs) {
-
-            if (isPay && output.isMine(wallet))
-                continue;
-            else if (!isPay && !output.isMine(wallet))
-                continue;
-
-            Address address = output.getAddressFromP2SH(params);
-
-            if (address == null)
-                address = output.getAddressFromP2PKHScript(params);
-
-            if (address != null) {
-                if (builder.length() > 0)
-                    builder.append("\n");
-
-                builder.append(address.toBase58());
-            }
-        }
-
-        return builder.toString();
-    }
-
-    public static boolean isPay(Transaction tx) {
-        return tx.getValue(get().getWallet()).isNegative();
-    }
-
-    public static boolean isRunning() {
-        if (mService == null)
-            return false;
-
-        return mService.isInitialized();
-    }
-
-    /**
-     * Obtiene los parametros de la red conectada.
-     *
-     * @return Los parametros de la red.
-     */
-    public static NetworkParameters getNetwork() {
-        return mNetworkParameters;
-    }
-
-    public Transaction getTransaction(String txID) {
-        mLogger.info("Buscando transacción: {}", txID);
-        return getWallet().getTransaction(Sha256Hash.wrap(txID));
-    }
-
-    public PeerGroup getPeerGroup() {
-        return mKitApp.peerGroup();
-    }
-
-    /**
-     * Obtiene las 12 palabras de la billetera.
-     */
-    public List<String> getSeedCode(@Nullable byte[] key) {
-        DeterministicSeed seed = getWallet().getKeyChainSeed();
-
-        if (requireDecrypted())
-            return seed.decrypt(Objects.requireNonNull(getWallet().getKeyCrypter()),
-                    "", new KeyParameter(Objects.requireNonNull(key))).getMnemonicCode();
-
-        return seed.getMnemonicCode();
-    }
-
-    /**
-     * Obtiene la instancia que controla la billetera.
-     *
-     * @return Una billetera.
-     */
-    public Wallet getWallet() {
-        return mKitApp.wallet();
-    }
-
-    /**
-     * Este método es llamado cuando se crea el servicio.
-     */
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        if (isRunning())
-            return;
-
-        String dataDir = getApplicationInfo().dataDir;
-
-        mKitApp = new WalletAppKit(mNetworkParameters, new File(dataDir), PREFIX) {
+    private void configureListeners(Wallet wallet) {
+        wallet.addCoinsReceivedEventListener(new WalletCoinsReceivedEventListener() {
 
             /**
-             * Este método es ejecutado cuando la billetera termina de configurarse.
-             * Esto ocurre cuando se lee el archivo de la billetera, o es restaurada.
+             * Este método es llamado cuando se recibe una transacción que envía un pago a esta
+             * billetera.
+             *
+             * @param wallet      Billetera que recibe la transacción.
+             * @param tx          Transacción que envía un pago a esta billetera.
+             * @param prevBalance Saldo previo a la recepción.
+             * @param newBalance  Saldo estimado después de recibir la transacción.
              */
             @Override
-            protected void onSetupCompleted() {
-                peerGroup().setStallThreshold(10, 1024 * 20);
-                peerGroup().setMaxConnections(mMaxConnections);
-                setInitialized();
-
-                for (BitcoinListener listener : mListeners) {
-                    wallet().addCoinsReceivedEventListener(listener);
-                    wallet().addReorganizeEventListener(listener);
-                    wallet().addChangeEventListener(listener);
-                    wallet().addCoinsSentEventListener(listener);
-
-                    final BitcoinListener l = listener;
-
-                    if (listener != null)
-                        Threading.USER_THREAD.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                l.onReady(BitcoinService.this);
-                            }
-                        });
-                }
-
-                wallet().addCoinsReceivedEventListener(mReceivedNotifier);
-                wallet().addCoinsSentEventListener(mSentNotifier);
-
-                peerGroup().addConnectedEventListener(new PeerConnectedEventListener() {
-                    @Override
-                    public void onPeerConnected(Peer peer, int peerCount) {
-                        if (!mCanConnect) {
-                            mLogger.info("Cerrando punto: {}, Estado de la conexión: {}", peer, mCanConnect);
-                            peer.close();
-                            peer.connectionClosed();
-                        }
-                    }
-                });
-
-                Context context = BitcoinService.get().getApplicationContext();
-
-                if (AppPreference.useOnlyWifi(context)
-                        && !ConnectionManager.isWifiConnected(context))
-                    disconnect();
-
-                ConnectionManager.registerHandlerConnection(BitcoinService.this,
-                        new ConnectionManager.OnChangeConnectionState() {
-                            @Override
-                            public void onConnect(ConnectionManager.NetworkInterface network) {
-                                if (AppPreference.useOnlyWifi(BitcoinService.this.getApplicationContext()))
-                                    if (network == ConnectionManager.NetworkInterface.WIFI) {
-                                        mLogger.info("Solo wifi: Conectando");
-                                        connect();
-                                    } else
-                                        disconnect();
-                            }
-
-                            @Override
-                            public void onDisconnect(ConnectionManager.NetworkInterface network) {
-                                if (AppPreference.useOnlyWifi(BitcoinService.this.getApplicationContext()))
-                                    if (network == ConnectionManager.NetworkInterface.WIFI) {
-                                        mLogger.info("Solo wifi: Desconectando");
-                                        disconnect();
-                                    } else
-                                        connect();
-                            }
-                        });
+            public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance,
+                                        Coin newBalance) {
+                notifyOnReceived(new BitcoinTransaction(tx, wallet));
             }
-        };
+        });
+
+        wallet.addCoinsSentEventListener(new WalletCoinsSentEventListener() {
+
+            /**
+             * Este método es llamado cuando se recibe una transacción que envía un pago fuera de
+             * esta billetera.
+             * @param wallet Billetera que recibe la transacción.
+             * @param tx Transacción que envía un pago fuera de esta billetera.
+             * @param prevBalance Saldo previo a la recepción.
+             * @param newBalance Saldo estimado después de recibir la transacción.
+             */
+            @Override
+            public void onCoinsSent(Wallet wallet, Transaction tx, Coin prevBalance,
+                                    Coin newBalance) {
+                notifyOnSent(new BitcoinTransaction(tx, wallet));
+            }
+        });
+
+        wallet.addChangeEventListener(new WalletChangeEventListener() {
+
+            /**
+             * Este método es llamado cuando la billetera cambia.
+             *
+             * @param wallet Billetera que sufre el cambio.
+             */
+            @Override
+            public void onWalletChanged(Wallet wallet) {
+                try {
+                    String walletFileName = String.format("wallet%s", FILE_EXT);
+                    File walletFile = new File(mDirectory, walletFileName);
+                    wallet.saveToFile(walletFile);
+                } catch (IOException ex) {
+                    notifyOnException(ex);
+                }
+            }
+        });
+    }
+
+    /**
+     * El sistema llama a este método cuando el servicio ya no se utiliza y se lo está destruyendo.
+     */
+    @Override
+    public void onDestroy() {
+        mListeners.clear();
+
+        mPeerGroup.removeWallet(mWallet);
+        mPeerGroup.stop();
+
+        mRunning = false;
+        mStore = null;
+        mWallet = null;
+        mPeerGroup = null;
+        mDirectory = null;
+    }
+
+    /**
+     * El sistema llama a este método cuando otro componente, como una actividad, solicita que se
+     * inicie el servicio, llamando a {@link android.app.Activity#startService(Intent)}.
+     *
+     * @param intent  Intención que fue suministrada al servicio.
+     * @param flags   Información adicional de la petición de inicio.
+     * @param startId Identificador único que representa la petición de inicio.
+     * @return Indica qué semántica debe usar el sistema para el estado de inicio actual del
+     * servicio.
+     */
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        int res = super.onStartCommand(intent, flags, startId);
+
+        DeterministicSeed seed = null;
+
+        if (intent.hasExtra("WordList")) {
+            List<String> words = intent.getStringArrayListExtra("WordList");
+            seed = new DeterministicSeed(words, null, "", 0);
+        }
+
+        byte[] key = null;
+
+        if (intent.hasExtra("Key"))
+            key = intent.getByteArrayExtra("Key");
+
+        init(seed, key);
+
+        return res;
+    }
+
+    /**
+     * Inicia la billetera y comienza la sincronización.
+     */
+    private void init(DeterministicSeed seed, byte[] key) {
+        if (mRunning) {
+            if (!mPeerGroup.isRunning())
+                mPeerGroup.startAsync();
+            return;
+        }
 
         try {
-            if (!mSeed.isEmpty()) {
-                mKitApp.restoreWalletFromSeed(new DeterministicSeed(
-                        mSeed, null, "", 0));
+            String walletFilename = String.format("wallet%s", FILE_EXT);
+            File walletFile = new File(mDirectory, walletFilename);
 
-                mSeed = "";
+            if (walletFile.exists())
+                mWallet = Wallet.loadFromFile(walletFile);
+            else if (seed != null)
+                mWallet = Wallet.fromSeed(NETWORK_PARAM, seed);
+            else
+                mWallet = new Wallet(NETWORK_PARAM);
+
+            configureListeners(mWallet);
+
+            if (key != null) {
+                int iterations = Utils.calculateIterations(Hex.toHexString(key));
+                KeyCrypterScrypt scrypt = new KeyCrypterScrypt(iterations);
+                mWallet.encrypt(scrypt, scrypt.deriveKey(Hex.toHexString(key)));
             }
-        } catch (Exception ignored) {
+
+            String blockStoreFilename = String.format("blockchain%s", FILE_EXT);
+            File blockStoreFile = new File(mDirectory, blockStoreFilename);
+
+            mStore = new SPVBlockStore(NETWORK_PARAM, blockStoreFile);
+
+            mChain = new BlockChain(NETWORK_PARAM, mWallet, mStore);
+
+            mPeerGroup = new PeerGroup(NETWORK_PARAM, mChain);
+            mPeerGroup.addWallet(mWallet);
+
+            notifyOnReady();
+
+            preparePeerGroup();
+        } catch (UnreadableWalletException | BlockStoreException ex) {
+            notifyOnException(ex);
+            stopSelf();
         }
 
-        mKitApp
-                .setBlockingStartup(false)
-                .setDownloadListener(new DownloadProgressTracker() {
-
-                    /**
-                     *
-                     */
-                    private int mBlocksLeft;
-
-                    /**
-                     * @param peer
-                     * @param blocksLeft
-                     */
-                    @Override
-                    public void onChainDownloadStarted(Peer peer, int blocksLeft) {
-                        if (!mCanConnect) return;
-
-                        super.onChainDownloadStarted(peer, blocksLeft);
-                        this.mBlocksLeft = blocksLeft;
-                        get().mSyncronizedBlockchain = false;
-
-                        for (BitcoinListener listener : mListeners)
-                            listener.onStartDownload(BitcoinService.this, blocksLeft);
-                    }
-
-                    /**
-                     * @param peer
-                     * @param block
-                     * @param filteredBlock
-                     * @param blocksLeft
-                     */
-                    @Override
-                    public void onBlocksDownloaded(Peer peer, Block block,
-                                                   @Nullable FilteredBlock filteredBlock,
-                                                   int blocksLeft) {
-                        if (!mCanConnect) return;
-                        super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
-                        for (BitcoinListener listener : mListeners)
-                            listener.onBlocksDownloaded(BitcoinService.this, blocksLeft,
-                                    mBlocksLeft, block.getTime());
-                    }
-
-                    /**
-                     * Este método es llamado cuando la blockchain es descargada.
-                     */
-                    @Override
-                    protected void doneDownload() {
-                        if (!mCanConnect) return;
-                        get().mSyncronizedBlockchain = true;
-                        for (BitcoinListener listener : mListeners)
-                            listener.onCompletedDownloaded(BitcoinService.this);
-                    }
-                })
-                .setUserAgent("CryptoWallet",
-                        AppPreference.getVesion(getApplicationContext()).toString());
-
-        mKitApp.startAsync();
-    }
-
-    public void disconnect() {
-        mLogger.info("Desconectando puntos remotos");
-
-        mCanConnect = false;
-
-        for (Peer peer : getPeerGroup().getConnectedPeers()) {
-            peer.close();
-            peer.connectionClosed();
-        }
-    }
-
-    public void connect() {
-        mLogger.info("Conectando puntos remotos");
-        mCanConnect = true;
     }
 
     /**
-     * @return
+     * Prepara todas las configuraciones del grupo de puntos remotos.
      */
-    public boolean isSyncronizedBlockchain() {
-        return mSyncronizedBlockchain;
-    }
+    private void preparePeerGroup() {
+        final int MAX_PEERS = 10;
 
-    /**
-     * Permite realizar un envío a una dirección especificada.
-     *
-     * @param value    Cantidad de monedas a enviar.
-     * @param to       Dirección del receptor.
-     * @param feePerKb Comisiones por Kilobyte.
-     * @return Una transacción del pago.
-     */
-    @Override
-    public Transaction sendPay(@NonNull Coin value, @NonNull Address to, @NonNull Coin feePerKb,
-                               @Nullable byte[] password) throws InsufficientMoneyException,
-            KeyCrypterException {
-        Wallet wallet = mKitApp.wallet();
+        mPeerGroup.setMaxConnections(MAX_PEERS);
+        mPeerGroup.startBlockChainDownload(new DownloadProgressTracker() {
 
-        Transaction txSend = new Transaction(mNetworkParameters);
-        txSend.addOutput(value, to);
-
-        SendRequest request = SendRequest.forTx(txSend);
-        request.feePerKb = feePerKb;
-
-        if (password != null)
-            request.aesKey = new KeyParameter(password);
-
-        wallet.completeTx(request);
-        wallet.commitTx(request.tx);
-
-        mLogger.info("Transacción lista para ser propagada por la red de Bitcoin, hash: "
-                + request.tx.getHash().toString());
-
-        return txSend;
-    }
-
-    /**
-     * Propaga una transacción a través de la red, una vez finalizada esta operación se ejecuta
-     * la función implementada por la interfaz <code>BroadcastListener</code>.
-     *
-     * @param tx       Transacción a propagar.
-     * @param listener Instancia de la función a ejecutar al finalizar.
-     */
-    @Override
-    public void broadCastTx(@NonNull final Transaction tx,
-                            @Nullable final BroadcastListener<Transaction> listener) {
-
-        final ListenableFuture<Transaction> future = mKitApp.peerGroup()
-                .broadcastTransaction(tx).future();
-
-        mLogger.info("Propagando transacción por la red de Bitcoin, hash: "
-                + tx.getHash().toString());
-
-        future.addListener(new Runnable() {
+            /**
+             * Este método es llamado cuando el progreso avanza.
+             *
+             * @param pct         Porcentaje estimado de la descarga.
+             * @param blocksSoFar Cantidad de bloques restantes.
+             * @param date        Fecha del último bloque.
+             */
             @Override
-            public void run() {
-                try {
-                    final Transaction tx = future.get();
-                    final TransactionConfidence txConfidence = tx.getConfidence();
-
-                    if (listener != null)
-                        listener.onCompleted(tx);
-
-                    txConfidence.addEventListener(new TransactionConfidence.Listener() {
-                        @Override
-                        public void onConfidenceChanged(TransactionConfidence confidence,
-                                                        ChangeReason reason) {
-                            TransactionConfidence.ConfidenceType type
-                                    = confidence.getConfidenceType();
-                            if (type == TransactionConfidence.ConfidenceType.BUILDING) {
-                                for (BitcoinListener bitcoinListener : mListeners)
-                                    bitcoinListener.onCommited(get(), tx);
-                                confidence.removeEventListener(this);
-                            }
-                        }
-                    });
-
-                } catch (ExecutionException e) {
-                    mLogger.error("No se logró propagar la transacción a través de la red.");
-                } catch (InterruptedException e) {
-                    mLogger.error("Se interrumpió la propagación de la transacción.");
-                } catch (NullPointerException ignored) {
-                    mLogger.error("Error al obtener la confidencia de la transacción durante " +
-                            "la transmisión a la red.");
-                }
+            protected void progress(double pct, int blocksSoFar, Date date) {
+                super.progress(pct, blocksSoFar, date);
+                notifyOnDownloaded(blocksSoFar, date);
             }
-        }, Threading.USER_THREAD);
+
+            /**
+             * Este método es llamado cuando inicia la descarga.
+             *
+             * @param blocks El número estimado a descargar.
+             */
+            @Override
+            protected void startDownload(int blocks) {
+                super.startDownload(blocks);
+                notifyOnStartDownload(blocks);
+            }
+
+            /**
+             * Este método es llamado cuando la descarga finaliza.
+             */
+            @Override
+            protected void doneDownload() {
+                super.doneDownload();
+                notifyOnCompletedDownload();
+            }
+        });
+
+        Futures.addCallback(mPeerGroup.startAsync(), new FutureCallback() {
+            @Override
+            public void onSuccess(@Nullable Object result) {
+                mRunning = true;
+                nofityOnStarted();
+            }
+
+            @Override
+            public void onFailure(@NonNull Throwable t) {
+                notifyOnException(new IllegalStateException(t));
+                stopSelf();
+            }
+        });
     }
 
     /**
-     * Obtiene la cantidad actual del saldo de la billetera.
+     * Crea un gasto especificando la dirección destino y la cantidad a enviar. Posteriormente se
+     * propaga a través de la red para esperar ser confirmada.
+     *
+     * @param address    Dirección destino.
+     * @param amount     Cantidad a enviar expresada en su más pequeña porción.
+     * @param feePerKb   Comisión por kilobyte utilizado en la transacción.
+     * @param requestKey Solicita la llave de acceso a la billetera en caso de estár cifrada.
+     */
+    @Override
+    public void sendPayment(String address, long amount, long feePerKb, IRequestKey requestKey)
+            throws InSufficientBalanceException {
+        Utils.throwIfNullOrEmpty(address,
+                "La dirección no puede ser una cadena nula o vacía.");
+        Preconditions.checkArgument(amount > 0,
+                "La cantidad debe ser mayor a 0");
+
+        try {
+            Transaction txSend = new Transaction(NETWORK_PARAM);
+            txSend.addOutput(Coin.valueOf(amount), Address.fromBase58(NETWORK_PARAM, address));
+
+            SendRequest request = SendRequest.forTx(txSend);
+            request.feePerKb = Coin.valueOf(feePerKb);
+
+            if (mWallet.isEncrypted() && mWallet.getKeyCrypter() != null && requestKey != null)
+                request.aesKey = mWallet.getKeyCrypter()
+                        .deriveKey(Hex.toHexString(requestKey.onRequest()));
+
+            mWallet.completeTx(request);
+            mWallet.commitTx(request.tx);
+
+
+            final ListenableFuture<Transaction> future = mPeerGroup
+                    .broadcastTransaction(txSend).future();
+
+            Futures.addCallback(future, new FutureCallback<Transaction>() {
+                @Override
+                public void onSuccess(@Nullable Transaction result) {
+                    BitcoinService.notifyOnPropagated(result);
+                }
+
+                @Override
+                public void onFailure(@NonNull Throwable t) {
+                    BitcoinService.notifyOnException(new ExecutionException(t));
+                }
+            });
+
+        } catch (InsufficientMoneyException ex) {
+            throw new InSufficientBalanceException(
+                    mWallet.getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE).getValue(),
+                    SupportedAssets.BTC, ex);
+        }
+    }
+
+    /**
+     * Obtiene el saldo actual expresado en la porción más pequeña del activo.
      *
      * @return El saldo actual.
      */
     @Override
-    public Coin getBalance() {
-        Coin balance = mKitApp.wallet().getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE);
-        mLogger.info("Saldo actual: {}", balance.toFriendlyString());
-        return balance;
+    public long getBalance() {
+        return mWallet.getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE).getValue();
     }
 
     /**
-     * Obtiene la lista completa del historial de las transacciones de la billetera.
+     * Obtiene todas las transacciones ordenadas por fecha y hora de manera descendente.
      *
-     * @return Una lista de transacciones ordenadas por su fecha de creación.
+     * @return La lista de transacciones.
      */
     @Override
-    public List<Transaction> getTransactionsByTime() {
-        return mKitApp.wallet().getTransactionsByTime();
-    }
+    public List<GenericTransactionBase> getTransactionsByTime() {
+        List<Transaction> transactions = mWallet.getTransactionsByTime();
+        List<GenericTransactionBase> btcTransaction = new ArrayList<>();
 
-    public void handlerWalletChange() {
-        Executors.newSingleThreadExecutor().execute(new Runnable() {
-            @Override
-            public void run() {
-                org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
-                for (BitcoinListener listener : mListeners)
-                    listener.onBalanceChanged(BitcoinService.this, getBalance());
-            }
-        });
+        for (Transaction tx : transactions)
+            btcTransaction.add(new BitcoinTransaction(tx, mWallet));
 
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        int state = super.onStartCommand(intent, flags, startId);
-        mIntent = intent;
-
-        return state;
+        return btcTransaction;
     }
 
     /**
-     * Valida si la dirección especificada es correcta.
+     * Obtiene el listado de direcciones que pueden recibir pagos.
+     *
+     * @return Lista de direcciones.
+     */
+    @Override
+    public List<IAddressBalance> getAddresses() {
+        List<BitcoinAddress> addresses = BitcoinAddress
+                .getAll(mWallet.getTransactionsByTime(), mWallet);
+
+        return new ArrayList<IAddressBalance>(addresses);
+    }
+
+    /**
+     * Determina si la dirección es válida en la red del activo.
      *
      * @param address Dirección a validar.
-     * @return Un valor true si es válida.
+     * @return Un valor true en caso que la dirección sea válida.
      */
     @Override
-    public boolean validateAddress(String address) {
+    public boolean isValidAddress(String address) {
         try {
-            Address a = Address.fromBase58(mNetworkParameters, address);
-            return !getWallet().getIssuedReceiveAddresses().contains(a);
-        } catch (AddressFormatException ex) {
+            Address.fromBase58(NETWORK_PARAM, address);
+        } catch (AddressFormatException ignored) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Detiene los servicios de la billetera actual y elimina la información almacenada localmente.
+     */
+    @Override
+    public void deleteWallet() {
+        stopSelf();
+
+        String walletFileName = String.format("wallet%s", FILE_EXT);
+        String blockStoreFileName = String.format("blockchain%s", FILE_EXT);
+
+        File walletFile = new File(mDirectory, walletFileName);
+        File blockStoreFile = new File(mDirectory, blockStoreFileName);
+
+        if (walletFile.exists())
+            walletFile.deleteOnExit();
+
+        if (blockStoreFile.exists())
+            blockStoreFile.deleteOnExit();
+    }
+
+    /**
+     * Obtiene las palabras semilla de la billetera, las cuales permiten restaurarla en caso de
+     * perdida.
+     *
+     * @return Lista de las palabras de recuperación.
+     */
+    @Override
+    public List<String> getSeedWords(IRequestKey requestCallback) {
+        if (mWallet.getKeyChainSeed().isEncrypted()) {
+
+            byte[] key = requestCallback.onRequest();
+
+            KeyCrypter keyCrypter = mWallet.getKeyCrypter();
+
+            Objects.requireNonNull(keyCrypter);
+
+            DeterministicSeed deterministicSeed = mWallet.getKeyChainSeed()
+                    .decrypt(keyCrypter, "", new KeyParameter(key));
+
+            return deterministicSeed.getMnemonicCode();
+        }
+
+        return mWallet.getKeyChainSeed().getMnemonicCode();
+    }
+
+    /**
+     * Encripta la billetera de forma segura especificando la llave utilizada para ello.
+     *
+     * @param key     Llave de encriptación.
+     * @param prevKey Llave anterior en caso de estár encriptada.
+     * @return Un valor true en caso de que se encripte correctamente.
+     */
+    @Override
+    public boolean encryptWallet(byte[] key, byte[] prevKey) {
+        Objects.requireNonNull(key);
+
+        if (mWallet.isEncrypted())
+            mWallet.decrypt(Hex.toHexString(prevKey));
+
+        String hash = Hex.toHexString(key);
+        int iterations = Utils.calculateIterations(hash);
+
+        String walletFilename = "wallet.btc";
+
+        try {
+            mWallet.encrypt(new KeyCrypterScrypt(iterations), new KeyParameter(key));
+            mWallet.saveToFile(File.createTempFile(walletFilename, null),
+                    new File(mDirectory, walletFilename));
+            return true;
+        } catch (IOException | KeyCrypterException ignored) {
             return false;
         }
     }
 
     /**
-     * Obtiene la dirección para recibir pagos.
+     * Valida el acceso a la billetera.
      *
-     * @return Dirección de recepción.
+     * @param key Llave a validar.
+     * @return Un valor true si la llave es válida.
      */
     @Override
-    public String getAddressRecipient() {
-        return getWallet().freshReceiveAddress().toBase58();
+    public boolean validateAccess(byte[] key) {
+        if (!mWallet.isEncrypted())
+            throw new IllegalStateException("La billetera no está encriptada.");
+
+        Objects.requireNonNull(key);
+        Objects.requireNonNull(mWallet.getKeyCrypter());
+
+        return mWallet.checkAESKey(mWallet.getKeyCrypter().deriveKey(Hex.toHexString(key)));
     }
 
     /**
-     * @return
-     */
-    @Override
-    public boolean requireDecrypted() {
-        return getWallet().isEncrypted();
-    }
-
-    @Override
-    public boolean validatePin(byte[] pin) {
-        return getWallet().checkAESKey(new KeyParameter(pin));
-    }
-
-    @Override
-    public void shutdown() {
-        mKitApp.stopAsync();
-        mKitApp.awaitTerminated();
-
-        getApplicationContext().stopService(mIntent);
-    }
-
-    @Override
-    public void deleteWallet() throws IOException {
-        try {
-            mLogger.info("Desactivando los servicios de Bitcoin");
-
-            if (mKitApp.isRunning())
-                shutdown();
-
-            String dataDir = getApplicationInfo().dataDir;
-            String prefix = PREFIX;
-            String walletExt = ".wallet";
-            String blockExt = ".spvchain";
-
-            File walletFile = new File(dataDir, prefix.concat(walletExt));
-            File blockFile = new File(dataDir, prefix.concat(blockExt));
-
-            Thread.sleep(5000);
-
-            mLogger.info("Billetera a eliminar: " + walletFile.getAbsolutePath());
-            mLogger.info("Blockchain a eliminar: " + blockFile.getAbsolutePath());
-
-            if (walletFile.exists())
-                if (!walletFile.delete())
-                    throw new IOException("No se puede eliminar el archivo de la billetera.");
-
-            if (blockFile.exists())
-                if (!blockFile.delete())
-                    throw new IOException("No se puede eliminar el archivo de la blockchain.");
-
-            mService = null;
-
-        } catch (InterruptedException ignored) {
-        }
-    }
-
-    @Override
-    public void disconnectPeers() {
-        for (Peer peer : getPeerGroup().getConnectedPeers()) {
-            peer.close();
-            peer.connectionClosed();
-        }
-    }
-
-    /**
-     * Este método se llama cuando el servicio es destruido.
-     */
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        shutdown();
-    }
-
-    /**
-     * Obtiene el valor absoluto de la transacción.
+     * Obtiene la dirección de recepción de la billetera.
      *
-     * @param tx Transacción a obtener su valor.
-     * @return Valor en la fracción máxima del activo.
+     * @return Una dirección para recibir pagos.
      */
-    public long getValueFromTx(@NonNull Transaction tx) {
-        return getAbsolute(tx.getValue(getWallet()).isNegative()
-                ? tx.getValue(getWallet()).add(tx.getFee())
-                : tx.getValueSentToMe(getWallet())).getValue();
+    @Override
+    public String getReceiveAddress() {
+        return mWallet.currentReceiveAddress().toBase58();
     }
 
     /**
-     * Obtiene el valor absoluto de una cantidad en BTC.
+     * Obtiene el formateador utilizado para visualizar los montos de la transacción.
      *
-     * @param value Valor a manipular.
-     * @return El valor absoluto.
+     * @return Instancia del formateador.
      */
-    private Coin getAbsolute(@NonNull Coin value) {
-        return value.isNegative() ? value.multiply(-1) : value;
+    @Override
+    public ICoinFormatter getFormatter() {
+        return new ICoinFormatter() {
+            @Override
+            public String format(long value) {
+                return Coin.valueOf(value).toFriendlyString();
+            }
+        };
+    }
+
+    /**
+     * Busca en la billetera la transacción especificada por el ID.
+     *
+     * @param id Identificador único de la transacción.
+     * @return La transacción que coincide con el ID.
+     */
+    @Override
+    public GenericTransactionBase findTransaction(String id) {
+        Transaction transaction = mWallet.getTransaction(Sha256Hash.wrap(id));
+
+        if (transaction == null)
+            return null;
+
+        return new BitcoinTransaction(transaction, mWallet);
+    }
+
+    /**
+     * Indica si la billetera está encriptada.
+     *
+     * @return Un valor true que indica que la billetera está cifrada.
+     */
+    @Override
+    public boolean isEncrypted() {
+        return mWallet.isEncrypted();
+    }
+
+    /**
+     * Desconecta la billetera de la red.
+     */
+    @Override
+    public void disconnectNetwork() {
+        if (mPeerGroup == null)
+            return;
+
+        mPeerGroup.removeWallet(mWallet);
+        mPeerGroup.setMaxConnections(0);
+        mPeerGroup.stop();
+
+        mPeerGroup = null;
+    }
+
+    /**
+     * Conecta la billetera a la red.
+     */
+    @Override
+    public void connectNetwork() {
+        if (mPeerGroup != null)
+            return;
+
+        mPeerGroup = new PeerGroup(NETWORK_PARAM, mChain);
+        mPeerGroup.addWallet(mWallet);
+
+        preparePeerGroup();
     }
 }

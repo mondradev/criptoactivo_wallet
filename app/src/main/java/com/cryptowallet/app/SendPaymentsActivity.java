@@ -1,6 +1,5 @@
 package com.cryptowallet.app;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -16,10 +15,9 @@ import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.utils.AfterTextWatcher;
 import com.cryptowallet.utils.DecimalsFilter;
-import com.cryptowallet.utils.Helper;
-import com.cryptowallet.wallet.BroadcastListener;
+import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
@@ -27,13 +25,9 @@ import com.google.zxing.integration.android.IntentResult;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.InsufficientMoneyException;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 
-import java.util.Locale;
 import java.util.Objects;
 
 import static com.cryptowallet.app.ExtrasKey.PIN_DATA;
@@ -41,6 +35,9 @@ import static com.cryptowallet.app.ExtrasKey.PIN_DATA;
 /**
  * Actividad que permite el envío de pagos, también ofrece leer códigos QR que almacenan un URI
  * válido.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.0
  */
 public class SendPaymentsActivity extends ActivityBase
         implements AdapterView.OnItemSelectedListener {
@@ -69,14 +66,16 @@ public class SendPaymentsActivity extends ActivityBase
      * Indica la moneda a enviar.
      */
     private SupportedAssets mSelectCoin;
+
     /**
      * Dirección de destino.
      */
     private String mAddress;
+
     /**
      * Permite actualizar los campos de mRemainingBalance y mAmount.
      */
-    private final AfterTextWatcher mUpdateContent = new AfterTextWatcher() {
+    private final OnAfterTextChangedListenerBase mUpdateContent = new OnAfterTextChangedListenerBase() {
 
         /**
          * Este método es llamado cuando mAmount es modificado.
@@ -114,7 +113,7 @@ public class SendPaymentsActivity extends ActivityBase
         CharSequence amountSecuences = mAmountText.getText();
         double amount = Double.parseDouble(amountSecuences.length() == 0
                 || amountSecuences.charAt(amountSecuences.length() - 1) == '.' ? "0" :
-                Helper.coalesce(amountSecuences.toString(), "0"));
+                Utils.coalesce(amountSecuences.toString(), "0"));
 
         if ((getBalance() - getMaxFraction(amount) - mFeePerKb) < 0) {
             mAmountText.setError(getString(R.string.no_enought_funds));
@@ -135,7 +134,7 @@ public class SendPaymentsActivity extends ActivityBase
     private boolean validateAddress(String addressBase58) {
         switch (mSelectCoin) {
             case BTC:
-                return BitcoinService.get().validateAddress(addressBase58);
+                return BitcoinService.get().isValidAddress(addressBase58);
         }
 
         return false;
@@ -200,7 +199,7 @@ public class SendPaymentsActivity extends ActivityBase
 
         switch (mSelectCoin) {
             case BTC:
-                return BitcoinService.get().getBalance().longValue();
+                return BitcoinService.get().getBalance();
         }
         return 0;
     }
@@ -232,7 +231,7 @@ public class SendPaymentsActivity extends ActivityBase
         CharSequence amountStr = mAmountText.getText();
         double amount = Double.parseDouble(amountStr.length() == 0
                 || amountStr.charAt(amountStr.length() - 1) == '.' ? "0" :
-                Helper.coalesce(amountStr.toString(), "0"));
+                Utils.coalesce(amountStr.toString(), "0"));
 
         mAmount = getMaxFraction(amount);
 
@@ -317,59 +316,19 @@ public class SendPaymentsActivity extends ActivityBase
      * @param view Componente el cual desencadeno el evento Click.
      */
     public void handlerSendPayment(View view) {
-
-        if (BitcoinService.get().requireDecrypted()) {
-            Intent intent = new Intent(this, LoginWalletActivity.class);
-            startActivityForResult(intent, 0);
-        } else
-            doPay(null);
+        doPay();
     }
 
-    private void doPay(byte[] password) {
-        try {
-            switch (mSelectCoin) {
-                case BTC:
+    /**
+     * Efectua el pago a realizar y finaliza la actividad.
+     */
+    private void doPay() {
+        switch (mSelectCoin) {
+            case BTC:
 
-
-                    Transaction tx = BitcoinService.get().sendPay(Coin.valueOf(mAmount),
-                            Address.fromBase58(BitcoinService.getNetwork(), mAddress),
-                            Coin.valueOf(mFeePerKb), password);
-
-                    BitcoinService.get().broadCastTx(Objects.requireNonNull(tx), new BroadcastListener<Transaction>() {
-                        @Override
-                        public void onCompleted(Transaction tx) {
-                            Intent intent = new Intent(
-                                    getApplicationContext(), TransactionActivity.class);
-                            intent.putExtra(ExtrasKey.TX_ID, tx.getHashAsString());
-                            intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
-
-                            Helper.sendLargeTextNotificationOs(getApplicationContext(),
-                                    R.mipmap.img_bitcoin,
-                                    getString(R.string.app_name),
-                                    getString(R.string.nofity_propagated),
-                                    getString(R.string.nofity_propagated).concat("\n")
-                                            .concat(String.format(getString(R.string.transaction_id),
-                                                    tx.getHash())),
-                                    intent
-                            );
-                        }
-                    });
-                    Intent result = new Intent();
-                    result.putExtra(ExtrasKey.TX_ID, BitcoinService.get().getValueFromTx(tx));
-                    result.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
-                    result.putExtra(ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
-                    setResult(Activity.RESULT_OK, result);
-                    finish();
-                    break;
-            }
-        } catch (InsufficientMoneyException money) {
-            Helper.showSnackbar(findViewById(R.id.mSendPayment),
-                    String.format(Locale.getDefault(),
-                            getString(R.string.insufficient_money),
-                            Objects.requireNonNull(money.missing).toFriendlyString()));
-        } catch (KeyCrypterException ignored) {
-
+                break;
         }
+
     }
 
     /**
@@ -389,7 +348,7 @@ public class SendPaymentsActivity extends ActivityBase
 
         if (result != null) {
             if (result.getContents() == null) {
-                Helper.showSnackbar(mSendPayment, getString(R.string.address_error));
+                Utils.showSnackbar(mSendPayment, getString(R.string.address_error));
             } else {
                 try {
                     String uri = result.getContents();
@@ -406,11 +365,11 @@ public class SendPaymentsActivity extends ActivityBase
 
                     try {
                         Address addressRead = Address.fromBase58(
-                                BitcoinService.getNetwork(), result.getContents());
+                                BitcoinService.NETWORK_PARAM, result.getContents());
 
                         mAddressRecipient.setText(addressRead.toBase58());
                     } catch (AddressFormatException ignored) {
-                        Helper.showSnackbar(mSendPayment, getString(R.string.qr_reader_error)
+                        Utils.showSnackbar(mSendPayment, getString(R.string.qr_reader_error)
                                 + ": " + result.getContents());
                     }
                 }
@@ -420,7 +379,8 @@ public class SendPaymentsActivity extends ActivityBase
         }
 
         if (data != null && data.hasExtra(PIN_DATA)) {
-            doPay(data.getByteArrayExtra(PIN_DATA));
+            // TODO: Implementar la autenticación.
+            System.out.println("Sin implementar envío con autenticación.");
         }
     }
 }

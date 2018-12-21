@@ -1,6 +1,7 @@
 package com.cryptowallet.app;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.view.View;
@@ -8,16 +9,29 @@ import android.view.View;
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
-
+/**
+ * Esta actividad permite el borrado de la billetera.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.1
+ */
 public class DeleteWalletActivity extends ActivityBase {
 
+    /**
+     * Cuadro de diálogo.
+     */
     private AlertDialog mAlertDialog;
-    private FutureTask<Void> mDeleteWalletTask = new FutureTask<>(new DeleteCallable());
 
+    /**
+     * Tarea de borrado de la billetera.
+     */
+    private AsyncTask<DeleteWalletActivity, Void, DeleteWalletActivity> mDeleteWalletTask;
+
+    /**
+     * Este método es llamado cuando se crea la actividad.
+     *
+     * @param savedInstanceState Estado guardado de la aplicación.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,33 +45,66 @@ public class DeleteWalletActivity extends ActivityBase {
                 .setCancelable(false)
                 .create();
 
+        mDeleteWalletTask = new DeleteTask();
+
     }
 
+    /**
+     * Este método es llamado cuando se hace clic en el botón de "Borrar".
+     *
+     * @param view Vista que llama a este método.
+     */
     public void handlerDelete(View view) {
         mAlertDialog.show();
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        executor.execute(mDeleteWalletTask);
+        mDeleteWalletTask.execute(this);
     }
 
-    private class DeleteCallable implements Callable<Void> {
+    /**
+     * Tarea que se encarga de borrar la billetera en segundo plano y nofica a la interfaz al
+     * finalizar.
+     *
+     * @author Ing. Javier Flores
+     * @version 1.1
+     */
+    private static class DeleteTask
+            extends AsyncTask<DeleteWalletActivity, Void, DeleteWalletActivity> {
 
+        /**
+         * Este método es llamado para procesar la tarea en segundo plano.
+         * <p/>
+         * Se comienza la detención de los servicios de los activos y finaliza devolviendo la
+         * instancia de la actividad.
+         *
+         * @param activities La instancia de la actividad.
+         * @return La instancia de la actividad, que será utilizado para notificar la finalización
+         * de la tarea.
+         */
         @Override
-        public Void call() throws Exception {
-            BitcoinService.get().shutdown();
+        protected DeleteWalletActivity doInBackground(DeleteWalletActivity... activities) {
+            DeleteWalletActivity self = activities[0];
+
             BitcoinService.get().deleteWallet();
 
-            AppPreference.clear(DeleteWalletActivity.this);
+            AppPreference.clear(self);
 
-            Intent intent = new Intent(DeleteWalletActivity.this,
-                    InitWalletActivity.class);
+            return self;
+        }
 
-            if (mAlertDialog.isShowing())
-                mAlertDialog.dismiss();
+        /**
+         * Este método es llamado cuando finaliza la tarea notificando al cuadro de diálogo que la
+         * actividad que ya debe cerrarse.
+         *
+         * @param activity La actividad que contiene el cuadro de diálogo.
+         */
+        @Override
+        protected void onPostExecute(DeleteWalletActivity activity) {
+            if (activity.mAlertDialog.isShowing())
+                activity.mAlertDialog.dismiss();
 
-            startActivity(intent);
-            finish();
+            Intent intent = new Intent(activity, InitWalletActivity.class);
 
-            return null;
+            activity.startActivity(intent);
+            activity.finish();
         }
     }
 }

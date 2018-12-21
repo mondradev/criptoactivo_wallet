@@ -5,19 +5,14 @@ import android.os.Handler;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.bitcoin.BitcoinTransaction;
-import com.cryptowallet.utils.Helper;
-import com.cryptowallet.wallet.ExchangeService;
-import com.cryptowallet.wallet.GenericTransactionBase;
-import com.cryptowallet.wallet.TransactionHistoryAdapter;
+import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.coinmarket.ExchangeService;
+import com.cryptowallet.wallet.widgets.GenericTransactionBase;
+import com.cryptowallet.wallet.widgets.adapters.TransactionHistoryAdapter;
 
-import org.bitcoinj.core.Transaction;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executors;
@@ -25,6 +20,9 @@ import java.util.concurrent.Executors;
 
 /**
  * Actividad que permite visualizar todas las transacciones de la billetera.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.0
  */
 public class TransactionHistoryActivity extends ActivityBase {
 
@@ -32,6 +30,10 @@ public class TransactionHistoryActivity extends ActivityBase {
      * Adaptador de transacciones de la vista.
      */
     private TransactionHistoryAdapter mTransactionsAdapter;
+
+    /**
+     * Handler que permite ejecutar funciones en el hilo principal.
+     */
     private Handler mHandler = new Handler();
 
     /**
@@ -48,7 +50,7 @@ public class TransactionHistoryActivity extends ActivityBase {
         getSupportActionBar().setTitle(getString(R.string.history_title));
 
         mTransactionsAdapter = new TransactionHistoryAdapter();
-        mTransactionsAdapter.setEmptyTextView((TextView) findViewById(R.id.mEmptyHistory));
+        mTransactionsAdapter.setEmptyView(findViewById(R.id.mEmptyHistory));
 
         RecyclerView mTransactionsHistory = findViewById(R.id.mTransactionsHistory);
 
@@ -64,10 +66,10 @@ public class TransactionHistoryActivity extends ActivityBase {
         final SwipeRefreshLayout mSwipeRefreshTx = findViewById(R.id.mSwipeRefreshTx);
 
         mSwipeRefreshTx.setColorSchemeColors(
-                Helper.getColorFromTheme(this, R.attr.textIconsColor));
+                Utils.getColorFromTheme(this, R.attr.textIconsColor));
 
         mSwipeRefreshTx.setProgressBackgroundColorSchemeColor(
-                Helper.getColorFromTheme(this, R.attr.colorAccent));
+                Utils.getColorFromTheme(this, R.attr.colorAccent));
 
         mSwipeRefreshTx.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
@@ -76,13 +78,13 @@ public class TransactionHistoryActivity extends ActivityBase {
                         .execute(new Runnable() {
                                      @Override
                                      public void run() {
-                                         ExchangeService.reloadMarketPrice();
+                                         ExchangeService.get().reloadMarketPrice();
 
                                          mHandler.post(new Runnable() {
                                              @Override
                                              public void run() {
                                                  mTransactionsAdapter.clear();
-                                                 mTransactionsAdapter.addAll(getBtcTransactions());
+                                                 mTransactionsAdapter.addAll(getTransactions());
                                                  mSwipeRefreshTx.setRefreshing(false);
                                              }
                                          });
@@ -101,7 +103,7 @@ public class TransactionHistoryActivity extends ActivityBase {
      */
     private void loadTransactions() {
 
-        for (GenericTransactionBase tx : getBtcTransactions())
+        for (GenericTransactionBase tx : getTransactions())
             mTransactionsAdapter.add(tx);
     }
 
@@ -110,15 +112,8 @@ public class TransactionHistoryActivity extends ActivityBase {
      *
      * @return Lista de transaciones.
      */
-    private List<GenericTransactionBase> getBtcTransactions() {
-        List<Transaction> transactions = BitcoinService.get().getTransactionsByTime();
-        List<GenericTransactionBase> genericTransactions = new ArrayList<>();
-
-        for (Transaction tx : transactions) {
-            genericTransactions.add(new BitcoinTransaction(this, tx));
-        }
-
-        return genericTransactions;
+    private List<GenericTransactionBase> getTransactions() {
+        return BitcoinService.get().getTransactionsByTime();
     }
 
 

@@ -9,6 +9,9 @@ import java.util.regex.Pattern;
 /**
  * Esta clase provee de una restrinción para evitar que se ingresen caracteres no numéricos.
  * Se puede especificar la cantidad de digitos y cuantos son decimales del total.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.0
  */
 public class DecimalsFilter implements InputFilter {
 

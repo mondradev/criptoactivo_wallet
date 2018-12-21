@@ -18,9 +18,9 @@ import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.utils.AfterTextWatcher;
 import com.cryptowallet.utils.DecimalsFilter;
-import com.cryptowallet.utils.Helper;
+import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
 
 import org.bitcoinj.core.Address;
@@ -75,7 +75,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
     /**
      * Escucha del evento AfterTextChanged, que actualiza la información de la petición.
      */
-    private TextWatcher mChangedAmount = new AfterTextWatcher() {
+    private TextWatcher mChangedAmount = new OnAfterTextChangedListenerBase() {
         /**
          * Este método es llamado cuando se cambió el texto del EditText.
          *
@@ -207,7 +207,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
                 mAddress);
         clipboard.setPrimaryClip(data);
 
-        Helper.showSnackbar(view, getString(R.string.copy_to_clipboard_text));
+        Utils.showSnackbar(view, getString(R.string.copy_to_clipboard_text));
     }
 
     /**
@@ -217,7 +217,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
      */
     public void handlerRefreshCode(View view) {
         ImageView mQrCode = findViewById(R.id.mQrCode);
-        Bitmap qrCode = Helper.generateQrCode(getUri(), QR_CODE_SIZE);
+        Bitmap qrCode = Utils.generateQrCode(getUri(), QR_CODE_SIZE);
         mQrCode.setImageBitmap(qrCode);
     }
 

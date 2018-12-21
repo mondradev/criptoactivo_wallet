@@ -10,26 +10,44 @@ import android.support.annotation.NonNull;
 import android.support.annotation.StringDef;
 
 import com.cryptowallet.R;
-import com.cryptowallet.utils.Helper;
+import com.cryptowallet.utils.Utils;
 
 /**
+ * Provee el control de las configuraciones de la aplicación.
  *
+ * @author Ing. Javier Flores
+ * @version 1.0
  */
 public final class AppPreference {
 
+    /**
+     * Tema claro/día.
+     */
     private static final String LIGHT_THEME = "AppTheme";
+    /**
+     * Tema oscuro/nocturno.
+     */
     private static final String DARK_THEME = "AppTheme.Dark";
+
+    /**
+     * Tema especial azul.
+     */
     private static final String BLUE_THEME = "AppTheme.Blue";
 
+    /**
+     * Tema actual en ejecución.
+     */
     private static String mCurrentTheme = LIGHT_THEME;
 
 
     /**
-     * @param context
+     * Carga el tema recuperado de las preferencias del usuario.
+     *
+     * @param context Contexto de la aplicación.
      */
     static void loadTheme(@NonNull Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String themeName = Helper.coalesce(
+        String themeName = Utils.coalesce(
                 preferences.getString("current_theme", "AppTheme"), "AppTheme");
 
         mCurrentTheme = themeName;
@@ -49,18 +67,38 @@ public final class AppPreference {
         }
     }
 
+    /**
+     * Determina si el tema es azul.
+     *
+     * @return Un valor true para indicar que si es.
+     */
     static boolean isBlueTheme() {
         return mCurrentTheme.contentEquals(BLUE_THEME);
     }
 
+    /**
+     * Determina si el tema es claro.
+     *
+     * @return Un valor true para indicar que si es.
+     */
     static boolean isLightTheme() {
         return mCurrentTheme.contentEquals(LIGHT_THEME);
     }
 
+    /**
+     * Determina si el tema es oscuro.
+     *
+     * @return Un valor true para indicar que si es.
+     */
     static boolean isDarkTheme() {
         return mCurrentTheme.contentEquals(DARK_THEME);
     }
 
+    /**
+     * Activa el tema oscuro en la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     */
     static void enableDarkTheme(@NonNull Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
@@ -73,6 +111,11 @@ public final class AppPreference {
                 .apply();
     }
 
+    /**
+     * Activa el tema azul en la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     */
     static void enableBlueTheme(@NonNull Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
@@ -85,7 +128,12 @@ public final class AppPreference {
                 .apply();
     }
 
-    static void enableTheme(@NonNull Context context) {
+    /**
+     * Activa el tema claro en la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     */
+    static void enableLightTheme(@NonNull Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
         mCurrentTheme = LIGHT_THEME;
@@ -98,20 +146,42 @@ public final class AppPreference {
     }
 
 
-    static void reloadTheme(Activity context) {
-        context.recreate();
+    /**
+     * Recarga el tema en el aplicación, es un alias para recrear el layout.
+     *
+     * @param activity Actividad a recargar.
+     */
+    static void reloadTheme(Activity activity) {
+        activity.recreate();
     }
 
+    /**
+     * Obtiene el nombre del tema actual.
+     *
+     * @return Nombre de tema.
+     */
     static String getThemeName() {
         return mCurrentTheme;
     }
 
-    public static boolean useOnlyWifi(Context context) {
+    /**
+     * Obtiene un valor que indica si la opción "Solo WiFi" está activada.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Un valor true si la opción está activa.
+     */
+    static boolean getUseOnlyWifi(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         return preferences.getBoolean("only_wifi", false);
     }
 
-    public static void useOnlyWifi(Context context, boolean use) {
+    /**
+     * Establece si la opción "Solo WiFi" está activa.
+     *
+     * @param context Contexto de la aplicación.
+     * @param use     Un valor true si la opción está activa.
+     */
+    static void setUseOnlyWifi(Context context, boolean use) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences
                 .edit()
@@ -119,7 +189,13 @@ public final class AppPreference {
                 .apply();
     }
 
-    public static CharSequence getVesion(Context context) {
+    /**
+     * Obtiene la versión de la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Versión de la aplicación.
+     */
+    static CharSequence getVesion(Context context) {
         String version;
         try {
             PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
@@ -132,13 +208,24 @@ public final class AppPreference {
         return version;
     }
 
-    public static boolean useFingerprint(Context context) {
+    /**
+     * Obtiene un valor que indica si la opción "Usar lector de huellas" está activa.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Un valor true que indica si la opción está activada.
+     */
+    static boolean getUseFingerprint(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         return preferences.getBoolean("use_fingerprint", false);
     }
 
-
-    public static void useFingerprint(Context context, boolean use) {
+    /**
+     * Establece un valor que indica si la opción "Usar lector de huellas" está activa.
+     *
+     * @param context Contexto de la aplicación.
+     * @param use     Un valor true que indica si la opción está activada.
+     */
+    static void setUseFingerprint(Context context, boolean use) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences
                 .edit()
@@ -147,16 +234,34 @@ public final class AppPreference {
 
     }
 
+    /**
+     * Obtiene el vector de inicialización.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Vector de inicialización.
+     */
     public static String getIV(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         return preferences.getString("data_2", "");
     }
 
-    public static String getPin(Context context) {
+    /**
+     * Obtiene la clave almacenada.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Clave almacenada.
+     */
+    public static String getStoredKey(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         return preferences.getString("data_1", "");
     }
 
+    /**
+     * Establece el vector de inicialización.
+     *
+     * @param context      Contexto de la aplicación.
+     * @param encryptionIv Vector de inicialización.
+     */
     public static void setIV(Context context, String encryptionIv) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences
@@ -165,7 +270,13 @@ public final class AppPreference {
                 .apply();
     }
 
-    public static void setPin(Context context, String encryptedPassword) {
+    /**
+     * Establece la clave almacenada.
+     *
+     * @param context           Contexto de la aplicación.
+     * @param encryptedPassword Clave almacenada.
+     */
+    public static void setStoredKey(Context context, String encryptedPassword) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences
                 .edit()
@@ -173,7 +284,12 @@ public final class AppPreference {
                 .apply();
     }
 
-    public static void removeData(Context context) {
+    /**
+     * Elimina la data sencible de las configuraciones guardadas.
+     *
+     * @param context Contexto de la aplicación.
+     */
+    static void removeData(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences
                 .edit()
@@ -182,7 +298,13 @@ public final class AppPreference {
                 .apply();
     }
 
-    public static void setSelectedCurrency(Context context, @CurrencyFiat String currency) {
+    /**
+     * Establece la divisa seleccinada para visualizar el valor de la billetera.
+     *
+     * @param context  Contexto de la aplicación.
+     * @param currency Simbolo de la divisa.
+     */
+    static void setSelectedCurrency(Context context, @CurrencyFiat String currency) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences
                 .edit()
@@ -190,16 +312,30 @@ public final class AppPreference {
                 .apply();
     }
 
+    /**
+     * Obtiene la divisa seleccinada para visualizar el valor de la billetera.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Simbolo de la divisa.
+     */
     public static String getSelectedCurrency(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         return preferences.getString("selected_currency", "USD");
     }
 
-    public static void clear(Context context) {
+    /**
+     * Elimina todas las configuraciones del usuario.
+     *
+     * @param context Contexto de la aplicación.
+     */
+    static void clear(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences.edit().clear().apply();
     }
 
+    /**
+     * Define los valores asignables a un String.
+     */
     @StringDef(value = {"USD", "MXN"})
     @interface CurrencyFiat {
     }

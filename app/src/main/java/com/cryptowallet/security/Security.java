@@ -8,7 +8,7 @@ import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
 import com.cryptowallet.app.AppPreference;
-import com.cryptowallet.utils.Helper;
+import com.cryptowallet.utils.Utils;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -29,19 +29,56 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
+/**
+ * Esta clase gestiona la seguridad relacionada con Android.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.0
+ */
 public final class Security {
 
+    /**
+     * Algoritmo de cifrado.
+     */
     private static final String DIGEST_SHA256 = "SHA-256";
+
+    /**
+     * Nombre de la llave.
+     */
     private static final String KEY_NAME = "com.cryptowallet.key";
+
+    /**
+     * Nombre del estandar de transformación.
+     */
     private static final String TRANSFORMATION = "AES/CBC/PKCS7Padding";
+
+    /**
+     * Nombre del almacén de llaves.
+     */
     private static final String ANDROID_KEY_STORE = "AndroidKeyStore";
+
+    /**
+     * Instancia de la clase. No se requiere tener más instancias.
+     */
     private static Security mInstance;
+
+    /**
+     * Llave en binario.
+     */
     private byte[] mKey;
 
 
+    /**
+     * Crea una instancia.
+     */
     private Security() {
     }
 
+    /**
+     * Obtiene la instancia de {@link Security}.
+     *
+     * @return La instancia actual.
+     */
     public static Security get() {
         if (mInstance == null)
             mInstance = new Security();
@@ -49,18 +86,34 @@ public final class Security {
         return mInstance;
     }
 
+    /**
+     * Obtiene la llave expreseda en una cadena de caracteres.
+     *
+     * @return Una cadena que representa la llave.
+     * @throws IllegalStateException En el caso que la llave no haya sido asignada.
+     */
     public String getKeyAsString() {
         if (mKey == null)
-            return "";
+            throw new IllegalStateException("No se ha asignado la clave");
 
-        return Helper.hexToString(mKey);
+        return Utils.hexToString(mKey);
     }
 
+    /**
+     * Obtiene la llave utilizada para el cifrado.
+     *
+     * @return La llave de cifrado.
+     */
     public byte[] getKey() {
         return mKey;
     }
 
-    public void setKey(byte[] data) {
+    /**
+     * Establece la llave a partir de una matriz unidimensional de bytes.
+     *
+     * @param data La matriz de bytes que contiene la base de la llave.
+     */
+    public void createKey(byte[] data) {
         MessageDigest digest = null;
         try {
             digest = MessageDigest.getInstance(DIGEST_SHA256);
@@ -74,9 +127,17 @@ public final class Security {
         mKey = digest.digest(data);
     }
 
+    /**
+     * Desencripta la llave almacenada en la aplicación para poder ser utilizada solo si existe una
+     * validación correcta de la huella digital. Solo compatible con las versiones Marshmallow
+     * o superior.
+     *
+     * @param context Contexto de la aplicación Android.
+     * @param cipher  Cifrado utilizado para encriptar la llave.
+     */
     @TargetApi(Build.VERSION_CODES.M)
     public void decryptKey(Context context, Cipher cipher) {
-        byte[] password = Base64.decode(AppPreference.getPin(context), Base64.DEFAULT);
+        byte[] password = Base64.decode(AppPreference.getStoredKey(context), Base64.DEFAULT);
 
         try {
             KeyStore keyStore = KeyStore.getInstance(ANDROID_KEY_STORE);
@@ -95,7 +156,15 @@ public final class Security {
         }
     }
 
-    public Cipher requestCipher(Context context, boolean decryptMode) {
+    /**
+     * Obtiene el cifrado para la encriptación o desencriptación de las llaves en Android.
+     *
+     * @param context     Contexto de la aplicación Android.
+     * @param decryptMode Indica si está en modo Descriptación.
+     * @return Un cifrado para su utilización.
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    public Cipher getCipher(Context context, boolean decryptMode) {
         Cipher cipher;
         byte[] ivCipher = Base64.decode(AppPreference.getIV(context), Base64.DEFAULT);
 
@@ -122,6 +191,13 @@ public final class Security {
         return cipher;
     }
 
+    /**
+     * Encripta la llave y la almacena en la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     * @param cipher  Cifrado a utilizar para la encriptación.
+     */
+    @TargetApi(Build.VERSION_CODES.M)
     private void encryptKey(Context context, Cipher cipher) {
 
         try {
@@ -131,7 +207,7 @@ public final class Security {
                     Base64.DEFAULT);
             String encryptionIv = Base64.encodeToString(encryptionIvBytes, Base64.DEFAULT);
 
-            AppPreference.setPin(context, encryptedPassword);
+            AppPreference.setStoredKey(context, encryptedPassword);
             AppPreference.setIV(context, encryptionIv);
 
         } catch (BadPaddingException | IllegalBlockSizeException e) {
@@ -139,12 +215,24 @@ public final class Security {
         }
     }
 
-    public void encryptePin(Context context, Cipher cipher, byte[] data) {
-        setKey(data);
+    /**
+     * Crea y encripta la llave para ser almacenada dentro de la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     * @param cipher  Cifrado que realiza el encriptado.
+     * @param data    Matriz unidimensional que contiene la llave.
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    public void encrypteKeyData(Context context, Cipher cipher, byte[] data) {
+        createKey(data);
         encryptKey(context, cipher);
     }
 
-    public void removeKey() {
+    /**
+     * Remueve la llave del almacén interno de Android.
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    public void removeKeyFromStore() {
         try {
             KeyStore keyStore = KeyStore.getInstance(ANDROID_KEY_STORE);
             keyStore.load(null);
@@ -156,8 +244,12 @@ public final class Security {
         }
     }
 
+    /**
+     * Crea una llave cifrado en Android si es requerido. Esta llave es utilizada para almacenar
+     * la llave dentro de la aplicación de manera segura.
+     */
     @TargetApi(Build.VERSION_CODES.M)
-    public void createKeyIfRequire() {
+    public void createAndroidKeyIfRequire() {
         KeyStore keyStore;
         try {
             keyStore = KeyStore.getInstance(ANDROID_KEY_STORE);

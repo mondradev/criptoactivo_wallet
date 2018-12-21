@@ -10,7 +10,7 @@ import android.widget.EditText;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.utils.Helper;
+import com.cryptowallet.utils.Utils;
 
 import org.bitcoinj.crypto.MnemonicException;
 import org.bitcoinj.wallet.DeterministicSeed;
@@ -58,7 +58,7 @@ public class RestoreWalletActivity extends ActivityBase {
             startActivityForResult(intent, 0);
 
         } catch (MnemonicException ignored) {
-            Helper.showSnackbar(findViewById(R.id.mRestore), getString(R.string.error_12_words));
+            Utils.showSnackbar(findViewById(R.id.mRestore), getString(R.string.error_12_words));
         } catch (UnreadableWalletException ignored) {
         }
     }

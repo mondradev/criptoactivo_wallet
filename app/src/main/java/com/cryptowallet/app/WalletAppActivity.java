@@ -22,84 +22,94 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
-import com.cryptowallet.bitcoin.BitcoinListener;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.bitcoin.BitcoinTransaction;
-import com.cryptowallet.utils.Helper;
-import com.cryptowallet.utils.IdealPasswordParameter;
-import com.cryptowallet.wallet.ExchangeService;
-import com.cryptowallet.wallet.GenericTransactionBase;
-import com.cryptowallet.wallet.RecentListAdapter;
+import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.BlockchainStatus;
+import com.cryptowallet.wallet.IWalletListener;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletServiceBase;
+import com.cryptowallet.wallet.coinmarket.ExchangeService;
+import com.cryptowallet.wallet.widgets.GenericTransactionBase;
+import com.cryptowallet.wallet.widgets.adapters.RecentListAdapter;
 
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.crypto.KeyCrypterScrypt;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Date;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 
 /**
  * Actividad principal de la billetera. Desde esta actividad se establece el flujo de trabajo de
  * toda la aplicación.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.1
  */
 public class WalletAppActivity extends ActivityBase {
-
-    /**
-     * Gestiona todos los logs de la clase.
-     */
-    private static Logger mLogger = LoggerFactory.getLogger(WalletAppActivity.class);
 
     /**
      * TextView que visualiza el saldo de la billetera.
      */
     private TextView mBalanceText;
+
     /**
      * Es un cuadro de diálogo que permite congelar la actividad hasta que la billetera se inicia.
      */
     private AlertDialog mDialogOnLoad;
+
     /**
      * Lista de las transacciones.
      */
     private RecentListAdapter mRecentsAdapter;
+
     /**
-     *
+     * Botón hambuerguesa.
      */
     private ActionBarDrawerToggle mToggle;
-    private CountDownTimer mUpdateQrCountDown
+
+    /**
+     * Temporizador de la tarjeta de actualización de la blockchain.
+     */
+    private CountDownTimer mBlockCountDown
             = new CountDownTimer(5000, 1) {
 
         @Override
         public void onTick(long millisUntilFinished) {
-
         }
 
         @Override
         public void onFinish() {
-            handlerRefreshCode(null);
+            handlerHideCard();
         }
 
     };
+
+    /**
+     * Handler que ejecuta las funciones en el hilo principal
+     */
     private Handler mHandler = new Handler();
-    private ExchangeService.ExchangeServiceListener mExchangeListener
-            = new ExchangeService.ExchangeServiceListener() {
+
+    /**
+     * Escuchas del servicio de Exchange.
+     */
+    private ExchangeService.IListener mExchangeListener
+            = new ExchangeService.IListener() {
+        /**
+         * Este método se ejecuta cuando el precio de un activo es actualizado.
+         *
+         * @param asset        Activo que fue actualizado.
+         * @param smallestUnit Precio del activo expresado en su unidad más pequeña.
+         */
         @Override
-        public void onResponse(SupportedAssets asset, long smallestUnit) {
+        public void onChangePrice(SupportedAssets asset, long smallestUnit) {
+
             SupportedAssets currentAsset = SupportedAssets.valueOf(
                     AppPreference.getSelectedCurrency(WalletAppActivity.this));
 
             if (asset != currentAsset || !BitcoinService.isRunning())
                 return;
 
-            org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
-
-            final String balanceFiat = ExchangeService
-                    .btcToSelectedFiat(WalletAppActivity.this,
-                            BitcoinService.get().getBalance().getValue());
+            final String balanceFiat = ExchangeService.get()
+                    .getBtcPrice(SupportedAssets.BTC, BitcoinService.get().getBalance());
 
             mHandler.post(new Runnable() {
                 @Override
@@ -108,95 +118,100 @@ public class WalletAppActivity extends ActivityBase {
                     mUsdBalance.setText(balanceFiat);
                 }
             });
-
         }
+
     };
+
     /**
      * Escucha de los eventos de la billetera de bitcoin.
      */
-    private BitcoinListener mListener = new BitcoinListener() {
+    private IWalletListener mListener = new IWalletListener() {
 
+        /**
+         * India si la descarga ha iniciado.
+         */
         private boolean mInitDownload = false;
 
-        @Override
-        public void onSent(BitcoinService service, Transaction tx) {
-            new BitcoinTransaction(WalletAppActivity.this, tx);
-        }
+        /**
+         * Indica si el cifrado está en ejecución.
+         */
+        private boolean mEncrypting = false;
 
         /**
          * Este método se ejecuta cuando la billetera recibe una transacción.
          *
-         * @param service Servicio de la billetera.
+         * @param service Información de la billetera que desencadena el evento.
          * @param tx      Transacción recibida.
          */
         @Override
-        public void onReceived(BitcoinService service, Transaction tx) {
-            addToRecents(tx);
+        public void onReceived(WalletServiceBase service, GenericTransactionBase tx) {
+            mRecentsAdapter.add(tx);
+        }
+
+        /**
+         * Este método se ejecuta cuando la billetera envía una transacción.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         * @param tx      Transacción enviada.
+         */
+        @Override
+        public void onSent(WalletServiceBase service, GenericTransactionBase tx) {
+            mRecentsAdapter.add(tx);
+        }
+
+        /**
+         * Este método se ejecuta cuando una transacción es confirmada.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         * @param tx      Transacción que fue confirmada.
+         */
+        @Override
+        public void onCommited(WalletServiceBase service, GenericTransactionBase tx) {
+            if (tx.getDepth() == 1)
+                onBalanceChanged(service, 0);
+        }
+
+        /**
+         * Este método se ejecuta cuando la billetera sufre un cambio.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         */
+        @Override
+        public void onWalletChanged(WalletServiceBase service) {
+
         }
 
         /**
          * Este método se ejecuta cuando el saldo de la billetera ha cambiado.
          *
-         * @param service Servicio de la billetera.
+         * @param service Información de la billetera que desencadena el evento.
+         * @param ignored Balance nuevo en la unidad más pequeña de la moneda o token.
          */
         @Override
-        public void onBalanceChanged(final BitcoinService service, final Coin ignored) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Coin newBalance = service.getBalance();
+        public void onBalanceChanged(WalletServiceBase service, long ignored) {
+            long value = service.getBalance();
+            TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
 
-                    SupportedAssets assets = SupportedAssets.valueOf(
-                            AppPreference.getSelectedCurrency(WalletAppActivity.this));
+            SupportedAssets assets = SupportedAssets.valueOf(
+                    AppPreference.getSelectedCurrency(WalletAppActivity.this));
 
-                    String balanceFiat
-                            = ExchangeService.getExchange(assets)
-                            .ToStringFriendly(SupportedAssets.BTC, newBalance.getValue());
+            String balanceFiat
+                    = ExchangeService.get().getExchange(assets)
+                    .ToStringFriendly(SupportedAssets.BTC, value);
 
-                    mBalanceText.setText(newBalance.toFriendlyString());
-                    TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
-                    mUsdBalance.setText(balanceFiat);
-                }
-            });
-        }
-
-        @Override
-        public void onCommited(final BitcoinService service, Transaction tx) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Coin balance = service.getBalance();
-
-                    SupportedAssets assets = SupportedAssets.valueOf(
-                            AppPreference.getSelectedCurrency(WalletAppActivity.this));
-
-                    String balanceFiat
-                            = ExchangeService.getExchange(assets)
-                            .ToStringFriendly(SupportedAssets.BTC, balance.getValue());
-
-                    mBalanceText.setText(balance.toFriendlyString());
-                    TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
-                    mUsdBalance.setText(balanceFiat);
-                }
-            });
+            mBalanceText.setText(service.getFormatter().format(value));
+            mUsdBalance.setText(balanceFiat);
         }
 
         /**
          * Este método se ejecuta cuando la billetera está inicializada correctamente.
          *
-         * @param service Servicio de la billetera.
+         * @param service Información de la billetera que desencadena el evento.
          */
         @Override
-        public void onReady(final BitcoinService service) {
-            Coin balance = service.getBalance();
-
-            mBalanceText.setText(balance.toFriendlyString());
-            List<Transaction> transactions = service.getTransactionsByTime();
-
-            ExchangeService.addEventListener(mExchangeListener);
-
-            for (final Transaction tx : transactions)
-                addToRecents(tx);
+        public void onReady(WalletServiceBase service) {
+            onBalanceChanged(service, service.getBalance());
+            ExchangeService.get().addEventListener(mExchangeListener);
 
             Intent intent = WalletAppActivity.this.getIntent();
 
@@ -206,48 +221,29 @@ public class WalletAppActivity extends ActivityBase {
                 Executors.newSingleThreadExecutor().execute(new Runnable() {
                     @Override
                     public void run() {
-                        org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
+                        mEncrypting = true;
 
-                        IdealPasswordParameter idealParameter
-                                = new IdealPasswordParameter(Helper.hexToString(key));
+                        BitcoinService.get().encryptWallet(key, null);
 
-                        KeyCrypterScrypt scrypt = new KeyCrypterScrypt(idealParameter.realIterations);
-
-                        BitcoinService.get().getWallet()
-                                .encrypt(scrypt, scrypt.deriveKey(Helper.hexToString(key)));
-
-                        if (mDialogOnLoad != null)
+                        if (mDialogOnLoad != null && mDialogOnLoad.isShowing() && mEncrypting)
                             mDialogOnLoad.dismiss();
                     }
                 });
-            } else if (mDialogOnLoad != null)
-                mDialogOnLoad.dismiss();
-        }
-
-        /**
-         * Añade las transacciones de Bitcoin a la lista de recientes.
-         *
-         * @param tx Transacción de bitcoin.
-         */
-        private void addToRecents(final Transaction tx) {
-            final GenericTransactionBase item
-                    = new BitcoinTransaction(WalletAppActivity.this, tx);
-
-            mRecentsAdapter.add(item);
+            }
         }
 
         /**
          * Este método se ejecuta cuando la blockchain de la billetera ha sido descargada
          * completamente.
          *
-         * @param service Servicio de la billetera.
+         * @param service Información de la billetera que desencadena el evento.
          */
         @Override
-        public void onCompletedDownloaded(BitcoinService service) {
+        public void onCompletedDownloaded(WalletServiceBase service) {
             if (!mInitDownload)
                 return;
 
-            Helper.sendNotificationOs(
+            Utils.sendNotificationOs(
                     WalletAppActivity.this,
                     getString(R.string.app_name),
                     getString(R.string.blockchain_downloaded),
@@ -255,51 +251,60 @@ public class WalletAppActivity extends ActivityBase {
                     100001
             );
 
-            mHandler.post(new Runnable() {
+            final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+
+            mStatus.post(new Runnable() {
                 @Override
                 public void run() {
-                    CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
                     mStatus.setVisibility(View.GONE);
-
                     mInitDownload = false;
                 }
             });
         }
 
+        /**
+         * Este método se ejecuta cuando se descarga un bloque nuevo.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         * @param status  Estado actual de la blockchain.
+         */
         @Override
-        public void onBlocksDownloaded(BitcoinService service, final int leftBlocks,
-                                       final int totalBlocksToDownload, final Date blockTime) {
+        public void onBlocksDownloaded(WalletServiceBase service, final BlockchainStatus status) {
+            final TextView mLastBlock = findViewById(R.id.mLastBlock);
+            final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+            mBlockCountDown.cancel();
 
-            mHandler.post(new Runnable() {
+            mStatus.post(new Runnable() {
                 @Override
                 public void run() {
-
-                    mUpdateQrCountDown.cancel();
-
-                    CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
                     if (mStatus.getVisibility() == View.GONE)
                         mStatus.setVisibility(View.VISIBLE);
 
-                    TextView mLastBlock = findViewById(R.id.mLastBlock);
-                    mLastBlock.setText(
-                            String.format(getString(R.string.last_block_date_text), leftBlocks));
+                    mLastBlock.setText(String.format(getString(R.string.last_block_date_text),
+                            status.getLeftBlocks()));
 
-                    if (leftBlocks == 0)
+                    if (status.getLeftBlocks() == 0)
                         mStatus.setVisibility(View.GONE);
                 }
             });
         }
 
+        /**
+         * Este método se ejecuta al comienzo de la descarga de los bloques nuevos.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         * @param status  Estado actual de la blockchain.
+         */
         @Override
-        public void onStartDownload(BitcoinService bitcoinService, int blocksTodownload) {
-            mInitDownload = true;
+        public void onStartDownload(WalletServiceBase service, BlockchainStatus status) {
+            final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
 
-            mHandler.post(new Runnable() {
+            mStatus.post(new Runnable() {
                 @Override
                 public void run() {
-                    mUpdateQrCountDown.start();
+                    mBlockCountDown.start();
+                    mInitDownload = true;
 
-                    CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
                     mStatus.setVisibility(View.VISIBLE);
 
                     TextView mLastBlock = findViewById(R.id.mLastBlock);
@@ -307,9 +312,45 @@ public class WalletAppActivity extends ActivityBase {
                 }
             });
         }
+
+        /**
+         * Este método se ejecuta cuando la propagación es completada.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         * @param tx      Transacción que ha sido propagada.
+         */
+        @Override
+        public void onPropagated(WalletServiceBase service, GenericTransactionBase tx) {
+
+        }
+
+        /**
+         * Este método es llamado cuando se lanza una excepción dentro de la billetera.
+         *
+         * @param service   Información de la billetera que desencadena el evento.
+         * @param exception Excepción que causa el evento.
+         */
+        @Override
+        public void onException(WalletServiceBase service, Exception exception) {
+
+        }
+
+        /**
+         * Este método es llamado cuando la billetera a iniciado.
+         *
+         * @param service Información de la billetera que desencadena el evento.
+         */
+        @Override
+        public void onStarted(WalletServiceBase service) {
+            if (mDialogOnLoad != null && mDialogOnLoad.isShowing() && !mEncrypting)
+                mDialogOnLoad.dismiss();
+        }
     };
 
-    public void handlerRefreshCode(View view) {
+    /**
+     * Este método es llamado cuando el temporizador finaliza.
+     */
+    public void handlerHideCard() {
         CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
         mStatus.setVisibility(View.GONE);
     }
@@ -321,8 +362,6 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        org.bitcoinj.core.Context.propagate(Helper.BITCOIN_CONTEXT);
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_wallet_app);
 
@@ -396,23 +435,22 @@ public class WalletAppActivity extends ActivityBase {
         final SwipeRefreshLayout mSwipeRefreshData = findViewById(R.id.mSwipeRefreshData);
 
         mSwipeRefreshData.setColorSchemeColors(
-                Helper.getColorFromTheme(this, R.attr.textIconsColor));
+                Utils.getColorFromTheme(this, R.attr.textIconsColor));
 
         mSwipeRefreshData.setProgressBackgroundColorSchemeColor(
-                Helper.getColorFromTheme(this, R.attr.colorAccent));
+                Utils.getColorFromTheme(this, R.attr.colorAccent));
 
         mSwipeRefreshData.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                BitcoinService.get().handlerWalletChange();
-                ExchangeService.reloadMarketPrice();
+                BitcoinService.notifyOnBalanceChange();
+                ExchangeService.get().reloadMarketPrice();
 
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
                         mRecentsAdapter.clear();
-                        mRecentsAdapter.addAll(BitcoinTransaction
-                                .getTransactionsByTime(WalletAppActivity.this));
+                        mRecentsAdapter.addAll(BitcoinService.get().getTransactionsByTime());
                         mSwipeRefreshData.setRefreshing(false);
                     }
                 });
@@ -420,8 +458,6 @@ public class WalletAppActivity extends ActivityBase {
         });
 
         BitcoinService.addEventListener(mListener);
-
-        mLogger.info("Actividad principal creada");
 
         if (!BitcoinService.isRunning()) {
 
@@ -436,6 +472,9 @@ public class WalletAppActivity extends ActivityBase {
 
     }
 
+    /**
+     * Muestra la actividad que muestra las direcciones de recepción de la billetera.
+     */
     private void handlerShowAddressesActivity() {
         Intent intent = new Intent(this, AddressViewerActivity.class);
         startActivityForResult(intent, 0);
@@ -473,9 +512,7 @@ public class WalletAppActivity extends ActivityBase {
     protected void onDestroy() {
         super.onDestroy();
         BitcoinService.removeEventListener(mListener);
-        ExchangeService.removeEventListener(mExchangeListener);
-
-        mLogger.info("Actividad principal destruida");
+        ExchangeService.get().removeEventListener(mExchangeListener);
     }
 
     /**
@@ -547,7 +584,7 @@ public class WalletAppActivity extends ActivityBase {
         if (data != null && data.hasExtra(ExtrasKey.OP_ACTIVITY))
             if (ActivitiesOperation.valueOf(data.getStringExtra(ExtrasKey.OP_ACTIVITY))
                     == ActivitiesOperation.SEND_PAYMENT)
-                Helper.showSnackbar(findViewById(R.id.mSendFab),
+                Utils.showSnackbar(findViewById(R.id.mSendFab),
                         String.format(getString(R.string.sent_payment_text), coinToStringFriendly(
                                 SupportedAssets.valueOf(data.getStringExtra(ExtrasKey.SELECTED_COIN)),
                                 data.getLongExtra(ExtrasKey.TX_ID, 0)

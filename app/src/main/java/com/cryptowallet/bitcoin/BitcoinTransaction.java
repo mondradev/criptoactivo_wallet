@@ -1,119 +1,247 @@
 package com.cryptowallet.bitcoin;
 
-import android.content.Context;
-
 import com.cryptowallet.R;
-import com.cryptowallet.wallet.ExchangeService;
-import com.cryptowallet.wallet.GenericTransactionBase;
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
+import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.ScriptException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.bitcoinj.core.TransactionInput;
+import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.wallet.Wallet;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 /**
+ * Esta clase representa una transacción de Bitcoin.
  *
+ * @author Ing. Javier Flores
+ * @version 1.1
  */
 public final class BitcoinTransaction extends GenericTransactionBase {
 
-    private static Logger mLogger = LoggerFactory.getLogger(BitcoinTransaction.class);
+    /**
+     * Dirección no decodificada de Coinbase.
+     */
+    private static final String COINBASE_ADDRESS = "(Coinbase)";
 
     /**
+     * Transacción de Bitcoin que se administra desde la instancia.
+     */
+    private final Transaction mBitcoinTransaction;
+
+    /**
+     * Billetera de Bitcoin a la cual pertenece la transacción.
+     */
+    private final Wallet mWallet;
+
+    /**
+     * Crea una nueva instancia especificando su transacción.
      *
+     * @param tx Transacción de Bitcoin.
      */
-    private final Transaction mTx;
+    public BitcoinTransaction(Transaction tx, Wallet wallet) {
+        super(R.mipmap.img_bitcoin, SupportedAssets.BTC);
 
-    /**
-     */
-    public BitcoinTransaction(Context context, Transaction tx) {
-        super(context, BitcoinService.isPay(tx) ? Kind.SEND : Kind.RECEIVE,
-                context.getDrawable(R.mipmap.img_bitcoin));
+        mWallet = wallet;
+        mBitcoinTransaction = tx;
 
-        mTx = tx;
-        if (getDepth() < 7)
+        if (tx.getConfidence().getDepthInBlocks() < 7)
             tx.getConfidence().addEventListener(new ConfidencialListener());
     }
 
-    public static List<GenericTransactionBase> getTransactionsByTime(Context context) {
-        if (!BitcoinService.isRunning())
-            return new ArrayList<>();
-
-        List<Transaction> transactions = BitcoinService.get().getTransactionsByTime();
-        List<GenericTransactionBase> bitcoinTransactions = new ArrayList<>();
-
-        for (Transaction tx : transactions)
-            bitcoinTransactions.add(new BitcoinTransaction(context, tx));
-
-        return bitcoinTransactions;
-    }
-
+    /**
+     * Obtiene una cadena que representa la cantidad paga como comisión para realizar la transacción
+     * de envío de pago.
+     *
+     * @return Una cadena que representa la comisión.
+     */
     @Override
-    public String getFeeToStringFriendly() {
-        Coin fee = mTx.getFee();
-        return fee == null ? Coin.ZERO.toFriendlyString() : fee.toFriendlyString();
+    public long getFee() {
+        return Utils.coalesce(mBitcoinTransaction.getFee(), Coin.ZERO).getValue();
     }
 
+    /**
+     * Obtiene una cadena que representa la cantidad movida en la transacción de una manera legible.
+     *
+     * @return Una cadena que representa la cantidad de la transacción.
+     */
     @Override
-    public String getAmountToStringFriendly(SupportedAssets currency) {
-        return ExchangeService.getExchange(currency).ToStringFriendly(
-                SupportedAssets.BTC,
-                BitcoinService.get().getValueFromTx(mTx)
-        );
+    public long getAmount() {
+        return (mBitcoinTransaction.getValue(mWallet).isNegative()
+                ? mBitcoinTransaction.getValue(mWallet).add(mBitcoinTransaction.getFee())
+                : mBitcoinTransaction.getValueSentToMe(mWallet))
+                .getValue();
     }
 
+    /**
+     * Obtiene las direcciones de las entradas simpre y cuando la salida relaccionada esté
+     * almacenada en la blockchain local, no aplica para modo SPV.
+     *
+     * @return Las direcciones de las entradas.
+     */
     @Override
-    public String getInputsAddress() {
-        return BitcoinService.getFromAddresses(
-                mTx,
-                getContext().getString(R.string.coinbase_address),
-                getContext().getString(R.string.unknown_address)
-        );
+    public List<String> getInputsAddress() {
+        List<String> addresses = new ArrayList<>();
+
+        NetworkParameters params = BitcoinService.NETWORK_PARAM;
+
+        List<TransactionInput> inputs = mBitcoinTransaction.getInputs();
+
+        for (TransactionInput input : inputs) {
+
+            try {
+
+                if (input.isCoinBase() && !addresses.contains(COINBASE_ADDRESS)) {
+                    addresses.add(COINBASE_ADDRESS);
+                    continue;
+                }
+
+                Address address = null;
+
+                if (input.getConnectedOutput() != null) {
+                    address = input.getConnectedOutput().getAddressFromP2PKHScript(params);
+
+                    if (address == null)
+                        address = input.getConnectedOutput().getAddressFromP2SH(params);
+                }
+
+                if (address != null) {
+                    if (!addresses.contains(address.toBase58()))
+                        addresses.add(address.toBase58());
+                } else
+                    throw new ScriptException("No se logró obtener la dirección que " +
+                            "generó la entrada.");
+
+            } catch (ScriptException ex) {
+                addresses.add("");
+                break;
+            }
+        }
+
+        return addresses;
     }
 
+    /**
+     * Obtiene las direcciones de las salidas de la transacción.
+     *
+     * @return Las direcciones de salidas.
+     */
     @Override
-    public String getOutputAddress() {
-        return BitcoinService.getToAddresses(mTx);
+    public List<String> getOutputAddress() {
+        List<String> addresses = new ArrayList<>();
+        NetworkParameters params = BitcoinService.NETWORK_PARAM;
+
+        List<TransactionOutput> outputs = mBitcoinTransaction.getOutputs();
+        Boolean isPay = Coin.valueOf(getAmount()).isNegative();
+
+        for (TransactionOutput output : outputs) {
+
+            if (isPay && output.isMine(mWallet))
+                continue;
+            else if (!isPay && !output.isMine(mWallet))
+                continue;
+
+            Address address = output.getAddressFromP2SH(params);
+
+            if (address == null)
+                address = output.getAddressFromP2PKHScript(params);
+
+            if (address != null)
+                addresses.add(address.toBase58());
+        }
+
+        return addresses;
     }
 
+    /**
+     * Obtiene la fecha de la transacción.
+     *
+     * @return Fecha de la transacción.
+     */
     @Override
     public Date getTime() {
-        return mTx.getUpdateTime();
+        return mBitcoinTransaction.getUpdateTime();
     }
 
+    /**
+     * Obtiene un valor que indica que la transacción ha sido confirmada.
+     *
+     * @return Un valor true si la transacción ha sido confirmada.
+     */
     @Override
-    public int getDepth() {
-        return mTx.getConfidence().getDepthInBlocks();
+    protected boolean isCommited() {
+        return mBitcoinTransaction.hasConfidence()
+                && mBitcoinTransaction.getConfidence().getDepthInBlocks() > 0;
     }
 
+    /**
+     * Obtiene el identificador de la transacción.
+     *
+     * @return El identificador de la transacción.
+     */
     @Override
     public String getID() {
-        return mTx.getHashAsString();
+        return mBitcoinTransaction.getHashAsString();
     }
 
+    /**
+     * Obtiene la cantidad movida en la transacción sin signo.
+     *
+     * @return Una cadena que representa la cantidad de la transacción.
+     */
+    @Override
+    public long getUsignedAmount() {
+        return Math.abs(getAmount());
+    }
+
+    /**
+     * Obtiene la profundidad en la blockchain.
+     *
+     * @return La cantidad de bloque por encima al cual pertenece esta transacción.
+     */
+    @Override
+    public int getDepth() {
+        if (!mBitcoinTransaction.hasConfidence())
+            return 0;
+        return mBitcoinTransaction.getConfidence().getDepthInBlocks();
+    }
+
+    /**
+     * Define una escucha de eventos de la confidencia de una transacción de Bitcoin.
+     *
+     * @author Ing. Javier Flores
+     * @version 1.1
+     */
     private final class ConfidencialListener implements TransactionConfidence.Listener {
 
+        /**
+         * Este método ocurre cuando la transacción cambia su confianza.
+         *
+         * @param confidence Confianza de la transacción.
+         * @param reason     Razón del cambio de la confianza.
+         */
         @Override
         public void onConfidenceChanged(TransactionConfidence confidence, ChangeReason reason) {
             if (reason == ChangeReason.DEPTH || confidence.getConfidenceType()
                     == TransactionConfidence.ConfidenceType.BUILDING) {
 
-                mLogger.debug("Transacción confirmada, profundidad: {}",
-                        confidence.getDepthInBlocks());
-
-
                 if (confidence.getDepthInBlocks() == 1)
-                    BitcoinService.get().handlerWalletChange();
+                    BitcoinService.notifyOnCommited(BitcoinTransaction.this);
 
-                OnUpdateDepthListener listener = getOnUpdateDepthListener();
-                if (listener != null) listener.onUpdate(BitcoinTransaction.this);
+                IOnUpdateDepthListener listener = getOnUpdateDepthListener();
 
-                if (getDepth() >= 7)
+                if (listener != null)
+                    listener.onUpdate(BitcoinTransaction.this);
+
+                if (confidence.getDepthInBlocks() >= 7)
                     confidence.removeEventListener(this);
             }
         }

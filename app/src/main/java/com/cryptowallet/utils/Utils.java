@@ -25,7 +25,8 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
-import com.cryptowallet.bitcoin.BitcoinService;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -33,7 +34,8 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
-import java.math.BigInteger;
+import org.bitcoinj.crypto.KeyCrypterScrypt;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -44,40 +46,36 @@ import java.util.Objects;
 
 /***
  * Provee de funciones auxiliares que pueden usarse en diferentes clases.
+ *
+ * @author Ing. Javier Flores
+ * @version 1.1
  */
-public final class Helper {
-
-    public static final org.bitcoinj.core.Context BITCOIN_CONTEXT
-            = new org.bitcoinj.core.Context(BitcoinService.getNetwork());
+public final class Utils {
 
     /**
      * Identificador de la aplicación.
      */
     private static final String CHANNEL_ID = "CryptoWallet";
+
     /**
-     *
+     * Identificador de la notificación actual.
      */
     private static int notifyID = 0;
-
-
-    public static boolean isNullOrEmpty(String text) {
-        if (text == null)
-            return true;
-        return text.isEmpty();
-    }
 
     /**
      * Obtiene una cadena que muestra una fecha/hora.
      *
-     * @param context Aplicación de ejecución.
-     * @param txTime  Fecha/hora de la transacción
+     * @param txTime          Fecha/hora de la transacción
+     * @param todayString     Texto que hace referencia al día actual.
+     * @param yesterdayString Texto que hace referencia al día anterior al actual.
      * @return Una cadena que representa la fecha/hora.
      */
-    public static String getDateTime(Context context, Date txTime) {
+    public static String getDateTime(Date txTime, String todayString, String yesterdayString) {
+
         String pattern = isToday(txTime)
-                ? "'" + context.getString(R.string.today_text) + "' '@' hh:mm aa"
+                ? "'" + todayString + "' '@' hh:mm aa"
                 : isYesterday(txTime)
-                ? "'" + context.getString(R.string.yesterday_text) + "' '@' hh:mm aa"
+                ? "'" + yesterdayString + "' '@' hh:mm aa"
                 : "MMMM dd, yyyy '@' hh:mm aa";
 
         return new SimpleDateFormat(pattern, Locale.getDefault()).format(txTime);
@@ -126,12 +124,13 @@ public final class Helper {
      * @return El valor del segundo parametro en caso que el primero sea nulo.
      */
     public static <T> T coalesce(T value, T ifNull) {
+        Objects.requireNonNull(ifNull, "ifNull no puede ser un valor null");
+
         if (value == null)
             return ifNull;
 
         return value;
     }
-
 
     /**
      * Muestra una notificación en la actividad contenedora del componente de referencia.
@@ -259,7 +258,8 @@ public final class Helper {
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationCompat.notify(notifyID, builder.build());
 
-        notifyID++;
+        if (notifyID > 9999) notifyID = 0;
+        else notifyID++;
     }
 
     /**
@@ -305,7 +305,8 @@ public final class Helper {
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationCompat.notify(notifyID, builder.build());
 
-        notifyID++;
+        if (notifyID > 9999) notifyID = 0;
+        else notifyID++;
     }
 
     /**
@@ -356,21 +357,38 @@ public final class Helper {
         return null;
     }
 
-    public static CharSequence getString(String password) {
-        return null;
-    }
-
+    /**
+     * Determina un valor que indica si un número se encuentra dentro del rango especificado.
+     *
+     * @param digit Valor a comparar.
+     * @param min   Limite inferior.
+     * @param max   Limite superior.
+     * @return Un valor true que indica que el número está especificado entre los limites.
+     */
     public static boolean between(int digit, int min, int max) {
         return min <= digit && digit <= max;
     }
 
-    public static String concatAll(String[] pin) {
+    /**
+     * Concatena todas las cadenas contenida dentro de la matriz unidimensional especificada.
+     *
+     * @param strings Matriz unidimensional que contiene las cadenas a concatenar.
+     * @return Un cadena formada a partir de las cadenas de la matriz.
+     */
+    public static String concatAll(String[] strings) {
         StringBuilder builder = new StringBuilder();
-        for (String aPin : pin) builder.append(aPin);
+        for (String aPin : strings) builder.append(aPin);
 
         return builder.toString();
     }
 
+    /**
+     * Obtiene el color a partir de un atributo que es definido por el tema actual de la aplicación.
+     *
+     * @param context Contexto de la aplicación Android.
+     * @param attr    Atributo compatible con valores de color.
+     * @return Un color especificado por el tema.
+     */
     public static @ColorInt
     int getColorFromTheme(Context context, @AttrRes int attr) {
         Objects.requireNonNull(context);
@@ -382,8 +400,36 @@ public final class Helper {
         return value.data;
     }
 
-    public static String hexToString(byte[] mKey) {
-        return String.format("%0" + (mKey.length * 2) + "X",
-                new BigInteger(1, mKey));
+    /**
+     * Obtiene el número de iteraciones que se requieren para realizar la encriptación de una clave.
+     *
+     * @param password Clave a analizar.
+     * @return El número de iteraciones.
+     */
+    public static int calculateIterations(String password) {
+        final int targetTimeMsec = 2000;
+
+        int iterations = 16384;
+        KeyCrypterScrypt scrypt = new KeyCrypterScrypt(iterations);
+        long now = System.currentTimeMillis();
+        scrypt.deriveKey(password);
+        long time = System.currentTimeMillis() - now;
+
+        while (time > targetTimeMsec) {
+            iterations >>= 1;
+            time /= 2;
+        }
+
+        return iterations;
+    }
+
+    /**
+     * Lanza una excepción si la cadena especificada tiene un valor null o está vacía.
+     *
+     * @param text         Texto a evaluar.
+     * @param errorMessage Mensaje de error de la excepción.
+     */
+    public static void throwIfNullOrEmpty(String text, String errorMessage) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(text), errorMessage);
     }
 }
