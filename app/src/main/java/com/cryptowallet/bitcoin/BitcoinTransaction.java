@@ -1,3 +1,20 @@
+/*
+ *    Copyright 2018 InnSy Tech
+ *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package com.cryptowallet.bitcoin;
 
 import com.cryptowallet.R;
@@ -91,7 +108,7 @@ public final class BitcoinTransaction extends GenericTransactionBase {
     public List<String> getInputsAddress() {
         List<String> addresses = new ArrayList<>();
 
-        NetworkParameters params = BitcoinService.NETWORK_PARAM;
+        NetworkParameters params = BitcoinService.NETWORK_PARAMS;
 
         List<TransactionInput> inputs = mBitcoinTransaction.getInputs();
 
@@ -137,7 +154,7 @@ public final class BitcoinTransaction extends GenericTransactionBase {
     @Override
     public List<String> getOutputAddress() {
         List<String> addresses = new ArrayList<>();
-        NetworkParameters params = BitcoinService.NETWORK_PARAM;
+        NetworkParameters params = BitcoinService.NETWORK_PARAMS;
 
         List<TransactionOutput> outputs = mBitcoinTransaction.getOutputs();
         Boolean isPay = Coin.valueOf(getAmount()).isNegative();

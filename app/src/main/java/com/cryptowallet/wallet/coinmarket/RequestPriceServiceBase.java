@@ -1,9 +1,31 @@
+/*
+ *    Copyright 2018 InnSy Tech
+ *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package com.cryptowallet.wallet.coinmarket;
 
 import android.content.Context;
 
+import com.android.volley.Cache;
+import com.android.volley.Network;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.BasicNetwork;
+import com.android.volley.toolbox.DiskBasedCache;
+import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 import com.cryptowallet.wallet.SupportedAssets;
 
 /**
@@ -14,6 +36,11 @@ import com.cryptowallet.wallet.SupportedAssets;
  * @version 1.0
  */
 public abstract class RequestPriceServiceBase {
+
+    /**
+     * Cola de peticiones.
+     */
+    private static RequestQueue mRequestQueue;
 
     /**
      * Instancia de la petición Json.
@@ -86,9 +113,25 @@ public abstract class RequestPriceServiceBase {
      */
     public final void sendRequest() {
         synchronized (this) {
+            initializeQueue();
+
             mDone = false;
-            Volley.newRequestQueue(mContext).add(mRequest);
+            mRequestQueue.add(mRequest);
         }
+    }
+
+    /**
+     * Inicializa la cola de peticiones.
+     */
+    private void initializeQueue() {
+        if (mRequestQueue != null)
+            return;
+
+        Cache cache = new DiskBasedCache(mContext.getCacheDir(), 1024 * 2014);
+        Network network = new BasicNetwork(new HurlStack());
+
+        mRequestQueue = new RequestQueue(cache, network);
+        mRequestQueue.start();
     }
 
     /**
@@ -99,7 +142,7 @@ public abstract class RequestPriceServiceBase {
     public final Long getSmallestValue() {
         synchronized (this) {
             try {
-                if (mDone)
+                if (!mDone)
                     wait();
 
                 return mSmallestValue;

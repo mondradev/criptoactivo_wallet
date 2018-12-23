@@ -1,9 +1,25 @@
+/*
+ *    Copyright 2018 InnSy Tech
+ *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package com.cryptowallet.app;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
@@ -31,6 +47,7 @@ import com.cryptowallet.wallet.WalletServiceBase;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.adapters.RecentListAdapter;
+import com.squareup.okhttp.internal.NamedRunnable;
 
 import org.bitcoinj.core.Coin;
 
@@ -84,11 +101,6 @@ public class WalletAppActivity extends ActivityBase {
     };
 
     /**
-     * Handler que ejecuta las funciones en el hilo principal
-     */
-    private Handler mHandler = new Handler();
-
-    /**
      * Escuchas del servicio de Exchange.
      */
     private ExchangeService.IListener mExchangeListener
@@ -100,7 +112,7 @@ public class WalletAppActivity extends ActivityBase {
          * @param smallestUnit Precio del activo expresado en su unidad más pequeña.
          */
         @Override
-        public void onChangePrice(SupportedAssets asset, long smallestUnit) {
+        public void onUpdatePrice(SupportedAssets asset, long smallestUnit) {
 
             SupportedAssets currentAsset = SupportedAssets.valueOf(
                     AppPreference.getSelectedCurrency(WalletAppActivity.this));
@@ -111,10 +123,11 @@ public class WalletAppActivity extends ActivityBase {
             final String balanceFiat = ExchangeService.get()
                     .getBtcPrice(SupportedAssets.BTC, BitcoinService.get().getBalance());
 
-            mHandler.post(new Runnable() {
+            final TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
+
+            mUsdBalance.post(new Runnable() {
                 @Override
                 public void run() {
-                    TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
                     mUsdBalance.setText(balanceFiat);
                 }
             });
@@ -131,11 +144,6 @@ public class WalletAppActivity extends ActivityBase {
          * India si la descarga ha iniciado.
          */
         private boolean mInitDownload = false;
-
-        /**
-         * Indica si el cifrado está en ejecución.
-         */
-        private boolean mEncrypting = false;
 
         /**
          * Este método se ejecuta cuando la billetera recibe una transacción.
@@ -188,19 +196,31 @@ public class WalletAppActivity extends ActivityBase {
          * @param ignored Balance nuevo en la unidad más pequeña de la moneda o token.
          */
         @Override
-        public void onBalanceChanged(WalletServiceBase service, long ignored) {
-            long value = service.getBalance();
-            TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
+        public void onBalanceChanged(final WalletServiceBase service, long ignored) {
+            final long value = service.getBalance();
+            final TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
 
             SupportedAssets assets = SupportedAssets.valueOf(
                     AppPreference.getSelectedCurrency(WalletAppActivity.this));
 
-            String balanceFiat
+            final String balanceFiat
                     = ExchangeService.get().getExchange(assets)
                     .ToStringFriendly(SupportedAssets.BTC, value);
 
-            mBalanceText.setText(service.getFormatter().format(value));
-            mUsdBalance.setText(balanceFiat);
+            mBalanceText.post(new Runnable() {
+                @Override
+                public void run() {
+                    mBalanceText.setText(service.getFormatter().format(value));
+                }
+            });
+
+            mUsdBalance.post(new Runnable() {
+                @Override
+                public void run() {
+                    mUsdBalance.setText(balanceFiat);
+                }
+            });
+
         }
 
         /**
@@ -213,23 +233,8 @@ public class WalletAppActivity extends ActivityBase {
             onBalanceChanged(service, service.getBalance());
             ExchangeService.get().addEventListener(mExchangeListener);
 
-            Intent intent = WalletAppActivity.this.getIntent();
-
-            if (intent.hasExtra(ExtrasKey.PIN_DATA)) {
-                final byte[] key = intent.getByteArrayExtra(ExtrasKey.PIN_DATA);
-
-                Executors.newSingleThreadExecutor().execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        mEncrypting = true;
-
-                        BitcoinService.get().encryptWallet(key, null);
-
-                        if (mDialogOnLoad != null && mDialogOnLoad.isShowing() && mEncrypting)
-                            mDialogOnLoad.dismiss();
-                    }
-                });
-            }
+            if (mDialogOnLoad != null && mDialogOnLoad.isShowing())
+                mDialogOnLoad.dismiss();
         }
 
         /**
@@ -272,21 +277,25 @@ public class WalletAppActivity extends ActivityBase {
         public void onBlocksDownloaded(WalletServiceBase service, final BlockchainStatus status) {
             final TextView mLastBlock = findViewById(R.id.mLastBlock);
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
-            mBlockCountDown.cancel();
 
             mStatus.post(new Runnable() {
                 @Override
                 public void run() {
+                    if (status.getLeftBlocks() == 0) {
+                        mStatus.setVisibility(View.GONE);
+                        return;
+                    }
+
+                    mBlockCountDown.cancel();
+
                     if (mStatus.getVisibility() == View.GONE)
                         mStatus.setVisibility(View.VISIBLE);
 
-                    mLastBlock.setText(String.format(getString(R.string.last_block_date_text),
-                            status.getLeftBlocks()));
-
-                    if (status.getLeftBlocks() == 0)
-                        mStatus.setVisibility(View.GONE);
+                    mLastBlock.setText(
+                            getString(R.string.last_block_date_text, status.getLeftBlocks()));
                 }
             });
+
         }
 
         /**
@@ -298,6 +307,7 @@ public class WalletAppActivity extends ActivityBase {
         @Override
         public void onStartDownload(WalletServiceBase service, BlockchainStatus status) {
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
+            final TextView mLastBlock = findViewById(R.id.mLastBlock);
 
             mStatus.post(new Runnable() {
                 @Override
@@ -307,7 +317,6 @@ public class WalletAppActivity extends ActivityBase {
 
                     mStatus.setVisibility(View.VISIBLE);
 
-                    TextView mLastBlock = findViewById(R.id.mLastBlock);
                     mLastBlock.setText(getString(R.string.calculate_blocks));
                 }
             });
@@ -332,7 +341,7 @@ public class WalletAppActivity extends ActivityBase {
          */
         @Override
         public void onException(WalletServiceBase service, Exception exception) {
-
+            System.err.println(exception.getMessage());
         }
 
         /**
@@ -341,9 +350,7 @@ public class WalletAppActivity extends ActivityBase {
          * @param service Información de la billetera que desencadena el evento.
          */
         @Override
-        public void onStarted(WalletServiceBase service) {
-            if (mDialogOnLoad != null && mDialogOnLoad.isShowing() && !mEncrypting)
-                mDialogOnLoad.dismiss();
+        public void onConnected(WalletServiceBase service) {
         }
     };
 
@@ -443,15 +450,24 @@ public class WalletAppActivity extends ActivityBase {
         mSwipeRefreshData.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                BitcoinService.notifyOnBalanceChange();
-                ExchangeService.get().reloadMarketPrice();
-
-                mHandler.post(new Runnable() {
+                Executors.newSingleThreadExecutor().execute(new NamedRunnable(
+                        "WalletAppActivity.SwipeRefreshLayout.OnRefresh") {
                     @Override
-                    public void run() {
+                    public void execute() {
+                        BitcoinService.notifyOnBalanceChange();
+                        ExchangeService.get().reloadMarketPrice();
+
                         mRecentsAdapter.clear();
-                        mRecentsAdapter.addAll(BitcoinService.get().getTransactionsByTime());
-                        mSwipeRefreshData.setRefreshing(false);
+                        mRecentsAdapter.addAll(BitcoinService.get()
+                                .getTransactionsByTime());
+
+                        mSwipeRefreshData.post(new NamedRunnable(
+                                "WalletAppActivity.SwipeRefreshLayout") {
+                            @Override
+                            protected void execute() {
+                                mSwipeRefreshData.setRefreshing(false);
+                            }
+                        });
                     }
                 });
             }

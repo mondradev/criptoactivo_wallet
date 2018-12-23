@@ -1,7 +1,23 @@
+/*
+ *    Copyright 2018 InnSy Tech
+ *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package com.cryptowallet.app;
 
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -22,7 +38,7 @@ import java.util.concurrent.Executors;
  * Actividad que permite visualizar todas las transacciones de la billetera.
  *
  * @author Ing. Javier Flores
- * @version 1.0
+ * @version 1.1
  */
 public class TransactionHistoryActivity extends ActivityBase {
 
@@ -30,11 +46,6 @@ public class TransactionHistoryActivity extends ActivityBase {
      * Adaptador de transacciones de la vista.
      */
     private TransactionHistoryAdapter mTransactionsAdapter;
-
-    /**
-     * Handler que permite ejecutar funciones en el hilo principal.
-     */
-    private Handler mHandler = new Handler();
 
     /**
      * Este método se ejecuta cuando la actividad se crea.
@@ -80,11 +91,12 @@ public class TransactionHistoryActivity extends ActivityBase {
                                      public void run() {
                                          ExchangeService.get().reloadMarketPrice();
 
-                                         mHandler.post(new Runnable() {
+                                         mTransactionsAdapter.clear();
+                                         loadTransactions();
+
+                                         mSwipeRefreshTx.post(new Runnable() {
                                              @Override
                                              public void run() {
-                                                 mTransactionsAdapter.clear();
-                                                 mTransactionsAdapter.addAll(getTransactions());
                                                  mSwipeRefreshTx.setRefreshing(false);
                                              }
                                          });
@@ -102,9 +114,7 @@ public class TransactionHistoryActivity extends ActivityBase {
      * Obtiene una lista de todas las transacciones de la billetera.
      */
     private void loadTransactions() {
-
-        for (GenericTransactionBase tx : getTransactions())
-            mTransactionsAdapter.add(tx);
+        mTransactionsAdapter.addAll(getTransactions());
     }
 
     /**

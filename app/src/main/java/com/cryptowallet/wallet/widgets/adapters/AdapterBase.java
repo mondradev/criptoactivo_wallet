@@ -1,12 +1,32 @@
+/*
+ *    Copyright 2018 InnSy Tech
+ *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
 package com.cryptowallet.wallet.widgets.adapters;
 
 
+import android.os.Handler;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.squareup.okhttp.internal.NamedRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +39,7 @@ import java.util.Objects;
  * @param <TItem>       Tipo de dato de la colección.
  * @param <TViewHolder> Tipo de dato que implementa {@link RecyclerView.ViewHolder}.
  * @author Ing. Javier Flores
- * @version 1.0
+ * @version 1.1
  */
 public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHolder>
         extends RecyclerView.Adapter<TViewHolder> {
@@ -30,6 +50,11 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
      */
     @LayoutRes
     private final int mLayoutID;
+
+    /**
+     * Ejecuta las funciones en el hilo principal de la aplicación.
+     */
+    private Handler mHandler = new Handler();
 
     /**
      * Vista que se visualiza cuando la colección está vacía.
@@ -72,9 +97,11 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
         Objects.requireNonNull(item, "El elemento no puede ser un valor null");
         mItems.add(item);
 
+        notifyChanged();
+
         hideEmptyView();
 
-        notifyDataSetChanged();
+
     }
 
     /**
@@ -90,9 +117,21 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
 
         mItems.addAll(items);
 
-        hideEmptyView();
+        notifyChanged();
 
-        notifyDataSetChanged();
+        hideEmptyView();
+    }
+
+    /**
+     * Notifica que existe un cambio en el conjunto de datos.
+     */
+    protected void notifyChanged() {
+        mHandler.post(new NamedRunnable("AdapterBase.Changed") {
+            @Override
+            protected void execute() {
+                notifyDataSetChanged();
+            }
+        });
     }
 
     /**
@@ -107,7 +146,7 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
 
         showEmptyView();
 
-        notifyDataSetChanged();
+        notifyChanged();
     }
 
     /**
@@ -130,6 +169,9 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
      */
     public void setEmptyView(View emptyView) {
         mEmptyView = emptyView;
+
+        hideEmptyView();
+        showEmptyView();
     }
 
     /**
@@ -157,6 +199,9 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
     protected void hideEmptyView() {
 
         if (mEmptyView == null)
+            return;
+
+        if (getItemCount() == 0)
             return;
 
         mEmptyView.setVisibility(View.GONE);
@@ -209,7 +254,7 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
 
         boolean res = mItems.remove(item);
 
-        notifyDataSetChanged();
+        notifyChanged();
 
         return res;
     }
@@ -225,7 +270,7 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
         for (TItem item : items)
             res |= mItems.remove(item);
 
-        notifyDataSetChanged();
+        notifyChanged();
 
         return res;
     }
@@ -236,6 +281,9 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
     protected void showEmptyView() {
 
         if (mEmptyView == null)
+            return;
+
+        if (getItemCount() > 0)
             return;
 
         mEmptyView.setVisibility(View.VISIBLE);
