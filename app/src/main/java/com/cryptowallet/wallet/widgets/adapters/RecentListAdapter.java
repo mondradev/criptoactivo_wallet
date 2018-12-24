@@ -1,24 +1,25 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.wallet.widgets.adapters;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -35,10 +36,13 @@ import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Logger;
 
 /**
  * Adaptador de la lista de transacciones recientes.
@@ -51,9 +55,20 @@ public final class RecentListAdapter
         implements View.OnClickListener {
 
     /**
-     * Activo seleccionado para visualizar los montos.
+     * Envia mensajes al LogCat.
      */
-    private SupportedAssets mSelectedAsset = SupportedAssets.BTC;
+    private static Logger mLogger = Logger.getLogger("RecentListAdapter");
+
+    /**
+     * Activo utilizado para visualizar el monto de la transacción.
+     */
+    private SupportedAssets mDisplayedAsset = SupportedAssets.BTC;
+
+    /**
+     * Listado de escuchas de los eventos de actualización de montos.
+     */
+    private CopyOnWriteArrayList<IOnUpdateAmountListener> mUpdateAmountListeners
+            = new CopyOnWriteArrayList<>();
 
     /**
      * Inicializa la instancia.
@@ -87,7 +102,36 @@ public final class RecentListAdapter
      */
     @Override
     protected RecentItemHolder createViewHolder(View view) {
-        return new RecentItemHolder(view);
+        RecentItemHolder holder = new RecentItemHolder(view);
+
+        mUpdateAmountListeners.add(holder);
+
+        return holder;
+    }
+
+    /**
+     * Establece la fuente de datos del adaptador.
+     *
+     * @param items Nueva fuente de datos.
+     */
+    @Override
+    public void setSource(List<GenericTransactionBase> items) {
+        Objects.requireNonNull(items);
+
+        getItems().clear();
+        getItems().addAll(items);
+
+        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
+            @Override
+            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
+                return o2.compareTo(o1);
+            }
+        });
+
+        if (getItemCount() > 0)
+            hideEmptyView();
+
+        notifyChanged();
     }
 
     /**
@@ -99,7 +143,14 @@ public final class RecentListAdapter
         if (collection.size() == 0)
             return;
 
-        getItems().addAll(collection);
+        List<GenericTransactionBase> uniqueList = new ArrayList<>();
+
+        for (GenericTransactionBase item : collection) {
+            if (!getItems().contains(item))
+                uniqueList.add(item);
+        }
+
+        getItems().addAll(uniqueList);
 
         Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
             @Override
@@ -108,9 +159,9 @@ public final class RecentListAdapter
             }
         });
 
-        notifyChanged();
-
         hideEmptyView();
+
+        notifyChanged();
     }
 
     /**
@@ -119,6 +170,9 @@ public final class RecentListAdapter
      * @param item Elemento nuevo.
      */
     public void add(GenericTransactionBase item) {
+        if (getItems().contains(item))
+            return;
+
         getItems().add(item);
         Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
             @Override
@@ -127,9 +181,9 @@ public final class RecentListAdapter
             }
         });
 
-        notifyChanged();
-
         hideEmptyView();
+
+        notifyChanged();
     }
 
     /**
@@ -153,9 +207,28 @@ public final class RecentListAdapter
         String assetName = AppPreference.getSelectedCurrency(view.getContext());
         SupportedAssets asset = SupportedAssets.valueOf(assetName);
 
-        mSelectedAsset = mSelectedAsset == asset ? SupportedAssets.BTC : asset;
+        mDisplayedAsset = mDisplayedAsset == asset ? SupportedAssets.BTC : asset;
 
-        notifyChanged();
+        notifyListeners();
+    }
+
+    /**
+     * Este método se desencadena cuando se desacopla del {@link RecyclerView}, lo que
+     * permite limpiar los escucha de eventos.
+     *
+     * @param recyclerView Vista a la cual se desacopla el adaptador.
+     */
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        mUpdateAmountListeners.clear();
+    }
+
+    /**
+     * Notifica a todos los escuchas del evento {@link IOnUpdateAmountListener }.
+     */
+    private void notifyListeners() {
+        for (IOnUpdateAmountListener listener : mUpdateAmountListeners)
+            listener.onUpdate();
     }
 
     /**
@@ -165,12 +238,17 @@ public final class RecentListAdapter
      * @version 1.0
      */
     public final class RecentItemHolder extends ViewHolderBase<GenericTransactionBase>
-            implements View.OnClickListener {
+            implements View.OnClickListener, IOnUpdateAmountListener {
 
         /**
          * Transacción contenida en el ViewHolder.
          */
         private GenericTransactionBase mItem;
+
+        /**
+         * Ejecuta las funciones en el hilo principal.
+         */
+        private Handler mHandler = new Handler();
 
         /**
          * Crea una nueva instancia.
@@ -201,7 +279,7 @@ public final class RecentListAdapter
             TextView mTime = itemView.findViewById(R.id.mTime);
             ImageView mIcon = itemView.findViewById(R.id.mIcon);
 
-            mAmount.setText(ExchangeService.get().getExchange(mSelectedAsset)
+            mAmount.setText(ExchangeService.get().getExchange(mDisplayedAsset)
                     .ToStringFriendly(item.getAsset(), item.getUsignedAmount()));
 
             mOperKind.setText(item.getAmount() < 0
@@ -212,6 +290,7 @@ public final class RecentListAdapter
                     ? itemView.getResources().getDrawable(R.drawable.bg_tx_send)
                     : itemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
+
             mAmount.setOnClickListener(RecentListAdapter.this);
 
             Context context = mTime.getContext();
@@ -221,10 +300,11 @@ public final class RecentListAdapter
             mIcon.setImageDrawable(mIcon.getContext().getDrawable(item.getImage()));
 
             mStatus.setVisibility(View.VISIBLE);
+
             item.setOnUpdateDepthListener(new GenericTransactionBase.IOnUpdateDepthListener() {
                 @Override
                 public void onUpdate(GenericTransactionBase tx) {
-                    itemView.post(new Runnable() {
+                    mHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             mStatus.setVisibility(View.GONE);
@@ -250,6 +330,16 @@ public final class RecentListAdapter
             intent.putExtra(ExtrasKey.TX_ID, mItem.getID());
             intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
             view.getContext().startActivity(intent);
+        }
+
+        /**
+         * Este método se desencadena cuando activo del precio es reemplazado.
+         */
+        @Override
+        public void onUpdate() {
+            Button mAmount = itemView.findViewById(R.id.mAmount);
+            mAmount.setText(ExchangeService.get().getExchange(mDisplayedAsset)
+                    .ToStringFriendly(mItem.getAsset(), mItem.getUsignedAmount()));
         }
     }
 

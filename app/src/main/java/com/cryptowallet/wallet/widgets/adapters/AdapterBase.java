@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.wallet.widgets.adapters;
@@ -95,13 +95,15 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
      */
     public void add(TItem item) {
         Objects.requireNonNull(item, "El elemento no puede ser un valor null");
-        mItems.add(item);
 
-        notifyChanged();
+        if (!mItems.contains(item))
+            return;
+
+        mItems.add(item);
 
         hideEmptyView();
 
-
+        notifyChanged();
     }
 
     /**
@@ -115,11 +117,35 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
         if (items.size() == 0)
             return;
 
+        List<TItem> uniqueList = new ArrayList<>();
+
+        for (TItem item : items) {
+            if (!mItems.contains(item))
+                uniqueList.add(item);
+        }
+
+        mItems.addAll(uniqueList);
+
+        hideEmptyView();
+
+        notifyChanged();
+    }
+
+    /**
+     * Establece la fuente de datos del adaptador.
+     *
+     * @param items Nueva fuente de datos.
+     */
+    public void setSource(List<TItem> items) {
+        Objects.requireNonNull(items);
+
+        mItems.clear();
         mItems.addAll(items);
+
+        hideEmptyView();
 
         notifyChanged();
 
-        hideEmptyView();
     }
 
     /**
@@ -204,7 +230,12 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
         if (getItemCount() == 0)
             return;
 
-        mEmptyView.setVisibility(View.GONE);
+        mEmptyView.post(new NamedRunnable("AdapterBase.HideEmptyView") {
+            @Override
+            protected void execute() {
+                mEmptyView.setVisibility(View.GONE);
+            }
+        });
     }
 
     /**
@@ -286,6 +317,11 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
         if (getItemCount() > 0)
             return;
 
-        mEmptyView.setVisibility(View.VISIBLE);
+        mEmptyView.post(new NamedRunnable("AdapterBase.ShowEmptyView") {
+            @Override
+            protected void execute() {
+                mEmptyView.setVisibility(View.VISIBLE);
+            }
+        });
     }
 }//end AdapterBase

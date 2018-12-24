@@ -1,3 +1,20 @@
+/*
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.cryptowallet.app;
 
 import android.content.Intent;
@@ -5,7 +22,6 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -56,15 +72,23 @@ public class TransactionActivity extends ActivityBase
             finish();
 
         ((TextView) findViewById(R.id.mTxID)).setText(mTransaction.getID());
+
         ((TextView) findViewById(R.id.mTxDate))
                 .setText(Utils.getDateTime(mTransaction.getTime(), getString(R.string.today_text),
                         getString(R.string.yesterday_text)));
-        ((EditText) findViewById(R.id.mTxFrom))
-                .setText(Joiner.on("\n").join(mTransaction.getInputsAddress()));
-        ((EditText) findViewById(R.id.mTxRecipient))
+
+        String inputsStr = Joiner.on("\n").join(mTransaction.getInputsAddress());
+
+        ((TextView) findViewById(R.id.mTxFrom)).setText(
+                Utils.coalesce(Utils.nullIf(inputsStr, ""),
+                        getString(R.string.unknown_address)));
+
+        ((TextView) findViewById(R.id.mTxRecipient))
                 .setText(Joiner.on("\n").join(mTransaction.getOutputAddress()));
+
         ((TextView) findViewById(R.id.mTxCommits)).setText(
                 String.format(Locale.getDefault(), "%d", mTransaction.getDepth()));
+
         ((ImageView) findViewById(R.id.mTxIcon))
                 .setImageDrawable(getDrawable(mTransaction.getImage()));
 
@@ -138,10 +162,7 @@ public class TransactionActivity extends ActivityBase
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == 16908332) {
-            if (getParent() == null) {
-                Intent intent = new Intent(this, WalletAppActivity.class);
-                startActivity(intent);
-            }
+
             finish();
 
             return true;

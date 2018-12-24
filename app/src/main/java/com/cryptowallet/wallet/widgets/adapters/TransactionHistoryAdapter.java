@@ -1,23 +1,24 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.wallet.widgets.adapters;
 
 import android.content.Intent;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -69,7 +70,7 @@ public final class TransactionHistoryAdapter
     /**
      * Listado de escuchas de los eventos de actualización de montos.
      */
-    private CopyOnWriteArrayList<OnUpdateAmountListener> mUpdateAmountListeners
+    private CopyOnWriteArrayList<IOnUpdateAmountListener> mUpdateAmountListeners
             = new CopyOnWriteArrayList<>();
 
     /**
@@ -141,6 +142,43 @@ public final class TransactionHistoryAdapter
     }
 
     /**
+     * Vacía la colección del adaptador y visualiza el {@link AdapterBase#mEmptyView} de
+     * ser posible para indicar al usuario que no hay datos que mostrar.
+     */
+    @Override
+    public void clear() {
+        mSize = PAGE_SIZE;
+        super.clear();
+    }
+
+    /**
+     * Establece la fuente de datos del adaptador.
+     *
+     * @param items Nueva fuente de datos.
+     */
+    @Override
+    public void setSource(List<GenericTransactionBase> items) {
+        Objects.requireNonNull(items);
+
+        getItems().clear();
+        getItems().addAll(items);
+
+        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
+            @Override
+            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
+                return o2.compareTo(o1);
+            }
+        });
+
+        mSize = PAGE_SIZE;
+
+        if (getItemCount() > 0)
+            hideEmptyView();
+
+        notifyChanged();
+    }
+
+    /**
      * Muestra más elementos de la lista.
      */
     private void expandList() {
@@ -173,10 +211,10 @@ public final class TransactionHistoryAdapter
     }
 
     /**
-     * Notifica a todos los escuchas del evento {@link OnUpdateAmountListener }.
+     * Notifica a todos los escuchas del evento {@link IOnUpdateAmountListener }.
      */
     private void notifyListeners() {
-        for (OnUpdateAmountListener listener : mUpdateAmountListeners)
+        for (IOnUpdateAmountListener listener : mUpdateAmountListeners)
             listener.onUpdate();
     }
 
@@ -230,20 +268,6 @@ public final class TransactionHistoryAdapter
     }
 
     /**
-     * Provee de un método que es llamado cuando el precio cambia de activo.
-     *
-     * @author Ing. Javier Flores
-     * @version 1.0
-     */
-    private interface OnUpdateAmountListener {
-
-        /**
-         * Este método se desencadena cuando activo del precio es reemplazado.
-         */
-        void onUpdate();
-    }
-
-    /**
      * Es la implementación de {@link RecyclerView.ViewHolder} para mostrar los elementos
      * del historial de transacciones.
      *
@@ -251,12 +275,17 @@ public final class TransactionHistoryAdapter
      * @version 1.0
      */
     final class TransactionHistoryViewHolder extends ViewHolderBase<GenericTransactionBase>
-            implements OnUpdateAmountListener, View.OnClickListener {
+            implements IOnUpdateAmountListener, View.OnClickListener {
 
         /**
          * Transacción enlazada al {@link RecyclerView.ViewHolder}.
          */
         private GenericTransactionBase mItem;
+
+        /**
+         * Ejecuta las funciones en el hilo principal.
+         */
+        private Handler mHandler = new Handler();
 
         /**
          * Crea una nueva instancia.
@@ -325,29 +354,27 @@ public final class TransactionHistoryAdapter
          * @param commits  Confirmaciones de la transacciones.
          */
         void setCommitColor(final TextView mCommits, final int commits) {
+            int uncommit = Utils.getColorFromTheme(
+                    mCommits.getContext(),
+                    R.attr.uncommitTxColor
+            );
 
-            itemView.post(new Runnable() {
+            int commited = Utils.getColorFromTheme(
+                    mCommits.getContext(),
+                    R.attr.commitTxColor
+            );
+
+            int commitedPlus = Utils.getColorFromTheme(
+                    mCommits.getContext(),
+                    R.attr.plusCommitTxColor
+            );
+
+            final int color = commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited;
+
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     mCommits.setText(commits > 6 ? "6+" : Integer.toString(commits));
-
-                    int uncommit = Utils.getColorFromTheme(
-                            mCommits.getContext(),
-                            R.attr.uncommitTxColor
-                    );
-
-                    int commited = Utils.getColorFromTheme(
-                            mCommits.getContext(),
-                            R.attr.commitTxColor
-                    );
-
-                    int commitedPlus = Utils.getColorFromTheme(
-                            mCommits.getContext(),
-                            R.attr.plusCommitTxColor
-                    );
-
-                    int color = commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited;
-
                     mCommits.setTextColor(color);
                 }
             });

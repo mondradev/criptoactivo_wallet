@@ -1,3 +1,20 @@
+/*
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.cryptowallet.utils;
 
 import android.app.NotificationManager;
@@ -431,5 +448,36 @@ public final class Utils {
      */
     public static void throwIfNullOrEmpty(String text, String errorMessage) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(text), errorMessage);
+    }
+
+    /**
+     * Obtiene un valor nulo si el primer argumento es igual al segundo, si no se devuelve el valor
+     * del primer argumento.
+     *
+     * @param left  El valor a comparar.
+     * @param right El valor que se requiere para devolver null.
+     * @param <T>   Tipo de dato a maneja.
+     * @return Un valor null si ambos parametros son iguales.
+     */
+    public static <T> T nullIf(T left, T right) {
+        if (isNull(left))
+            return null;
+
+        if (isNull(right))
+            return left;
+
+        if (left.equals(right))
+            return null;
+        return left;
+    }
+
+    /**
+     * Obtiene un valor que indica si el argumento es un valor null.
+     *
+     * @param value Valor a comparar.
+     * @return Un valor true si el argumento es null.
+     */
+    public static boolean isNull(Object value) {
+        return value == null;
     }
 }

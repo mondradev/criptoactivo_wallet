@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.app;
@@ -22,15 +22,11 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.io.PrintStream;
 
 import javax.annotation.Nullable;
 
@@ -64,20 +60,8 @@ public final class SplashActivity extends AppCompatActivity {
                     try {
                         String dataDir = getApplicationContext().getApplicationInfo().dataDir;
                         File loggerFile = new File(dataDir, "cryptowallet.log");
-                        FileWriter stream = new FileWriter(loggerFile, true);
 
-                        String messageFormatted = String.format("%s %s %s %s",
-                                new SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault())
-                                        .format(new Date()),
-                                e.getLocalizedMessage(),
-                                e.getMessage(),
-                                Utils.coalesce(e.getCause(), new Throwable()).getMessage()
-                        );
-
-                        stream.append(messageFormatted);
-
-                        e.printStackTrace();
-
+                        e.printStackTrace(new PrintStream(loggerFile));
                     } catch (IOException ignored) {
 
                     }
@@ -89,6 +73,7 @@ public final class SplashActivity extends AppCompatActivity {
         }
 
         ExchangeService.init(this);
+        ExchangeService.get().reloadMarketPrice();
 
         Intent intent;
 

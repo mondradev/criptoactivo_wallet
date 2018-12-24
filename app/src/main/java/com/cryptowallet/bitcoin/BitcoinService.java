@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.bitcoin;
@@ -23,9 +23,12 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.support.annotation.NonNull;
 
+import com.cryptowallet.R;
 import com.cryptowallet.app.AppPreference;
 import com.cryptowallet.app.ExtrasKey;
+import com.cryptowallet.app.TransactionActivity;
 import com.cryptowallet.utils.Utils;
+import com.cryptowallet.utils.WifiManager;
 import com.cryptowallet.wallet.BlockchainStatus;
 import com.cryptowallet.wallet.IRequestKey;
 import com.cryptowallet.wallet.IWalletListener;
@@ -161,6 +164,11 @@ public final class BitcoinService extends WalletServiceBase {
     private HandlerThread mHandlerThread;
 
     /**
+     * Contexto de Bitcoin.
+     */
+    private Context mContext;
+
+    /**
      * Crea una nueva instancia de billetera.
      */
     protected BitcoinService() {
@@ -175,7 +183,12 @@ public final class BitcoinService extends WalletServiceBase {
      * @return Servicio de la billetera.
      */
     public static BitcoinService get() {
-        return (BitcoinService) WalletServiceBase.get(SupportedAssets.BTC);
+        BitcoinService instance
+                = (BitcoinService) WalletServiceBase.get(SupportedAssets.BTC);
+
+        Context.propagate(instance.getContext());
+
+        return instance;
     }
 
     /**
@@ -222,7 +235,6 @@ public final class BitcoinService extends WalletServiceBase {
 
         mListeners.remove(listener);
     }
-
 
     /**
      * Notifica al escucha que la billetera fue inicializada.
@@ -338,6 +350,18 @@ public final class BitcoinService extends WalletServiceBase {
     }
 
     /**
+     * Obtiene el contexto de la librería BitcoinJ.
+     *
+     * @return Contexto de la aplicación.
+     */
+    private Context getContext() {
+        if (mContext == null)
+            mContext = new Context(NETWORK_PARAMS);
+
+        return mContext;
+    }
+
+    /**
      * Este método es llamado cuando el sistema inicia el servicio por primera vez.
      */
     @Override
@@ -363,6 +387,27 @@ public final class BitcoinService extends WalletServiceBase {
         Objects.requireNonNull(mDirectory);
 
         mLogger.info("Creación del servicio correctamente.");
+
+        WifiManager.init(this);
+        WifiManager.addEventListener(new WifiManager.IListener() {
+            @Override
+            public void onConnect() {
+                if (!BitcoinService.isRunning())
+                    return;
+
+                if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
+                    BitcoinService.get().connectNetwork();
+            }
+
+            @Override
+            public void onDisconnect() {
+                if (!BitcoinService.isRunning())
+                    return;
+
+                if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
+                    BitcoinService.get().disconnectNetwork();
+            }
+        });
     }
 
     /**
@@ -388,6 +433,7 @@ public final class BitcoinService extends WalletServiceBase {
             public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance,
                                         Coin newBalance) {
                 saveWallet();
+                notifyReceived(tx);
                 notifyOnReceived(new BitcoinTransaction(tx, wallet));
             }
         });
@@ -409,6 +455,21 @@ public final class BitcoinService extends WalletServiceBase {
                 notifyOnSent(new BitcoinTransaction(tx, wallet));
             }
         });
+    }
+
+    /**
+     * Notifica al sistema operativo que ocurrió una recepción.
+     *
+     * @param tx Transacción recibida.
+     */
+    private void notifyReceived(Transaction tx) {
+        Intent intent = new Intent(this, TransactionActivity.class);
+        intent.putExtra(ExtrasKey.TX_ID, tx.getHashAsString());
+        intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
+
+        Utils.sendReceiveMoneyNotification(getApplicationContext(), R.mipmap.img_bitcoin,
+                tx.getValueSentToMe(mWallet).toFriendlyString(), tx.getHashAsString(),
+                intent);
     }
 
     /**
@@ -482,7 +543,7 @@ public final class BitcoinService extends WalletServiceBase {
                 return;
             }
 
-            Context.propagate(new Context(NETWORK_PARAMS));
+            Context.propagate(getContext());
 
             try {
                 mLogger.info("Inicializando la billetera de Bitcoin.");
@@ -534,7 +595,15 @@ public final class BitcoinService extends WalletServiceBase {
 
                 notifyOnReady();
 
-                preparePeerGroup();
+                if (AppPreference.getUseOnlyWifi(this))
+                    if (!WifiManager.hasInternet(this)) {
+                        mPeerGroup.removeWallet(mWallet);
+                        mPeerGroup = null;
+                    } else
+                        preparePeerGroup();
+                else
+                    preparePeerGroup();
+
             } catch (UnreadableWalletException | BlockStoreException ex) {
                 notifyOnException(ex);
                 stopSelf();
@@ -882,6 +951,8 @@ public final class BitcoinService extends WalletServiceBase {
         if (mPeerGroup == null)
             return;
 
+        mLogger.info("Desconectando el servicio de la red.");
+
         mPeerGroup.removeWallet(mWallet);
         mPeerGroup.setMaxConnections(0);
         mPeerGroup.stop();
@@ -913,6 +984,8 @@ public final class BitcoinService extends WalletServiceBase {
     public void connectNetwork() {
         if (mPeerGroup != null)
             return;
+
+        mLogger.info("Conectando el servicio a la red.");
 
         mPeerGroup = new PeerGroup(NETWORK_PARAMS, mChain);
         mPeerGroup.addWallet(mWallet);
