@@ -828,20 +828,24 @@ public final class BitcoinService extends WalletServiceBase {
      * Obtiene las palabras semilla de la billetera, las cuales permiten restaurarla en caso de
      * perdida.
      *
+     * @param requestKey Método que permite obtener las información de autenticación.
      * @return Lista de las palabras de recuperación.
      */
     @Override
-    public List<String> getSeedWords(IRequestKey requestCallback) {
+    public List<String> getSeedWords(IRequestKey requestKey) {
         if (mWallet.getKeyChainSeed().isEncrypted()) {
 
-            byte[] key = requestCallback.onRequest();
+            byte[] authData = requestKey.onRequest();
+
+            if (Utils.isNull(authData))
+                return null;
 
             KeyCrypter keyCrypter = mWallet.getKeyCrypter();
 
             Objects.requireNonNull(keyCrypter);
 
-            DeterministicSeed deterministicSeed = mWallet.getKeyChainSeed()
-                    .decrypt(keyCrypter, "", new KeyParameter(key));
+            DeterministicSeed deterministicSeed = mWallet.getKeyChainSeed().decrypt(
+                    keyCrypter, "", keyCrypter.deriveKey(Hex.toHexString(authData)));
 
             return deterministicSeed.getMnemonicCode();
         }

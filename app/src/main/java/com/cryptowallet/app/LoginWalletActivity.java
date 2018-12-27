@@ -1,37 +1,41 @@
+/*
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.cryptowallet.app;
 
-import android.Manifest;
-import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.KeyguardManager;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.hardware.fingerprint.FingerprintManager;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.Nullable;
-import android.support.annotation.StringRes;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Base64;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.security.FingerprintHandler;
 import com.cryptowallet.security.Security;
 import com.cryptowallet.utils.Utils;
-import com.google.common.base.Strings;
 
 import java.util.Objects;
-
-import javax.crypto.Cipher;
 
 /**
  * Esta actividad permite solicitar la autenticación al usuario para acceder a las llaves privadas
@@ -42,10 +46,6 @@ import javax.crypto.Cipher;
  */
 public class LoginWalletActivity extends ActivityBase {
 
-    /**
-     * Longitud del pin.
-     */
-    private static final int PIN_LENGHT = 4;
 
     /**
      * Bandera que indica que es registro de pin.
@@ -149,92 +149,16 @@ public class LoginWalletActivity extends ActivityBase {
 
         if (BitcoinService.isRunning())
             mRequireAuthentication = intent.getBooleanExtra(ExtrasKey.REQ_AUTH, false);
-
+/*
         if (mRequireAuthentication && AppPreference.getUseFingerprint(this))
             initFingerprint();
         else if (!mRegMode || mRequireAuthentication || mRegFingerprint)
             setInfo(R.string.enter_pin);
         else
-            setInfo(R.string.indications_pin_setup);
+            setInfo(R.string.indications_pin_setup);*/
 
     }
 
-    /**
-     * Inicializa el lector de huellas. Solo para versiones Marshmallow o superior.
-     */
-    @TargetApi(Build.VERSION_CODES.M)
-    private void initFingerprint() {
-
-        findViewById(R.id.mUsePin).setVisibility(View.GONE);
-        findViewById(R.id.mFingerprintLayout).setVisibility(View.VISIBLE);
-
-        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        FingerprintManager fingerprintManager
-                = (FingerprintManager) getSystemService(FINGERPRINT_SERVICE);
-
-        if (fingerprintManager.isHardwareDetected()) {
-            if (ActivityCompat.checkSelfPermission(this,
-                    Manifest.permission.USE_FINGERPRINT) != PackageManager.PERMISSION_GRANTED) {
-                Utils.showSnackbar(findViewById(R.id.mLoginContainer),
-                        getString(R.string.require_finger_permission));
-            } else {
-
-                if (!fingerprintManager.hasEnrolledFingerprints()) {
-                    Utils.showSnackbar(findViewById(R.id.mLoginContainer),
-                            getString(R.string.require_finger_register));
-                } else {
-
-                    if (!keyguardManager.isKeyguardSecure()) {
-                        Utils.showSnackbar(findViewById(R.id.mLoginContainer),
-                                getString(R.string.no_lock_screen));
-                    } else {
-                        Security.get().createAndroidKeyIfRequire();
-
-                        FingerprintManager.CryptoObject cryptoObject
-                                = new FingerprintManager.CryptoObject(
-                                Security.get().getCipher(LoginWalletActivity.this,
-                                        !mRegFingerprint));
-
-                        new FingerprintHandler(this) {
-
-                            @Override
-                            public void onAuthenticationSucceeded(
-                                    FingerprintManager.AuthenticationResult result) {
-                                Cipher cipher = result.getCryptoObject().getCipher();
-
-                                Intent response = new Intent();
-                                byte[] dataPin;
-                                if (mRegFingerprint) {
-                                    dataPin = Base64.decode(Utils.concatAll(mPinValues), Base64.DEFAULT);
-                                    Security.get().encrypteKeyData(
-                                            LoginWalletActivity.this, cipher, dataPin);
-                                    mKey = Security.get().getKey();
-                                    AppPreference.setUseFingerprint(
-                                            LoginWalletActivity.this, true);
-                                } else
-                                    Security.get().decryptKey(
-                                            LoginWalletActivity.this, cipher);
-
-                                dataPin = Security.get().getKey();
-
-                                response.putExtra(ExtrasKey.PIN_DATA, dataPin);
-                                LoginWalletActivity.this.setResult(Activity.RESULT_OK, response);
-                                LoginWalletActivity.this.finish();
-
-                            }
-
-                            @Override
-                            public void onAuthenticationFailed() {
-                                LoginWalletActivity.this.setResult(Activity.RESULT_FIRST_USER);
-                                LoginWalletActivity.this.finish();
-                            }
-
-                        }.startAuth(fingerprintManager, cryptoObject);
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * Este método es llamado por cada botón del teclado numérico.
@@ -243,7 +167,7 @@ public class LoginWalletActivity extends ActivityBase {
      */
     public void handlerPad(View view) {
         if (mHasError) {
-            hideInfo();
+            //   hideInfo();
             mHasError = true;
         }
 
@@ -254,11 +178,11 @@ public class LoginWalletActivity extends ActivityBase {
 
         mPinValues[mCountDigit] = mPad.getText().toString();
 
-        fillPin(mCountDigit);
+        //   fillPin(mCountDigit);
 
         mCountDigit++;
 
-        if (isCompleted(mCountDigit)) {
+   /*     if (isCompleted(mCountDigit)) {
 
             if (mRegMode && (!mRequireAuthentication || mKeyPrev != null)) {
 
@@ -307,8 +231,9 @@ public class LoginWalletActivity extends ActivityBase {
                 validatePin();
 
 
-        }
 
+        }
+*/
     }
 
     /**
@@ -327,68 +252,8 @@ public class LoginWalletActivity extends ActivityBase {
 
     }
 
-    /**
-     * Oculta el elemento que visualiza el texto de información.
-     */
-    private void hideInfo() {
-        final TextView mInfoLabel = findViewById(R.id.mInfo);
-        mInfoLabel.post(new Runnable() {
-            @Override
-            public void run() {
-                mInfoLabel.setVisibility(View.GONE);
-            }
-        });
-    }
 
-    /**
-     * Establece y muestra la información sobre el estado de la autenticación.
-     *
-     * @param idRes Identificador del texto a visualizar.
-     */
-    private void setInfo(@StringRes final int idRes) {
-        final TextView mInfoLabel = findViewById(R.id.mInfo);
-        mInfoLabel.post(new Runnable() {
-            @Override
-            public void run() {
-                mInfoLabel.setText(idRes);
-                if (mInfoLabel.getVisibility() != View.VISIBLE)
-                    mInfoLabel.setVisibility(View.VISIBLE);
-            }
-        });
-    }
 
-    /**
-     * Limpia los digitos seleccionados del PIN.
-     */
-    private void cleanPin() {
-        for (final ImageView pin : mPinDigitViews)
-            pin.post(new Runnable() {
-                @Override
-                public void run() {
-                    pin.setImageDrawable(getDrawable(R.drawable.br_pin));
-                }
-            });
-    }
-
-    /**
-     * Rellena el PIN para visualizarlo como seleccionado.
-     *
-     * @param digit Digito del pin a rellenar.
-     */
-    private void fillPin(int digit) {
-        if (Utils.between(digit, 0, mPinDigitViews.length - 1))
-            mPinDigitViews[digit].setImageDrawable(getDrawable(R.drawable.bg_pin));
-    }
-
-    /**
-     * Limpia el digito especificado del PIN.
-     *
-     * @param digit Digito a limpiar.
-     */
-    private void cleanPin(int digit) {
-        if (Utils.between(digit, 0, mPinDigitViews.length - 1))
-            mPinDigitViews[digit].setImageDrawable(getDrawable(R.drawable.br_pin));
-    }
 
     /**
      * Encripta la billetera a través de un subproceso.
@@ -401,23 +266,7 @@ public class LoginWalletActivity extends ActivityBase {
         new EncryptWalletTask().execute(this);
     }
 
-    /**
-     * Compara si el PIN elegido y su confirmación son correctas.
-     *
-     * @param left  PIN A.
-     * @param right PIN B.
-     * @return Si ambos PINs son iguales.
-     */
-    private boolean pinEquals(String[] left, String[] right) {
-        for (int i = 0; i < PIN_LENGHT; i++) {
-            if (Strings.isNullOrEmpty(left[i]) || Strings.isNullOrEmpty(right[i]))
-                return false;
 
-            if (!left[i].contentEquals(right[i]))
-                return false;
-        }
-        return true;
-    }
 
     /**
      * Ejecuta las opciones seleccionadas en la barra de soporte de la aplicación.
@@ -434,29 +283,6 @@ public class LoginWalletActivity extends ActivityBase {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    /**
-     * Indica si el PIN alcanzó su longitud.
-     *
-     * @param currentLength Longitud actual del PIN.
-     * @return Un valor true si alcanzó la longitud.
-     */
-    private boolean isCompleted(int currentLength) {
-        return currentLength == PIN_LENGHT;
-    }
-
-    /**
-     * Este método es llamada por el botón de "Borrar".
-     *
-     * @param view Botón que hace el llamado a este método.
-     */
-    public void handlerBackspace(View view) {
-
-        if (mCountDigit > 0) {
-            mCountDigit--;
-            cleanPin(mCountDigit);
-        }
     }
 
     /**
@@ -506,14 +332,14 @@ public class LoginWalletActivity extends ActivityBase {
                         self.mHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                self.initFingerprint();
+                                // self.initFingerprint();
                             }
                         });
                     } else {
                         self.mKeyPrev = dataPin;
-                        self.setInfo(R.string.indications_pin_setup);
+                        //  self.setInfo(R.string.indications_pin_setup);
                         self.mCountDigit = 0;
-                        self.cleanPin();
+                        //  self.cleanPin();
                     }
                 } else {
                     Intent intent = new Intent();
@@ -524,7 +350,7 @@ public class LoginWalletActivity extends ActivityBase {
                 }
             } else {
 
-                self.setInfo(R.string.error_pin);
+                //  self.setInfo(R.string.error_pin);
                 self.mHasError = true;
                 self.mCountDigit = 0;
                 self.mPinValues = new String[4];
@@ -533,8 +359,8 @@ public class LoginWalletActivity extends ActivityBase {
                 int MAX_ATTEMP = 3;
                 if (self.mAttemp >= MAX_ATTEMP)
                     isFinalized = true;
-                else
-                    self.cleanPin();
+                /*else
+                    self.cleanPin();*/
             }
 
             return self;

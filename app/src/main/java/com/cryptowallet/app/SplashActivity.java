@@ -62,6 +62,7 @@ public final class SplashActivity extends AppCompatActivity {
                         File loggerFile = new File(dataDir, "cryptowallet.log");
 
                         e.printStackTrace(new PrintStream(loggerFile));
+                        e.printStackTrace();
                     } catch (IOException ignored) {
 
                     }
