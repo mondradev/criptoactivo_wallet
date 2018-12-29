@@ -73,7 +73,9 @@ public final class SplashActivity extends AppCompatActivity {
             mIsInitializeLogger = true;
         }
 
-        ExchangeService.init(this);
+        if (!ExchangeService.isInitialized())
+            ExchangeService.init(this);
+
         ExchangeService.get().reloadMarketPrice();
 
         Intent intent;
@@ -85,6 +87,8 @@ public final class SplashActivity extends AppCompatActivity {
             startService(intent);
 
             intent = new Intent(this, WalletAppActivity.class);
+            intent.putExtra(ExtrasKey.REQ_AUTH, true);
+
         } else
             intent = new Intent(this, InitWalletActivity.class);
 

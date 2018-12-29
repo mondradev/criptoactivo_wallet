@@ -23,6 +23,7 @@ import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
 import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.ScriptException;
@@ -32,9 +33,12 @@ import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.wallet.Wallet;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Esta clase representa una transacción de Bitcoin.
@@ -75,6 +79,37 @@ public final class BitcoinTransaction extends GenericTransactionBase {
     }
 
     /**
+     * Obtiene la comisión gastada por la aplicación.
+     *
+     * @param transaction Transacción a recuperar.
+     * @return Comisión gastada para el envío.
+     */
+    private static long getWalletFee(Transaction transaction) {
+        Objects.requireNonNull(transaction);
+
+        List<TransactionOutput> outputs = transaction.getOutputs();
+
+        long fees = 0;
+
+        for (TransactionOutput output : outputs) {
+            Address toAddress = output.getScriptPubKey()
+                    .getToAddress(BitcoinService.NETWORK_PARAMS);
+
+            for (byte[] target : BitcoinService.FEE_DATA) {
+                Coin amount = Coin.valueOf(ByteBuffer.wrap(target, 0, 8).getLong());
+                String addressB58 = Base58
+                        .encode(Arrays.copyOfRange(target, 8, target.length));
+
+                if (addressB58.contentEquals(toAddress.toBase58())
+                        && amount.getValue() == output.getValue().getValue())
+                    fees += amount.value;
+            }
+        }
+
+        return fees;
+    }
+
+    /**
      * Obtiene una cadena que representa la cantidad paga como comisión para realizar la transacción
      * de envío de pago.
      *
@@ -82,7 +117,8 @@ public final class BitcoinTransaction extends GenericTransactionBase {
      */
     @Override
     public long getFee() {
-        return Utils.coalesce(mBitcoinTransaction.getFee(), Coin.ZERO).getValue();
+        long walletFee = getWalletFee(mBitcoinTransaction);
+        return Utils.coalesce(mBitcoinTransaction.getFee(), Coin.ZERO).getValue() + walletFee;
     }
 
     /**

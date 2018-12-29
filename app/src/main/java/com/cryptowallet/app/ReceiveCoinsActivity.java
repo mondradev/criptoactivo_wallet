@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.app;
@@ -39,6 +39,7 @@ import com.cryptowallet.utils.DecimalsFilter;
 import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletServiceBase;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
@@ -75,7 +76,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
      * Cuenta regresiva para actualizar el código QR, cuando la cantidad es modificada.
      */
     private CountDownTimer mUpdateQrCountDown
-            = new CountDownTimer(250, 1) {
+            = new CountDownTimer(350, 1) {
 
         @Override
         public void onTick(long millisUntilFinished) {
@@ -247,12 +248,16 @@ public class ReceiveCoinsActivity extends ActivityBase {
     private Uri getUri() {
         switch (mSelectedAsset) {
             case BTC:
+                Address address = Address.fromBase58(BitcoinService.NETWORK_PARAMS, mAddress);
+                String token = WalletServiceBase.generatePaymentToken(
+                        SupportedAssets.BTC, address.toBase58());
+
                 return Uri.parse(BitcoinURI.convertToBitcoinURI(
-                        Address.fromBase58(BitcoinService.NETWORK_PARAMS, mAddress),
+                        address,
                         Coin.valueOf(mAmount),
                         null,
                         null
-                ));
+                ) + "&token=" + token);
         }
         return Uri.EMPTY;
     }

@@ -17,6 +17,7 @@
 
 package com.cryptowallet.app;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -26,10 +27,10 @@ import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -64,6 +65,16 @@ import java.util.concurrent.Executors;
 public class WalletAppActivity extends ActivityBase {
 
     /**
+     * Etiqueta de la actividad.
+     */
+    private static final String TAG = "WalletApp";
+
+    /**
+     * Indica si se puede actualizar los precios.
+     */
+    private boolean mCanUpdate = false;
+
+    /**
      * TextView que visualiza el saldo de la billetera.
      */
     private TextView mBalanceText;
@@ -71,7 +82,7 @@ public class WalletAppActivity extends ActivityBase {
     /**
      * Es un cuadro de diálogo que permite congelar la actividad hasta que la billetera se inicia.
      */
-    private AlertDialog mDialogOnLoad;
+    private AuthenticateDialog mDialogOnLoad;
 
     /**
      * Lista de las transacciones.
@@ -120,17 +131,8 @@ public class WalletAppActivity extends ActivityBase {
             if (asset != currentAsset || !BitcoinService.isRunning())
                 return;
 
-            final String balanceFiat = ExchangeService.get()
-                    .getBtcPrice(asset, BitcoinService.get().getBalance());
-
-            final TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
-
-            mUsdBalance.post(new Runnable() {
-                @Override
-                public void run() {
-                    mUsdBalance.setText(balanceFiat);
-                }
-            });
+            if (mCanUpdate)
+                BitcoinService.notifyOnBalanceChange();
         }
 
     };
@@ -197,6 +199,9 @@ public class WalletAppActivity extends ActivityBase {
          */
         @Override
         public void onBalanceChanged(final WalletServiceBase service, long ignored) {
+            if (!mCanUpdate)
+                return;
+
             final long value = service.getBalance();
             final TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
 
@@ -230,13 +235,15 @@ public class WalletAppActivity extends ActivityBase {
          */
         @Override
         public void onReady(WalletServiceBase service) {
-            onBalanceChanged(service, service.getBalance());
+
             ExchangeService.get().addEventListener(mExchangeListener);
 
-            mRecentsAdapter.addAll(service.getTransactionsByTime());
-
-            if (mDialogOnLoad != null && mDialogOnLoad.isShowing())
-                mDialogOnLoad.dismiss();
+            if (mDialogOnLoad != null)
+                mDialogOnLoad
+                        .setMode(AuthenticateDialog.AUTH)
+                        .setWallet(service)
+                        .dismissOnAuth()
+                        .showUIAuth();
         }
 
         /**
@@ -460,7 +467,7 @@ public class WalletAppActivity extends ActivityBase {
                         ExchangeService.get().reloadMarketPrice();
 
                         mRecentsAdapter.setSource(BitcoinService.get()
-                                .getTransactionsByTime());
+                                .getRecentTransactions(5));
 
                         mSwipeRefreshData.post(new NamedRunnable(
                                 "WalletAppActivity.SwipeRefreshLayout") {
@@ -474,18 +481,111 @@ public class WalletAppActivity extends ActivityBase {
             }
         });
 
+        setCanLock(true);
+
         BitcoinService.addEventListener(mListener);
 
-        if (!BitcoinService.isRunning()) {
+        mCanUpdate = false;
 
-            mDialogOnLoad = new AlertDialog.Builder(this)
-                    .setTitle(R.string.loading_title_text)
-                    .setMessage(R.string.loading_text)
-                    .setCancelable(false)
-                    .create();
+        createAuthDialog();
 
-            mDialogOnLoad.show();
+
+    }
+
+    /**
+     * @return
+     */
+    private AuthenticateDialog createAuthDialog() {
+        mDialogOnLoad = new AuthenticateDialog();
+
+        mDialogOnLoad.setListener(new DialogInterface() {
+            @Override
+            public void cancel() {
+                System.exit(0);
+            }
+
+            @Override
+            public void dismiss() {
+                setCanLock(true);
+                getLockTimer().start();
+
+                showData();
+            }
+        });
+
+        return mDialogOnLoad;
+    }
+
+    /**
+     * Muestra la información de la billetera.
+     */
+    private void showData() {
+        mCanUpdate = true;
+        mRecentsAdapter.addAll(BitcoinService.get().getRecentTransactions(5));
+
+        BitcoinService.notifyOnBalanceChange();
+    }
+
+    /**
+     * Oculta la información de la billetera.
+     */
+    private void hideData() {
+        Log.v(TAG, "Hide data");
+
+        mCanUpdate = true;
+        mRecentsAdapter.clear();
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ((TextView) findViewById(R.id.mBalanceText)).setText(R.string.hide_data);
+                ((TextView) findViewById(R.id.mBalanceFiat)).setText(R.string.hide_data);
+            }
+        });
+    }
+
+    /**
+     * Este método es llamado cuando se minimiza la aplicación.
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (!Utils.isNull(mDialogOnLoad))
+            mDialogOnLoad.cancel();
+
+    }
+
+    /**
+     * Este método es llamado cuando se recupera la aplicación al haber cambiado a otra.
+     */
+    @Override
+    protected void onResume() {
+        setCanLock(false);
+
+        super.onResume();
+
+        boolean reqAuth = getIntent().getBooleanExtra(ExtrasKey.REQ_AUTH, false);
+        boolean authenticate
+                = getIntent().getBooleanExtra(ExtrasKey.AUTHENTICATED, false);
+
+        if (!mRequireLock && !reqAuth && !authenticate) {
+            showData();
+            return;
         }
+
+        Log.v(TAG, "Mostrando cuadro de autenticación.");
+
+        hideData();
+
+        if (!BitcoinService.isRunning()) {
+            createAuthDialog().showUIProgress(getString(R.string.loading_text), this);
+        } else {
+            createAuthDialog().setMode(AuthenticateDialog.AUTH).dismissOnAuth()
+                    .setWallet(BitcoinService.get()).show(this);
+        }
+
+        Log.v(TAG, "Billetera iniciada.");
 
     }
 
@@ -604,7 +704,7 @@ public class WalletAppActivity extends ActivityBase {
                 Utils.showSnackbar(findViewById(R.id.mSendFab),
                         String.format(getString(R.string.sent_payment_text), coinToStringFriendly(
                                 SupportedAssets.valueOf(data.getStringExtra(ExtrasKey.SELECTED_COIN)),
-                                data.getLongExtra(ExtrasKey.TX_ID, 0)
+                                data.getLongExtra(ExtrasKey.SEND_AMOUNT, 0)
                         )));
             else super.onActivityResult(requestCode, resultCode, data);
     }

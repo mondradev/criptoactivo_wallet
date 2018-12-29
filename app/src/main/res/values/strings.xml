@@ -154,4 +154,6 @@
     <string name="insufficient_money">Insufficient money, requires %s</string>
     <string name="reconnect_setting">Reconnect network</string>
     <string name="empty_address_text">No address available</string>
+    <string name="sending_payment">Wait while sending your payment</string>
+    <string name="hide_data" translatable="false">**********</string>
 </resources>

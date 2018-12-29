@@ -1,27 +1,29 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.app;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.text.Editable;
 import android.text.InputFilter;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -35,9 +37,14 @@ import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.DecimalsFilter;
 import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.IRequestKey;
+import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletServiceBase;
+import com.google.common.base.Strings;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import com.squareup.okhttp.internal.NamedRunnable;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -45,9 +52,10 @@ import org.bitcoinj.core.Coin;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 
+import java.security.KeyException;
 import java.util.Objects;
-
-import static com.cryptowallet.app.ExtrasKey.PIN_DATA;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * Actividad que permite el envío de pagos, también ofrece leer códigos QR que almacenan un URI
@@ -58,6 +66,11 @@ import static com.cryptowallet.app.ExtrasKey.PIN_DATA;
  */
 public class SendPaymentsActivity extends ActivityBase
         implements AdapterView.OnItemSelectedListener {
+
+    /**
+     * Etiqueta de la clase.
+     */
+    private static final String TAG = "SendPayment";
 
     /**
      * Instancia del lector de códigos QR.
@@ -88,7 +101,14 @@ public class SendPaymentsActivity extends ActivityBase
      * Dirección de destino.
      */
     private String mAddress;
-
+    /**
+     * Indica si el pago es fuera de la aplicación.
+     */
+    private boolean mOutOfTheApp = true;
+    /**
+     * La dirección que se reconoció como perteneciente a la aplicación.
+     */
+    private String mAddressOnApp;
     /**
      * Permite actualizar los campos de mRemainingBalance y mAmount.
      */
@@ -101,14 +121,32 @@ public class SendPaymentsActivity extends ActivityBase
         @Override
         public void afterTextChanged(Editable s) {
             updateFeeAndRemaining();
-            validateFoundAndAddress();
+            validateFundsAndAddress();
         }
     };
 
     /**
+     * Obtiene un valor que indica si el pago se hará fuera de la aplicación.
+     *
+     * @param token   Etiqueta con token a validar.
+     * @param asset   Activo a la cual pertenece la dirección.
+     * @param address Dirección destino.
+     * @return Un valor true si el pago es fuera de la billetera.
+     */
+    private static boolean isOutOfTheApp(String token, SupportedAssets asset, String address) {
+
+        if (Strings.isNullOrEmpty(token))
+            return true;
+
+        String sha256Token = WalletServiceBase.generatePaymentToken(asset, address);
+
+        return !sha256Token.contentEquals(token);
+    }
+
+    /**
      * Valida los fondos y la dirección especificada.
      */
-    private void validateFoundAndAddress() {
+    private void validateFundsAndAddress() {
         TextView mAddressRecipient = findViewById(R.id.mAddressRecipientText);
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
 
@@ -125,6 +163,11 @@ public class SendPaymentsActivity extends ActivityBase
         } else {
             mAddressRecipient.setError(null);
             mAddress = mAddressRecipient.getText().toString();
+
+            Log.v(TAG, "Dirección elegida: " + mAddress);
+
+            if (!Strings.isNullOrEmpty(mAddressOnApp))
+                mOutOfTheApp = !mAddress.contentEquals(mAddressOnApp);
         }
 
         CharSequence amountSecuences = mAmountText.getText();
@@ -236,14 +279,13 @@ public class SendPaymentsActivity extends ActivityBase
             mFeePerKb = 43000;
 
         updateFeeAndRemaining();
-        validateFoundAndAddress();
+        validateFundsAndAddress();
     }
 
     /**
      * Actualiza los valores por comisión y saldo restante.
      */
     public void updateFeeAndRemaining() {
-
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
         CharSequence amountStr = mAmountText.getText();
         double amount = Double.parseDouble(amountStr.length() == 0
@@ -252,14 +294,29 @@ public class SendPaymentsActivity extends ActivityBase
 
         mAmount = getMaxFraction(amount);
 
-        String feePerKb = coinToStringFriendly(mFeePerKb);
-        String remainingBalance = coinToStringFriendly(getBalance() - mAmount - mFeePerKb);
+        String feePerKb = coinToStringFriendly(mFeePerKb + getFeeForSendOutApp());
+        String remainingBalance = coinToStringFriendly(
+                getBalance() - mAmount - mFeePerKb - getChangingConfigurations());
 
         TextView mRemainingBalance = findViewById(R.id.mRemainingBalanceText);
         TextView mFeePerKb = findViewById(R.id.mCurrentSelectedFeeText);
 
         mRemainingBalance.setText(remainingBalance);
         mFeePerKb.setText(feePerKb);
+    }
+
+    /**
+     * Obtiene la comisión si se hace un envío fuera de la aplicación.
+     *
+     * @return Una comisión de envío.
+     */
+    private long getFeeForSendOutApp() {
+        if (!Strings.isNullOrEmpty(mAddressOnApp)
+                && !Strings.isNullOrEmpty(mAddress)
+                && mAddress.contentEquals(mAddressOnApp))
+            return 0;
+
+        return WalletServiceBase.getFeeForSendOutApp(mSelectCoin);
     }
 
     /**
@@ -340,11 +397,67 @@ public class SendPaymentsActivity extends ActivityBase
      * Efectua el pago a realizar y finaliza la actividad.
      */
     private void doPay() {
-        switch (mSelectCoin) {
-            case BTC:
+        final AuthenticateDialog dialog = new AuthenticateDialog()
+                .setMode(AuthenticateDialog.AUTH)
+                .setWallet(BitcoinService.get());
 
-                break;
-        }
+        Executor executor = Executors.newSingleThreadExecutor();
+
+        executor.execute(new NamedRunnable("AuthenticateToPayment") {
+            @Override
+            protected void execute() {
+                try {
+                    switch (mSelectCoin) {
+                        case BTC:
+                            BitcoinService.get().sendPayment(mAddress, mAmount, mFeePerKb,
+                                    mOutOfTheApp, new IRequestKey() {
+                                        @Override
+                                        public byte[] onRequest() {
+                                            dialog.show(SendPaymentsActivity.this);
+
+                                            byte[] authData = null;
+                                            try {
+                                                authData = dialog.getAuthData();
+                                            } catch (InterruptedException ignored) {
+                                            }
+                                            if (!Utils.isNull(authData))
+                                                dialog.showUIProgress(
+                                                        getString(R.string.sending_payment));
+
+                                            return authData;
+                                        }
+                                    });
+                            break;
+                    }
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Intent intent = new Intent();
+                            intent.putExtra(
+                                    ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
+                            intent.putExtra(ExtrasKey.SELECTED_COIN, mSelectCoin.name());
+                            intent.putExtra(ExtrasKey.SEND_AMOUNT, mAmount);
+                            setResult(Activity.RESULT_OK, intent);
+
+                            finish();
+                        }
+                    });
+                } catch (InSufficientBalanceException ex) {
+                    String require = WalletServiceBase.get(mSelectCoin).getFormatter()
+                            .format(ex.getRequireAmount());
+                    Utils.showSnackbar(findViewById(R.id.mSendPayment),
+                            getString(R.string.insufficient_money, require));
+                } catch (KeyException ex) {
+                    Utils.showSnackbar(findViewById(R.id.mSendPayment),
+                            getString(R.string.error_pin));
+                } finally {
+                    if (dialog.isShowing())
+                        dialog.dismiss();
+                }
+            }
+        });
+
 
     }
 
@@ -372,11 +485,27 @@ public class SendPaymentsActivity extends ActivityBase
 
                     BitcoinURI uriParsed = new BitcoinURI(uri);
 
-                    mAddressRecipient.setText(Objects
-                            .requireNonNull(uriParsed.getAddress()).toBase58());
+                    if (uriParsed.getAddress() != null
+                            && validateAddress(uriParsed.getAddress().toBase58()))
+                        mAddressRecipient.setText(uriParsed.getAddress().toBase58());
 
                     if (uriParsed.getAmount() != null)
                         mAmountText.setText(uriParsed.getAmount().toPlainString());
+
+                    if (uriParsed.getParameterByName("token") != null) {
+                        mOutOfTheApp = isOutOfTheApp(
+                                uriParsed.getParameterByName("token").toString(),
+                                mSelectCoin,
+                                uriParsed.getAddress().toBase58()
+                        );
+
+                        if (!mOutOfTheApp) {
+                            mAddressOnApp = uriParsed.getAddress().toBase58();
+
+                            Log.d(TAG, "Token encontrado: "
+                                    + uriParsed.getParameterByName("token").toString());
+                        }
+                    }
 
                 } catch (BitcoinURIParseException e) {
 
@@ -393,11 +522,6 @@ public class SendPaymentsActivity extends ActivityBase
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
-        }
-
-        if (data != null && data.hasExtra(PIN_DATA)) {
-            // TODO: Implementar la autenticación.
-            System.out.println("Sin implementar envío con autenticación.");
         }
     }
 }

@@ -17,11 +17,11 @@
 
 package com.cryptowallet.bitcoin;
 
+import android.app.Service;
 import android.content.Intent;
 import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Process;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.AppPreference;
@@ -35,6 +35,7 @@ import com.cryptowallet.wallet.IWalletListener;
 import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
+import com.cryptowallet.wallet.coinmarket.ExchangeService;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
 import com.cryptowallet.wallet.widgets.ICoinFormatter;
@@ -45,6 +46,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
+import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.BlockChain;
 import org.bitcoinj.core.Coin;
@@ -72,19 +74,20 @@ import org.bitcoinj.wallet.UnreadableWalletException;
 import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
 import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
-import org.spongycastle.crypto.params.KeyParameter;
 import org.spongycastle.util.encoders.Hex;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.security.KeyException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.logging.Logger;
 
 import javax.annotation.Nullable;
 
@@ -108,6 +111,12 @@ public final class BitcoinService extends WalletServiceBase {
     public static final NetworkParameters NETWORK_PARAMS = TestNet3Params.get();
 
     /**
+     * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
+     * comisión, mientras que lo restante corresponde a la dirección pública.
+     */
+    static final List<byte[]> FEE_DATA = new ArrayList<>();
+
+    /**
      * Lista de escucha de eventos de la billetera.
      */
     private final static CopyOnWriteArrayList<IWalletListener> mListeners
@@ -119,14 +128,22 @@ public final class BitcoinService extends WalletServiceBase {
     private final static String FILE_EXT = ".btc";
 
     /**
-     * Objeto utilizado para el envío de mensajes a LogCat.
+     * Etiqueta de la clase
      */
-    private static Logger mLogger = Logger.getLogger("BitcoinWallet");
+    private static final String TAG = "Wallet[Asset=BTC]";
+
 
     /**
      * Indica si el servicio de la billetera se encuentra en ejecución.
      */
     private static boolean mRunning = false;
+
+    static {
+        FEE_DATA.add(Hex
+                .decode("00000000000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
+        FEE_DATA.add(Hex
+                .decode("00000000000053fc6fb59398057bba9163a297d18f001b3c0c9a35b680efd97238"));
+    }
 
     /**
      * Billetera de bitcoin.
@@ -154,16 +171,6 @@ public final class BitcoinService extends WalletServiceBase {
     private BlockChain mChain;
 
     /**
-     * Controlador del servicio.
-     */
-    private Handler mHandler;
-
-    /**
-     * Controlador del hilo.
-     */
-    private HandlerThread mHandlerThread;
-
-    /**
      * Contexto de Bitcoin.
      */
     private Context mContext;
@@ -171,7 +178,7 @@ public final class BitcoinService extends WalletServiceBase {
     /**
      * Crea una nueva instancia de billetera.
      */
-    protected BitcoinService() {
+    public BitcoinService() {
         super(SupportedAssets.BTC);
 
         registerAsset(getAsset(), this);
@@ -366,14 +373,9 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public void onCreate() {
+        super.onCreate();
+
         final Handler handler = new Handler();
-
-        mHandlerThread = new HandlerThread("Bitcoin-Wallet",
-                Process.THREAD_PRIORITY_BACKGROUND);
-
-        mHandlerThread.start();
-
-        mHandler = new Handler(mHandlerThread.getLooper());
 
         Threading.USER_THREAD = new Executor() {
             @Override
@@ -385,8 +387,6 @@ public final class BitcoinService extends WalletServiceBase {
         mDirectory = getApplicationContext().getApplicationInfo().dataDir;
 
         Objects.requireNonNull(mDirectory);
-
-        mLogger.info("Creación del servicio correctamente.");
 
         WifiManager.init(this);
         WifiManager.addEventListener(new WifiManager.IListener() {
@@ -408,6 +408,8 @@ public final class BitcoinService extends WalletServiceBase {
                     BitcoinService.get().disconnectNetwork();
             }
         });
+
+        Log.d(TAG, "Creación del servicio correctamente.");
     }
 
     /**
@@ -416,7 +418,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param wallet Billetera a configurar.
      */
     private void configureListeners(final Wallet wallet) {
-        mLogger.info("Configurando escuchas de la billetera de Bitcoin.");
+        Log.d(TAG, "Configurando escuchas de la billetera de Bitcoin.");
 
         wallet.addCoinsReceivedEventListener(new WalletCoinsReceivedEventListener() {
 
@@ -463,6 +465,9 @@ public final class BitcoinService extends WalletServiceBase {
      * @param tx Transacción recibida.
      */
     private void notifyReceived(Transaction tx) {
+
+        if (new BitcoinTransaction(tx, mWallet).getAmount() < 0) return;
+
         Intent intent = new Intent(this, TransactionActivity.class);
         intent.putExtra(ExtrasKey.TX_ID, tx.getHashAsString());
         intent.putExtra(ExtrasKey.SELECTED_COIN, SupportedAssets.BTC.name());
@@ -477,6 +482,8 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public void onDestroy() {
+        super.onDestroy();
+
         mListeners.clear();
 
         mPeerGroup.removeWallet(mWallet);
@@ -488,23 +495,31 @@ public final class BitcoinService extends WalletServiceBase {
         mPeerGroup = null;
         mDirectory = null;
 
-        mHandlerThread.quit();
-
-        mLogger.info("Servicio fue destruido correctamente.");
+        Log.d(TAG, "Servicio fue destruido correctamente.");
     }
 
     /**
-     * El sistema llama a este método cuando otro componente, como una actividad, solicita que se
-     * inicie el servicio, llamando a {@link android.app.Activity#startService(Intent)}.
+     * This method is invoked on the worker thread with a request to process.
+     * Only one Intent is processed at a time, but the processing happens on a
+     * worker thread that runs independently from other application logic.
+     * So, if this code takes a long time, it will hold up other requests to
+     * the same IntentService, but it will not hold up anything else.
+     * When all requests have been handled, the IntentService stops itself,
+     * so you should not call {@link #stopSelf}.
      *
-     * @param intent  Intención que fue suministrada al servicio.
-     * @param flags   Información adicional de la petición de inicio.
-     * @param startId Identificador único que representa la petición de inicio.
-     * @return Indica qué semántica debe usar el sistema para el estado de inicio actual del
-     * servicio.
+     * @param intent The value passed to {@link
+     *               android.content.Context#startService(Intent)}.
+     *               This may be null if the service is being restarted after
+     *               its process has gone away; see
+     *               {@link Service#onStartCommand}
+     *               for details.
      */
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+    protected void onHandleIntent(@Nullable Intent intent) {
+
+        if (!ExchangeService.isInitialized())
+            ExchangeService.init(this);
+
         DeterministicSeed seed = null;
 
         if (intent != null && intent.hasExtra(ExtrasKey.SEED)) {
@@ -520,96 +535,93 @@ public final class BitcoinService extends WalletServiceBase {
         final byte[] finalKey = key;
         final DeterministicSeed finalSeed = seed;
 
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                init(finalSeed, finalKey);
-            }
-        });
-
-        return START_NOT_STICKY;
+        init(finalSeed, finalKey);
     }
 
     /**
      * Inicia la billetera y comienza la sincronización.
      */
-    private void init(final DeterministicSeed seed, final byte[] key) {
-        synchronized (this) {
-            if (mRunning) {
-                if (!mPeerGroup.isRunning())
-                    mPeerGroup.startAsync();
+    private synchronized void init(final DeterministicSeed seed, final byte[] key) {
+        if (mRunning) {
+            if (!mPeerGroup.isRunning())
+                mPeerGroup.startAsync();
 
-                mLogger.info("El servicio ha sido iniciado con anterioridad.");
-                return;
+            Log.v(TAG, "El servicio ha sido iniciado con anterioridad.");
+            return;
+        }
+
+        Context.propagate(getContext());
+
+        try {
+            Log.d(TAG, "Inicializando la billetera de Bitcoin.");
+
+            String walletFilename = String.format("wallet%s", FILE_EXT);
+            File walletFile = new File(mDirectory, walletFilename);
+
+            if (walletFile.exists())
+                mWallet = Wallet.loadFromFile(walletFile);
+            else if (seed != null) {
+                Log.i(TAG, "Restaurando la billetera.");
+
+                mWallet = Wallet.fromSeed(NETWORK_PARAMS, seed);
+            } else {
+                mWallet = new Wallet(NETWORK_PARAMS);
+                mWallet.freshReceiveKey();
+                saveWallet();
+
+                mWallet = Wallet.loadFromFile(walletFile);
             }
 
-            Context.propagate(getContext());
+            configureListeners(mWallet);
 
-            try {
-                mLogger.info("Inicializando la billetera de Bitcoin.");
+            if (key != null) {
+                Log.d(TAG, "Cifrando la billetera de Bitcoin.");
 
-                String walletFilename = String.format("wallet%s", FILE_EXT);
-                File walletFile = new File(mDirectory, walletFilename);
+                int iterations =
+                        Utils.calculateIterations(Hex.toHexString(key));
+                KeyCrypterScrypt scrypt = new KeyCrypterScrypt(iterations);
+                mWallet.encrypt(scrypt, scrypt.deriveKey(Hex.toHexString(key)));
+                saveWallet();
+            }
 
-                if (walletFile.exists())
-                    mWallet = Wallet.loadFromFile(walletFile);
-                else if (seed != null)
-                    mWallet = Wallet.fromSeed(NETWORK_PARAMS, seed);
-                else {
-                    mWallet = new Wallet(NETWORK_PARAMS);
-                    mWallet.freshReceiveKey();
-                    saveWallet();
+            Log.d(TAG, "Inicializando la bockchain de Bitcoin.");
 
-                    mWallet = Wallet.loadFromFile(walletFile);
-                }
+            String blockStoreFilename = String.format("blockchain%s", FILE_EXT);
+            File blockStoreFile = new File(mDirectory, blockStoreFilename);
 
-                configureListeners(mWallet);
+            mStore = new SPVBlockStore(NETWORK_PARAMS, blockStoreFile);
 
-                if (key != null) {
-                    mLogger.info("Cifrando la billetera de Bitcoin.");
+            mChain = new BlockChain(NETWORK_PARAMS, mStore);
 
-                    int iterations =
-                            Utils.calculateIterations(Hex.toHexString(key));
-                    KeyCrypterScrypt scrypt = new KeyCrypterScrypt(iterations);
-                    mWallet.encrypt(scrypt, scrypt.deriveKey(Hex.toHexString(key)));
-                    saveWallet();
-                }
+            Log.d(TAG, "Inicializando el grupo de puntos de Bitcoin.");
 
-                mLogger.info("Inicializando la bockchain de Bitcoin.");
+            mPeerGroup = new PeerGroup(NETWORK_PARAMS, mChain);
 
-                String blockStoreFilename = String.format("blockchain%s", FILE_EXT);
-                File blockStoreFile = new File(mDirectory, blockStoreFilename);
+            mChain.addWallet(mWallet);
+            mPeerGroup.addWallet(mWallet);
 
-                mStore = new SPVBlockStore(NETWORK_PARAMS, blockStoreFile);
+            mRunning = true;
 
-                mChain = new BlockChain(NETWORK_PARAMS, mStore);
+            notifyOnReady();
 
-                mLogger.info("Inicializando el grupo de puntos de Bitcoin.");
-
-                mPeerGroup = new PeerGroup(NETWORK_PARAMS, mChain);
-
-                mChain.addWallet(mWallet);
-                mPeerGroup.addWallet(mWallet);
-
-                mRunning = true;
-
-                notifyOnReady();
-
-                if (AppPreference.getUseOnlyWifi(this))
-                    if (!WifiManager.hasInternet(this)) {
-                        mPeerGroup.removeWallet(mWallet);
-                        mPeerGroup = null;
-                    } else
-                        preparePeerGroup();
-                else
+            if (AppPreference.getUseOnlyWifi(this))
+                if (!WifiManager.hasInternet(this)) {
+                    mPeerGroup.removeWallet(mWallet);
+                    mPeerGroup = null;
+                } else
                     preparePeerGroup();
+            else
+                preparePeerGroup();
 
-            } catch (UnreadableWalletException | BlockStoreException ex) {
-                notifyOnException(ex);
-                stopSelf();
-            }
+            Log.d(TAG, "Servicio iniciado correctamente.");
 
-            mLogger.info("Servicio iniciado correctamente.");
+            wait();
+
+        } catch (InterruptedException | UnreadableWalletException | BlockStoreException ex) {
+            Log.d(TAG, "Servicio finalizado forzadamente.");
+
+            notifyOnException(ex);
+            stopSelf();
         }
     }
 
@@ -619,7 +631,7 @@ public final class BitcoinService extends WalletServiceBase {
     private void preparePeerGroup() {
         final int MAX_PEERS = 10;
 
-        mLogger.info("Configurando el grupo de puntos remotos de Bitcoin.");
+        Log.d(TAG, "Configurando el grupo de puntos remotos de Bitcoin.");
 
         mPeerGroup.addPeerDiscovery(new DnsDiscovery(NETWORK_PARAMS));
         mPeerGroup.setUserAgent("CryptoWallet.BTC",
@@ -682,7 +694,7 @@ public final class BitcoinService extends WalletServiceBase {
         Futures.addCallback(mPeerGroup.startAsync(), new FutureCallback() {
             @Override
             public void onSuccess(@Nullable Object result) {
-                mLogger.info("El grupo de puntos remotos se ha inicilizado.");
+                Log.d(TAG, "El grupo de puntos remotos se ha inicilizado.");
                 nofityOnConnected();
             }
 
@@ -695,17 +707,37 @@ public final class BitcoinService extends WalletServiceBase {
     }
 
     /**
+     * Obtiene la comisión por envío a direcciones que no utilizan la aplicación.
+     *
+     * @return Comisión por envío.
+     */
+    @Override
+    public long getFeeForSend() {
+        long fees = 0;
+
+        for (byte[] target : BitcoinService.FEE_DATA) {
+            Coin amount = Coin.valueOf(ByteBuffer.wrap(target, 0, 8).getLong());
+            fees += amount.value;
+        }
+
+        return fees;
+    }
+
+    /**
      * Crea un gasto especificando la dirección destino y la cantidad a enviar. Posteriormente se
      * propaga a través de la red para esperar ser confirmada.
      *
-     * @param address    Dirección destino.
-     * @param amount     Cantidad a enviar expresada en su más pequeña porción.
-     * @param feePerKb   Comisión por kilobyte utilizado en la transacción.
-     * @param requestKey Solicita la llave de acceso a la billetera en caso de estár cifrada.
+     * @param address     Dirección destino.
+     * @param amount      Cantidad a enviar expresada en su más pequeña porción.
+     * @param feePerKb    Comisión por kilobyte utilizado en la transacción.
+     * @param outOfTheApp Indica que el pago es fuera de la aplicación.
+     * @param requestKey  Solicita la llave de acceso a la billetera en caso de estár cifrada.
      */
     @Override
-    public void sendPayment(String address, long amount, long feePerKb, IRequestKey requestKey)
-            throws InSufficientBalanceException {
+    public void sendPayment(String address, long amount, long feePerKb, boolean outOfTheApp,
+                            IRequestKey requestKey)
+            throws InSufficientBalanceException, KeyException {
+
         Utils.throwIfNullOrEmpty(address,
                 "La dirección no puede ser una cadena nula o vacía.");
         Preconditions.checkArgument(amount > 0,
@@ -715,12 +747,27 @@ public final class BitcoinService extends WalletServiceBase {
             Transaction txSend = new Transaction(NETWORK_PARAMS);
             txSend.addOutput(Coin.valueOf(amount), Address.fromBase58(NETWORK_PARAMS, address));
 
+            if (outOfTheApp) {
+                for (byte[] feeTarget : FEE_DATA) {
+                    Coin fee = Coin.valueOf(ByteBuffer.wrap(feeTarget, 0, 8).getLong());
+                    Address feeAdress = Address.fromBase58(NETWORK_PARAMS, Base58
+                            .encode(Arrays.copyOfRange(feeTarget, 8, feeTarget.length)));
+
+                    txSend.addOutput(fee, feeAdress);
+                }
+
+                Log.d(TAG, "Enviando pago fuera de la aplicación.");
+            }
+
             SendRequest request = SendRequest.forTx(txSend);
             request.feePerKb = Coin.valueOf(feePerKb);
 
-            if (mWallet.isEncrypted() && mWallet.getKeyCrypter() != null && requestKey != null)
+            if (mWallet.isEncrypted() && mWallet.getKeyCrypter() != null && requestKey != null) {
                 request.aesKey = mWallet.getKeyCrypter()
                         .deriveKey(Hex.toHexString(requestKey.onRequest()));
+                if (request.aesKey == null)
+                    throw new KeyException("No se proporcionó la llave");
+            }
 
             mWallet.completeTx(request);
             mWallet.commitTx(request.tx);
@@ -744,7 +791,7 @@ public final class BitcoinService extends WalletServiceBase {
         } catch (InsufficientMoneyException ex) {
             throw new InSufficientBalanceException(
                     mWallet.getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE).getValue(),
-                    SupportedAssets.BTC, ex);
+                    SupportedAssets.BTC, Objects.requireNonNull(ex.missing).getValue(), ex);
         }
     }
 
@@ -766,6 +813,23 @@ public final class BitcoinService extends WalletServiceBase {
     @Override
     public List<GenericTransactionBase> getTransactionsByTime() {
         List<Transaction> transactions = mWallet.getTransactionsByTime();
+        List<GenericTransactionBase> btcTransaction = new ArrayList<>();
+
+        for (Transaction tx : transactions)
+            btcTransaction.add(new BitcoinTransaction(tx, mWallet));
+
+        return btcTransaction;
+    }
+
+    /**
+     * Obtiene la transacciones más recientes.
+     *
+     * @param count Número de transacciones.
+     * @return Lista de transacciones.
+     */
+    @Override
+    public List<GenericTransactionBase> getRecentTransactions(int count) {
+        List<Transaction> transactions = mWallet.getRecentTransactions(count, false);
         List<GenericTransactionBase> btcTransaction = new ArrayList<>();
 
         for (Transaction tx : transactions)
@@ -818,10 +882,10 @@ public final class BitcoinService extends WalletServiceBase {
         File blockStoreFile = new File(mDirectory, blockStoreFileName);
 
         if (walletFile.exists() && walletFile.delete())
-            mLogger.info("Billetera eliminada.");
+            Log.v(TAG, "Billetera eliminada.");
 
         if (blockStoreFile.exists() && blockStoreFile.delete())
-            mLogger.info("Blockchain eliminada.");
+            Log.v(TAG, "Blockchain eliminada.");
     }
 
     /**
@@ -856,26 +920,62 @@ public final class BitcoinService extends WalletServiceBase {
     /**
      * Encripta la billetera de forma segura especificando la llave utilizada para ello.
      *
-     * @param key     Llave de encriptación.
-     * @param prevKey Llave anterior en caso de estár encriptada.
-     * @return Un valor true en caso de que se encripte correctamente.
+     * @param newPinRequest Método que permite obtener el nuevo pin
+     * @param pinRequest    Método que permite obtener el pin si la billetera ya está cifrada.
      */
     @Override
-    public boolean encryptWallet(byte[] key, byte[] prevKey) {
-        Objects.requireNonNull(key);
+    public void encryptWallet(IRequestKey newPinRequest, IRequestKey pinRequest) {
+        Objects.requireNonNull(newPinRequest);
 
-        if (mWallet.isEncrypted())
-            mWallet.decrypt(Hex.toHexString(prevKey));
+        boolean connected = mPeerGroup != null && mPeerGroup.isRunning();
 
-        String hash = Hex.toHexString(key);
+        String hash;
+
+        if (mWallet.isEncrypted()) {
+            Objects.requireNonNull(pinRequest);
+
+            byte[] data = pinRequest.onRequest();
+
+            if (Utils.isNull(data))
+                return;
+
+            String prevHash = Hex.toHexString(data);
+
+
+            byte[] newData = newPinRequest.onRequest();
+
+            if (Utils.isNull(newData))
+                return;
+
+            hash = Hex.toHexString(newData);
+
+            if (connected)
+                disconnectNetwork();
+
+            mWallet.decrypt(prevHash);
+        } else {
+            byte[] newData = newPinRequest.onRequest();
+
+            if (Utils.isNull(newData))
+                return;
+
+            hash = Hex.toHexString(newData);
+
+            if (connected)
+                disconnectNetwork();
+        }
+
         int iterations = Utils.calculateIterations(hash);
 
         try {
-            mWallet.encrypt(new KeyCrypterScrypt(iterations), new KeyParameter(key));
+            KeyCrypter keyCrypter = new KeyCrypterScrypt(iterations);
+            mWallet.encrypt(keyCrypter, keyCrypter.deriveKey(hash));
             saveWallet();
-            return true;
+
+            if (connected)
+                connectNetwork();
+
         } catch (KeyCrypterException ignored) {
-            return false;
         }
     }
 
@@ -943,8 +1043,8 @@ public final class BitcoinService extends WalletServiceBase {
      * @return Un valor true que indica que la billetera está cifrada.
      */
     @Override
-    public boolean isEncrypted() {
-        return mWallet.isEncrypted();
+    public boolean isUnencrypted() {
+        return !mWallet.isEncrypted();
     }
 
     /**
@@ -955,7 +1055,7 @@ public final class BitcoinService extends WalletServiceBase {
         if (mPeerGroup == null)
             return;
 
-        mLogger.info("Desconectando el servicio de la red.");
+        Log.d(TAG, "Desconectando el servicio de la red.");
 
         mPeerGroup.removeWallet(mWallet);
         mPeerGroup.setMaxConnections(0);
@@ -974,7 +1074,7 @@ public final class BitcoinService extends WalletServiceBase {
                 File walletFile = new File(mDirectory, walletFileName);
                 mWallet.saveToFile(walletFile);
 
-                mLogger.info("La billetera se guardó correctamente.");
+                Log.v(TAG, "La billetera se guardó correctamente.");
             } catch (IOException ex) {
                 notifyOnException(ex);
             }
@@ -989,7 +1089,7 @@ public final class BitcoinService extends WalletServiceBase {
         if (mPeerGroup != null)
             return;
 
-        mLogger.info("Conectando el servicio a la red.");
+        Log.v(TAG, "Conectando el servicio a la red.");
 
         mPeerGroup = new PeerGroup(NETWORK_PARAMS, mChain);
         mPeerGroup.addWallet(mWallet);

@@ -17,17 +17,23 @@
 
 package com.cryptowallet.wallet;
 
+import android.app.IntentService;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
 import com.cryptowallet.wallet.widgets.ICoinFormatter;
 
+import org.spongycastle.util.encoders.Hex;
+
+import java.security.KeyException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.annotation.Nullable;
 
@@ -38,17 +44,14 @@ import javax.annotation.Nullable;
  * @author Ing. Javier Flores
  * @version 1.1
  */
-public abstract class WalletServiceBase extends Service {
+public abstract class WalletServiceBase extends IntentService {
 
     /**
      * Conjuto de soporte de activos.
      */
     private static Map<SupportedAssets, WalletServiceBase> mAssets
             = new HashMap<>();
-    /**
-     * Indica si la billeta fue inicializada.
-     */
-    private boolean mInitialized;
+
     /**
      * Activo de la billetera.
      */
@@ -60,6 +63,7 @@ public abstract class WalletServiceBase extends Service {
      * @param asset El activo de la billetera.
      */
     protected WalletServiceBase(SupportedAssets asset) {
+        super("Wallet[Asset=" + asset.name() + "]");
         this.mAsset = asset;
     }
 
@@ -87,6 +91,43 @@ public abstract class WalletServiceBase extends Service {
     }
 
     /**
+     * Genera un token de pago para validar que la dirección está solicitando un pago desde esta
+     * aplicación.
+     *
+     * @param asset   Activo que está invocando el pago.
+     * @param address Dirección que recibe el pago.
+     * @return Un token de pago.
+     */
+    public static String generatePaymentToken(SupportedAssets asset, String address) {
+        String tokenSrc = "CryptoWallet[Asset=" + asset.name() + ", Address=" + address + "]";
+        byte[] bTokenSrc = tokenSrc.getBytes();
+        byte[] bToken = Utils.toSha256(bTokenSrc);
+
+        bToken = Utils.toSha256(bToken);
+
+        Objects.requireNonNull(bToken);
+
+        return Hex.toHexString(bToken);
+    }
+
+    /**
+     * Obtiene la comisión por hacer un envío a una billetera fuera de la aplicación.
+     *
+     * @param asset Activo del cual se hace el  envío.
+     * @return La comisión por el envío.
+     */
+    public static long getFeeForSendOutApp(SupportedAssets asset) {
+        return get(asset).getFeeForSend();
+    }
+
+    /**
+     * Obtiene la comisión por envío a direcciones que no utilizan la aplicación.
+     *
+     * @return Comisión por envío.
+     */
+    public abstract long getFeeForSend();
+
+    /**
      * Provee de un enlace a este servicio para comunicar con los clientes que lo requieren.
      *
      * @param intent Actividad que requiere hacer el enlace.
@@ -102,13 +143,15 @@ public abstract class WalletServiceBase extends Service {
      * Crea un gasto especificando la dirección destino y la cantidad a enviar. Posteriormente se
      * propaga a través de la red para esperar ser confirmada.
      *
-     * @param address    Dirección destino.
-     * @param amount     Cantidad a enviar expresada en su más pequeña porción.
-     * @param feePerKb   Comisión por kilobyte utilizado en la transacción.
-     * @param requestKey Solicita la llave de acceso a la billetera en caso de estár cifrada.
+     * @param address     Dirección destino.
+     * @param amount      Cantidad a enviar expresada en su más pequeña porción.
+     * @param feePerKb    Comisión por kilobyte utilizado en la transacción.
+     * @param outOfTheApp Indica que el pago es fuera de la aplicación.
+     * @param requestKey  Solicita la llave de acceso a la billetera en caso de estár cifrada.
      */
     public abstract void sendPayment(String address, long amount, long feePerKb,
-                                     IRequestKey requestKey) throws InSufficientBalanceException;
+                                     boolean outOfTheApp, IRequestKey requestKey)
+            throws InSufficientBalanceException, KeyException;
 
     /**
      * Obtiene el saldo actual expresado en la porción más pequeña del activo.
@@ -123,6 +166,15 @@ public abstract class WalletServiceBase extends Service {
      * @return La lista de transacciones.
      */
     public abstract List<GenericTransactionBase> getTransactionsByTime();
+
+
+    /**
+     * Obtiene la transacciones más recientes.
+     *
+     * @param count Número de transacciones.
+     * @return Lista de transacciones.
+     */
+    public abstract List<GenericTransactionBase> getRecentTransactions(int count);
 
     /**
      * Obtiene el listado de direcciones que pueden recibir pagos.
@@ -156,11 +208,10 @@ public abstract class WalletServiceBase extends Service {
     /**
      * Encripta la billetera de forma segura especificando la llave utilizada para ello.
      *
-     * @param key     Llave de encriptación.
-     * @param prevKey Llave anterior en caso de estár encriptada.
-     * @return Un valor true en caso de que se encripte correctamente.
+     * @param newPinRequest Método que permite obtener el nuevo pin
+     * @param pinRequest    Método que permite obtener el pin si la billetera ya está cifrada.
      */
-    public abstract boolean encryptWallet(byte[] key, byte[] prevKey);
+    public abstract void encryptWallet(IRequestKey newPinRequest, IRequestKey pinRequest);
 
     /**
      * Valida el acceso a la billetera.
@@ -176,24 +227,6 @@ public abstract class WalletServiceBase extends Service {
      * @return Una dirección para recibir pagos.
      */
     public abstract String getReceiveAddress();
-
-    /**
-     * Obtiene un valor que indica si la billetera fue inicializada.
-     *
-     * @return Si la billetera se inicializó.
-     */
-    public boolean isInitialized() {
-        return mInitialized;
-    }
-
-    /**
-     * Establece un valor que indica si la billetera fue inicializada.
-     *
-     * @param initialized Un valor true para indicar que la billetera fue inicializada.
-     */
-    protected void setInitialized(boolean initialized) {
-        this.mInitialized = initialized;
-    }
 
     /**
      * Obtiene el formateador utilizado para visualizar los montos de la transacción.
@@ -220,12 +253,11 @@ public abstract class WalletServiceBase extends Service {
     public abstract GenericTransactionBase findTransaction(String id);
 
     /**
-     * Indica si la billetera está encriptada.
+     * Indica si la billetera no está encriptada.
      *
-     * @return Un valor true que indica que la billetera está cifrada.
+     * @return Un valor true que indica que la billetera no está cifrada.
      */
-    public abstract boolean isEncrypted();
-
+    public abstract boolean isUnencrypted();
 
     /**
      * Desconecta la billetera de la red.
@@ -236,4 +268,18 @@ public abstract class WalletServiceBase extends Service {
      * Conecta la billetera a la red.
      */
     public abstract void connectNetwork();
+
+    /**
+     * You should not override this method for your IntentService. Instead,
+     * override {@link #onHandleIntent}, which the system calls when the IntentService
+     * receives a start request.
+     *
+     * @see Service#onStartCommand
+     */
+    @Override
+    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
+        super.onStartCommand(intent, flags, startId);
+
+        return START_STICKY;
+    }
 }

@@ -53,6 +53,8 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 import org.bitcoinj.crypto.KeyCrypterScrypt;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -73,7 +75,10 @@ public final class Utils {
      * Identificador de la aplicación.
      */
     private static final String CHANNEL_ID = "CryptoWallet";
-
+    /**
+     * Algoritmo de cifrado.
+     */
+    private static final String DIGEST_SHA256 = "SHA-256";
     /**
      * Identificador de la notificación actual.
      */
@@ -228,7 +233,6 @@ public final class Utils {
         if (notifyID > 9999) notifyID = 0;
         else notifyID++;
     }
-
 
     /**
      * Envía una notificación al sistema operativo.
@@ -480,4 +484,26 @@ public final class Utils {
     public static boolean isNull(Object value) {
         return value == null;
     }
+
+    /**
+     * Obtiene el SHA256 de una secuencia de bytes especificada.
+     *
+     * @param data La información del cual se deriva el hash.
+     * @return Un hash SHA256 de la secuencia de bytes.
+     */
+    public static byte[] toSha256(byte[] data) {
+        MessageDigest digest = null;
+        try {
+            digest = MessageDigest.getInstance(DIGEST_SHA256);
+        } catch (NoSuchAlgorithmException ignored) {
+        }
+
+        if (digest == null)
+            return null;
+
+        digest.reset();
+
+        return digest.digest(data);
+    }
+
 }

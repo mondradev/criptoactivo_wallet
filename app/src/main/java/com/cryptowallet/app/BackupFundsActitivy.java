@@ -17,10 +17,8 @@
 
 package com.cryptowallet.app;
 
-import android.content.Intent;
+import android.app.Activity;
 import android.os.Bundle;
-import android.os.Handler;
-import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,11 +27,11 @@ import android.widget.TextView;
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.wallet.IRequestKey;
-import com.squareup.okhttp.internal.NamedRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -66,16 +64,6 @@ public class BackupFundsActitivy extends ActivityBase {
     private List<Integer> mWordsTested = new ArrayList<>();
 
     /**
-     * Handler que permite la ejecución en el hilo principal.
-     */
-    private Handler mHandler = new Handler();
-
-    /**
-     * Datos de la llave.
-     */
-    private volatile byte[] mKey;
-
-    /**
      * Palabras de la billetera.
      */
     private volatile List<String> mSeed;
@@ -94,75 +82,71 @@ public class BackupFundsActitivy extends ActivityBase {
     }
 
     /**
-     * Este método es llamado cuando la aplicación reanuda la actividad.
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (BitcoinService.isRunning()) {
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
-                @Override
-                public void run() {
-                    mSeed = BitcoinService.get().getSeedWords(new IRequestKey() {
-
-                        /**
-                         * Este método es llamado cuando se requiere obtener la clave de la
-                         * billetera.
-                         *
-                         * @return La clave de la billetera.
-                         */
-                        @Override
-                        public byte[] onRequest() {
-                            final AuthenticateDialog dialog = new AuthenticateDialog()
-                                    .setMode(AuthenticateDialog.AUTH)
-                                    .setWallet(BitcoinService.get());
-
-                            runOnUiThread(new NamedRunnable("AuthenticateDialog") {
-                                @Override
-                                protected void execute() {
-                                    dialog.show(BackupFundsActitivy.this);
-                                }
-                            });
-
-                            try {
-                                return dialog.getAuthData();
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                                return null;
-                            }
-                        }
-                    });
-                }
-            });
-
-        } else
-            finish();
-    }
-
-    /**
-     * Este método es llamado cuando la actividad llamada con anterioridad devuelve un resultado.
-     *
-     * @param requestCode Código de petición.
-     * @param resultCode  Código de resultado.
-     * @param data        Información devuelta.
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-
-        if (data != null && data.hasExtra(ExtrasKey.PIN_DATA)) {
-            mKey = data.getByteArrayExtra(ExtrasKey.PIN_DATA);
-        } else
-            finish();
-
-    }
-
-    /**
      * Muestra la primera o la siguiente palabra. Cuando finaliza las palabras este las prueba de
      * manera aleatoria y finaliza al actividad.
      *
      * @param view Componente que desencadena que el evento Click.
      */
     public void handlerStartOrNextWord(View view) {
+
+        if (mSeed == null) {
+            final AuthenticateDialog dialog = new AuthenticateDialog()
+                    .setMode(AuthenticateDialog.AUTH)
+                    .setWallet(BitcoinService.get());
+
+            Executor executor = Executors.newSingleThreadExecutor();
+
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    if (BitcoinService.isRunning()) {
+                        mSeed = BitcoinService.get().getSeedWords(new IRequestKey() {
+
+                            /**
+                             * Este método es llamado cuando se requiere obtener la clave de la
+                             * billetera.
+                             *
+                             * @return La clave de la billetera.
+                             */
+                            @Override
+                            public byte[] onRequest() {
+                                dialog.show(BackupFundsActitivy.this);
+
+                                try {
+                                    return dialog.getAuthData();
+                                } catch (InterruptedException e) {
+                                    return null;
+                                }
+                            }
+                        });
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                dialog.dismiss();
+
+                                if (mSeed == null) {
+                                    setResult(Activity.RESULT_OK);
+                                    finish();
+                                } else
+                                    nextWord();
+                            }
+                        });
+
+                    } else
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                setResult(Activity.RESULT_OK);
+                                finish();
+                            }
+                        });
+                }
+            });
+        } else
+            nextWord();
+    }
+
+    private void nextWord() {
         TextView seedView = findViewById(R.id.mSeed);
         Button mNextWord = findViewById(R.id.mShowNextWord);
         EditText mTestWord = findViewById(R.id.mTestWord);

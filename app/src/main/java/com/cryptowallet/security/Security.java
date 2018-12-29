@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.security;
@@ -25,6 +25,7 @@ import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
 import com.cryptowallet.app.AppPreference;
+import com.cryptowallet.utils.Utils;
 
 import org.spongycastle.util.encoders.Hex;
 
@@ -33,7 +34,6 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.UnrecoverableKeyException;
@@ -54,11 +54,6 @@ import javax.crypto.spec.IvParameterSpec;
  * @version 1.0
  */
 public final class Security {
-
-    /**
-     * Algoritmo de cifrado.
-     */
-    private static final String DIGEST_SHA256 = "SHA-256";
 
     /**
      * Nombre de la llave.
@@ -132,17 +127,7 @@ public final class Security {
      * @param data La matriz de bytes que contiene la base de la llave.
      */
     public void createKey(byte[] data) {
-        MessageDigest digest = null;
-        try {
-            digest = MessageDigest.getInstance(DIGEST_SHA256);
-        } catch (NoSuchAlgorithmException ignored) {
-        }
-
-        if (digest == null)
-            return;
-
-        digest.reset();
-        mKey = digest.digest(data);
+        mKey = Utils.toSha256(data);
     }
 
     /**

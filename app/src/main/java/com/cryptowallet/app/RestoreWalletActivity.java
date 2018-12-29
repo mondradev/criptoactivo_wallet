@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2018 InnSy Tech
+ * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.app;
@@ -26,12 +26,15 @@ import android.widget.EditText;
 
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
+import com.squareup.okhttp.internal.NamedRunnable;
 
 import org.bitcoinj.crypto.MnemonicException;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.UnreadableWalletException;
 
 import java.util.ArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * Esta actividad permite la restauraación de la billetera a través de las 12 palabras.
@@ -40,11 +43,6 @@ import java.util.ArrayList;
  * @version 1.1
  */
 public class RestoreWalletActivity extends ActivityBase {
-
-    /**
-     * Semilla cifrada.
-     */
-    private DeterministicSeed mSeed;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -70,8 +68,8 @@ public class RestoreWalletActivity extends ActivityBase {
         EditText mSeedWords = findViewById(R.id.mSeedWords);
 
         try {
-            String seedStr = mSeedWords.getText().toString();
-            DeterministicSeed seed = new DeterministicSeed(
+            String seedStr = mSeedWords.getText().toString().trim();
+            final DeterministicSeed seed = new DeterministicSeed(
                     seedStr,
                     null,
                     "",
@@ -80,39 +78,38 @@ public class RestoreWalletActivity extends ActivityBase {
 
             seed.check();
 
-            mSeed = seed;
+            if (Utils.isNull(seed.getMnemonicCode()))
+                throw new MnemonicException();
 
-            Intent intent = new Intent(this, LoginWalletActivity.class);
-            intent.putExtra(ExtrasKey.REG_PIN, true);
-            startActivityForResult(intent, 0);
+            final AuthenticateDialog dialog = new AuthenticateDialog()
+                    .setMode(AuthenticateDialog.REG_PIN);
 
+            Executor executor = Executors.newSingleThreadExecutor();
+            final Intent intent = new Intent();
+
+            executor.execute(new NamedRunnable("AuthenticateDialog") {
+                @Override
+                protected void execute() {
+                    intent.putExtra(ExtrasKey.RESTORED_WALLET, true);
+                    try {
+                        intent.putExtra(ExtrasKey.PIN_DATA, dialog.getAuthData());
+                        intent.putStringArrayListExtra(
+                                ExtrasKey.SEED, new ArrayList<>(seed.getMnemonicCode()));
+                        intent.putExtra(ExtrasKey.AUTHENTICATED, true);
+                        setResult(Activity.RESULT_OK, intent);
+                        finish();
+
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            });
+
+            dialog.show(this);
         } catch (MnemonicException ignored) {
             Utils.showSnackbar(findViewById(R.id.mRestore), getString(R.string.error_12_words));
         } catch (UnreadableWalletException ignored) {
         }
-    }
-
-    /**
-     * Este método es llamada cuando una actividad devuelve un resultado.
-     *
-     * @param requestCode Código de solicitud.
-     * @param resultCode  Código de respuesta.
-     * @param data        Información de la respuesta.
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-
-        if (data != null && data.hasExtra(ExtrasKey.PIN_DATA) && mSeed.getMnemonicCode() != null) {
-            Intent intent = new Intent();
-            intent.putExtra(ExtrasKey.RESTORED_WALLET, true);
-            intent.putExtra(ExtrasKey.PIN_DATA, data.getByteArrayExtra(ExtrasKey.PIN_DATA));
-            intent.putStringArrayListExtra(
-                    ExtrasKey.SEED, new ArrayList<>(mSeed.getMnemonicCode()));
-
-            setResult(Activity.RESULT_OK, intent);
-            finish();
-        }
-
-        super.onActivityResult(requestCode, resultCode, data);
     }
 }
