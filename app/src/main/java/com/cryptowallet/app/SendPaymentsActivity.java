@@ -62,7 +62,7 @@ import java.util.concurrent.Executors;
  * válido.
  *
  * @author Ing. Javier Flores
- * @version 1.0
+ * @version 1.1
  */
 public class SendPaymentsActivity extends ActivityBase
         implements AdapterView.OnItemSelectedListener {
@@ -71,6 +71,11 @@ public class SendPaymentsActivity extends ActivityBase
      * Etiqueta de la clase.
      */
     private static final String TAG = "SendPayment";
+
+    /**
+     * Indica que ha regresado desde el escaner QR.
+     */
+    private boolean mFromQrScan = false;
 
     /**
      * Instancia del lector de códigos QR.
@@ -326,6 +331,20 @@ public class SendPaymentsActivity extends ActivityBase
      */
     public void handlerScanQr(View view) {
         mQrReader.initiateScan();
+        setCanLock(false);
+    }
+
+    /**
+     *
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (mFromQrScan) {
+            setCanLock(true);
+            mFromQrScan = false;
+        }
     }
 
     /**
@@ -397,6 +416,8 @@ public class SendPaymentsActivity extends ActivityBase
      * Efectua el pago a realizar y finaliza la actividad.
      */
     private void doPay() {
+        setCanLock(false);
+
         final AuthenticateDialog dialog = new AuthenticateDialog()
                 .setMode(AuthenticateDialog.AUTH)
                 .setWallet(BitcoinService.get());
@@ -454,6 +475,8 @@ public class SendPaymentsActivity extends ActivityBase
                 } finally {
                     if (dialog.isShowing())
                         dialog.dismiss();
+
+                    setCanLock(true);
                 }
             }
         });
@@ -477,6 +500,8 @@ public class SendPaymentsActivity extends ActivityBase
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
 
         if (result != null) {
+            mFromQrScan = true;
+
             if (result.getContents() == null) {
                 Utils.showSnackbar(mSendPayment, getString(R.string.address_error));
             } else {

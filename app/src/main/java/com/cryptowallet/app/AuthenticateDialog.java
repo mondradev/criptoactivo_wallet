@@ -571,7 +571,7 @@ public final class AuthenticateDialog extends DialogFragment {
         if (!mDone)
             wait();
 
-        mLogger.info("Returning data");
+        mLogger.info("Devolviendo la información del cuadro de autenticación.");
         return mAuthData;
     }
 

@@ -136,7 +136,10 @@ public class WalletAppActivity extends ActivityBase {
         }
 
     };
-
+    /**
+     * La billetera fue autenticada.
+     */
+    private boolean mAuthenticated;
     /**
      * Escucha de los eventos de la billetera de bitcoin.
      */
@@ -212,14 +215,14 @@ public class WalletAppActivity extends ActivityBase {
                     = ExchangeService.get().getExchange(assets)
                     .ToStringFriendly(SupportedAssets.BTC, value);
 
-            mBalanceText.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mBalanceText.setText(service.getFormatter().format(value));
                 }
             });
 
-            mUsdBalance.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mUsdBalance.setText(balanceFiat);
@@ -239,11 +242,15 @@ public class WalletAppActivity extends ActivityBase {
             ExchangeService.get().addEventListener(mExchangeListener);
 
             if (mDialogOnLoad != null)
-                mDialogOnLoad
-                        .setMode(AuthenticateDialog.AUTH)
-                        .setWallet(service)
-                        .dismissOnAuth()
-                        .showUIAuth();
+                if (mAuthenticated) {
+                    mAuthenticated = false;
+                    mDialogOnLoad.dismiss();
+                } else
+                    mDialogOnLoad
+                            .setMode(AuthenticateDialog.AUTH)
+                            .setWallet(service)
+                            .dismissOnAuth()
+                            .showUIAuth();
         }
 
         /**
@@ -267,7 +274,7 @@ public class WalletAppActivity extends ActivityBase {
 
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
 
-            mStatus.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mStatus.setVisibility(View.GONE);
@@ -287,7 +294,7 @@ public class WalletAppActivity extends ActivityBase {
             final TextView mLastBlock = findViewById(R.id.mLastBlock);
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
 
-            mStatus.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     if (status.getLeftBlocks() == 0) {
@@ -318,7 +325,7 @@ public class WalletAppActivity extends ActivityBase {
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
             final TextView mLastBlock = findViewById(R.id.mLastBlock);
 
-            mStatus.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mBlockCountDown.start();
@@ -469,7 +476,7 @@ public class WalletAppActivity extends ActivityBase {
                         mRecentsAdapter.setSource(BitcoinService.get()
                                 .getRecentTransactions(5));
 
-                        mSwipeRefreshData.post(new NamedRunnable(
+                        runOnUiThread(new NamedRunnable(
                                 "WalletAppActivity.SwipeRefreshLayout") {
                             @Override
                             protected void execute() {
@@ -520,6 +527,8 @@ public class WalletAppActivity extends ActivityBase {
      * Muestra la información de la billetera.
      */
     private void showData() {
+        setCanLock(true);
+
         mCanUpdate = true;
         mRecentsAdapter.addAll(BitcoinService.get().getRecentTransactions(5));
 
@@ -530,8 +539,6 @@ public class WalletAppActivity extends ActivityBase {
      * Oculta la información de la billetera.
      */
     private void hideData() {
-        Log.v(TAG, "Hide data");
-
         mCanUpdate = true;
         mRecentsAdapter.clear();
 
@@ -566,10 +573,16 @@ public class WalletAppActivity extends ActivityBase {
         super.onResume();
 
         boolean reqAuth = getIntent().getBooleanExtra(ExtrasKey.REQ_AUTH, false);
-        boolean authenticate
+
+        mAuthenticated
                 = getIntent().getBooleanExtra(ExtrasKey.AUTHENTICATED, false);
 
-        if (!mRequireLock && !reqAuth && !authenticate) {
+        getIntent().removeExtra(ExtrasKey.REQ_AUTH);
+        getIntent().removeExtra(ExtrasKey.AUTHENTICATED);
+
+        Log.v(TAG, "Billetera autenticada: " + (mAuthenticated && !reqAuth));
+
+        if (!isLockApp() && !reqAuth && BitcoinService.isRunning()) {
             showData();
             return;
         }
@@ -695,6 +708,8 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        unlockApp();
+
         ScrollView mScroll = findViewById(R.id.mMainScroll);
         mScroll.smoothScrollTo(0, 0);
 

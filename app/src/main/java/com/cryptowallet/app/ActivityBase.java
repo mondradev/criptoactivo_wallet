@@ -41,7 +41,7 @@ public abstract class ActivityBase extends AppCompatActivity {
     /**
      *
      */
-    protected static boolean mRequireLock = false;
+    private static boolean mRequireLock = false;
 
     /**
      * Tema actual de la aplicación.
@@ -58,6 +58,7 @@ public abstract class ActivityBase extends AppCompatActivity {
      */
     private CountDownTimer mLockTimer
             = new CountDownTimer(60000, 1) {
+
 
         @Override
         public void onTick(long millisUntilFinished) {
@@ -88,7 +89,7 @@ public abstract class ActivityBase extends AppCompatActivity {
 
         mLockTimer.cancel();
 
-        mRequireLock = true;
+        lockApp();
     }
 
     /**
@@ -116,6 +117,8 @@ public abstract class ActivityBase extends AppCompatActivity {
         if (mCanLock) {
             mLockTimer.cancel();
             mLockTimer.start();
+
+            Log.d(TAG, "Reiniciando contador de inactividad");
         }
 
         return result;
@@ -131,7 +134,8 @@ public abstract class ActivityBase extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         AppPreference.loadTheme(this);
         mCurrentTheme = AppPreference.getThemeName();
-        mRequireLock = false;
+
+        unlockApp();
     }
 
     /**
@@ -163,4 +167,28 @@ public abstract class ActivityBase extends AppCompatActivity {
         if (!canLock)
             mLockTimer.cancel();
     }
+
+    /**
+     *
+     */
+    protected void lockApp() {
+        Log.v(TAG, "Bloqueando aplicación.");
+        mRequireLock = true;
+    }
+
+    /**
+     *
+     */
+    protected void unlockApp() {
+        Log.v(TAG, "Desbloqueando aplicación.");
+        mRequireLock = false;
+    }
+
+    /**
+     * @return
+     */
+    protected boolean isLockApp() {
+        return mRequireLock;
+    }
+
 }

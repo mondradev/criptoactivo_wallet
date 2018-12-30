@@ -78,6 +78,8 @@ public class InitWalletActivity extends ActivityBase {
 
                     Intent walletIntent = new Intent(InitWalletActivity.this,
                             WalletAppActivity.class);
+                    walletIntent.putExtra(ExtrasKey.AUTHENTICATED, dialog.getAuthData() != null);
+
                     startActivity(walletIntent);
 
                     finish();

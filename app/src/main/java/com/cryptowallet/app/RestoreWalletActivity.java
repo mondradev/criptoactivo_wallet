@@ -95,7 +95,7 @@ public class RestoreWalletActivity extends ActivityBase {
                         intent.putExtra(ExtrasKey.PIN_DATA, dialog.getAuthData());
                         intent.putStringArrayListExtra(
                                 ExtrasKey.SEED, new ArrayList<>(seed.getMnemonicCode()));
-                        intent.putExtra(ExtrasKey.AUTHENTICATED, true);
+                        intent.putExtra(ExtrasKey.AUTHENTICATED, dialog.getAuthData() != null);
                         setResult(Activity.RESULT_OK, intent);
                         finish();
 
