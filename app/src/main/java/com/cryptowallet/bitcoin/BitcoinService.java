@@ -172,6 +172,11 @@ public final class BitcoinService extends WalletServiceBase {
     private Context mContext;
 
     /**
+     * Indica que la billetera fue eliminada.
+     */
+    private boolean mDeleted;
+
+    /**
      * Crea una nueva instancia de billetera.
      */
     public BitcoinService() {
@@ -479,7 +484,8 @@ public final class BitcoinService extends WalletServiceBase {
     public void onDestroy() {
         super.onDestroy();
 
-        saveWallet();
+        if (!mDeleted)
+            saveWallet();
 
         mListeners.clear();
 
@@ -881,7 +887,7 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public void deleteWallet() {
-        stopSelf();
+        disconnectNetwork();
 
         String walletFileName = String.format("wallet%s", FILE_EXT);
         String blockStoreFileName = String.format("blockchain%s", FILE_EXT);
@@ -894,6 +900,10 @@ public final class BitcoinService extends WalletServiceBase {
 
         if (blockStoreFile.exists() && blockStoreFile.delete())
             Log.v(TAG, "Blockchain eliminada.");
+
+        mDeleted = true;
+
+        stopSelf();
     }
 
     /**

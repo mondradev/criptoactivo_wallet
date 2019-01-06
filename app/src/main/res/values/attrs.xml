@@ -30,8 +30,5 @@
 
         <attr name="textIconsColor" format="color" />
         <attr name="mainTextColor" format="color" />
-
-        <attr name="cardViewStyle" format="reference" />
-
     </declare-styleable>
 </resources>

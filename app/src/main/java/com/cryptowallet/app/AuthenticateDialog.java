@@ -221,12 +221,13 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
             mMessage = message;
         } else {
             Objects.requireNonNull(getActivity()).runOnUiThread(() -> {
+                setCancelable(false);
+
                 Log.v(TAG, "Configurando cuadro de dialogo, con vista de progreso.");
 
                 mIsShowProgress = false;
                 mMessage = null;
 
-                setCancelable(false);
 
                 View view = Objects.requireNonNull(getView());
 
@@ -238,14 +239,14 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
         }
     }
 
-    public synchronized void showUIAuth() {
+    public void showUIAuth() {
         cancelFingerprint();
 
         Objects.requireNonNull(getActivity()).runOnUiThread(() -> {
-            if (mMode == REG_FINGER || AppPreference.getUseFingerprint(getActivity()))
-                initFingerprint();
-
             setCancelable(true);
+
+            if (!mHasError && mMode == REG_FINGER || AppPreference.getUseFingerprint(getActivity()))
+                initFingerprint();
 
             View view = Objects.requireNonNull(getView());
 
@@ -490,15 +491,15 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
         if (fingerprintManager.isHardwareDetected()) {
             if (ActivityCompat.checkSelfPermission(context,
                     Manifest.permission.USE_FINGERPRINT) != PackageManager.PERMISSION_GRANTED) {
-                cancel();
+                cancel(true);
             } else {
 
                 if (!fingerprintManager.hasEnrolledFingerprints()) {
-                    cancel();
+                    cancel(true);
                 } else {
 
                     if (!keyguardManager.isKeyguardSecure()) {
-                        cancel();
+                        cancel(true);
                     } else {
                         Security.get().createAndroidKeyIfRequire();
 
@@ -528,7 +529,7 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
                             @Override
                             public void onAuthenticationFailed() {
                                 getCancellationSignal().cancel();
-                                cancel();
+                                cancel(true);
                             }
 
                         }).startAuth(fingerprintManager, cryptoObject);
@@ -548,14 +549,21 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
         return this;
     }
 
+    public void cancel() {
+        cancel(false);
+    }
+
     /**
      *
      */
-    public void cancel() {
-        Log.v(TAG, "Cuadro de diálogo cancelado.");
-
-        if (mIsShowing && isCancelable())
+    public void cancel(boolean force) {
+        if (mIsShowing && (isCancelable() || force)) {
+            Log.v(TAG, "Cuadro de diálogo cancelado.");
             getDialog().cancel();
+        } else {
+            Log.v(TAG, "El cuadro de diálogo no puede ser cancelado. [IsShowing=" + mIsShowing
+                    + ",IsCancelable=" + isCancelable() + "]");
+        }
     }
 
     /**
@@ -780,6 +788,7 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
 
 
             if (self.mWallet != null && self.mWallet.validateAccess(dataPin)) {
+                self.mHasError = false;
 
                 if (self.mMode == REG_FINGER) {
                     isRetryAuth = true;
@@ -815,7 +824,7 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
         protected void onPostExecute(AuthenticateDialog dialog) {
             if (isFinalized)
                 if (dialog.mHasError)
-                    dialog.cancel();
+                    dialog.cancel(true);
                 else
                     dialog.done();
 
