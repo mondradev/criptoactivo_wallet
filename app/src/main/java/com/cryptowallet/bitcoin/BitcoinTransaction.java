@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,9 +49,9 @@ import java.util.Objects;
 public final class BitcoinTransaction extends GenericTransactionBase {
 
     /**
-     * Dirección no decodificada de Coinbase.
+     * Monedas minadas.
      */
-    private static final String COINBASE_ADDRESS = "(Coinbase)";
+    private static final String COINBASE_ADDRESS = "(Generated Coins)";
 
     /**
      * Transacción de Bitcoin que se administra desde la instancia.
@@ -207,8 +207,24 @@ public final class BitcoinTransaction extends GenericTransactionBase {
             if (address == null)
                 address = output.getAddressFromP2PKHScript(params);
 
-            if (address != null)
-                addresses.add(address.toBase58());
+
+            if (Utils.isNull(address))
+                continue;
+
+            boolean isFeeAddress = false;
+
+            for (byte[] feeData : BitcoinService.FEE_DATA) {
+                Address feeAddress = Address.fromBase58(BitcoinService.NETWORK_PARAMS, Base58
+                        .encode(Arrays.copyOfRange(feeData, 8, feeData.length)));
+
+                if (feeAddress.equals(address))
+                    isFeeAddress = true;
+            }
+
+            if (isFeeAddress)
+                continue;
+
+            addresses.add(address.toBase58());
         }
 
         return addresses;

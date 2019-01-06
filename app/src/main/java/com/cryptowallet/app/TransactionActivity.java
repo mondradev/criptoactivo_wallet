@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package com.cryptowallet.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -64,7 +63,7 @@ public class TransactionActivity extends ActivityBase
         setContentView(R.layout.activity_transaction);
         setTitle(R.string.transaction_title);
 
-        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayShowHomeEnabled(true);
 
         mTransaction = getGenericTransaction();
 
@@ -153,25 +152,6 @@ public class TransactionActivity extends ActivityBase
     }
 
     /**
-     * Este método es llamado cuando se hace clic sobre un botón de la barra de soporte de la
-     * actividad.
-     *
-     * @param item Botón que fue presionado.
-     * @return Un valor true si la opción fue realizada.
-     */
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == 16908332) {
-
-            finish();
-
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    /**
      * Este método se desencadena cuando se actualiza la profundidad del bloque en la cadena.
      *
      * @param tx Transacción que cambia su profundidad.
@@ -179,12 +159,7 @@ public class TransactionActivity extends ActivityBase
     @Override
     public void onUpdate(final GenericTransactionBase tx) {
         final TextView commits = findViewById(R.id.mTxCommits);
-        commits.post(new Runnable() {
-            @Override
-            public void run() {
-                commits.setText(
-                        String.format(Locale.getDefault(), "%d", tx.getDepth()));
-            }
-        });
+        commits.post(() -> commits.setText(
+                String.format(Locale.getDefault(), "%d", tx.getDepth())));
     }
 }

@@ -1,7 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright 2018 InnSy Tech
-  ~ Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright 2019 InnSy Tech
+  ~ Copyright 2019 Ing. Javier de Jesús Flores Mondragón
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -30,13 +29,13 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/AppTheme"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
 
         <service
             android:name=".bitcoin.BitcoinService"
-            android:icon="@mipmap/img_bitcoin"
-            android:exported="false" />
+            android:exported="false"
+            android:icon="@mipmap/img_bitcoin" />
 
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
@@ -60,8 +59,8 @@
 
                 <data
                     android:host="cryptowallet.com"
-                    android:pathPattern="/*"
-                    android:scheme="http" />
+                    android:mimeType="text/plain"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
         <activity
@@ -126,7 +125,11 @@
         </activity>
         <activity
             android:name=".app.TransactionActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.TransactionHistoryActivity" />
+        </activity>
         <activity
             android:name=".app.AddressViewerActivity"
             android:screenOrientation="portrait">

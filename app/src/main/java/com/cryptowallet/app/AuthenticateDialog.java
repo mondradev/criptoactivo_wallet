@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,6 @@ import com.google.common.base.Strings;
 import com.squareup.okhttp.internal.NamedRunnable;
 
 import java.util.Objects;
-import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 
@@ -70,7 +69,7 @@ import static android.content.Context.KEYGUARD_SERVICE;
  * @author Ing. Javier Flores
  * @version 1.0
  */
-public final class AuthenticateDialog extends DialogFragment {
+public final class AuthenticateDialog extends DialogFragment implements View.OnClickListener {
 
     /**
      *
@@ -98,11 +97,6 @@ public final class AuthenticateDialog extends DialogFragment {
     private static final String TAG = "AuthenticateDialog";
 
     /**
-     *
-     */
-    private static final Logger mLogger = Logger.getLogger("AuthenticateDialog");
-
-    /**
      * Modo del cuadro de diálogo de autenticación.
      */
     private int mMode;
@@ -114,7 +108,7 @@ public final class AuthenticateDialog extends DialogFragment {
     /**
      * Indica si el cuadro de diálogo finalizó.
      */
-    private boolean mDone;
+    private boolean mIsDone;
     /**
      * Indica si existe un error.
      */
@@ -123,18 +117,6 @@ public final class AuthenticateDialog extends DialogFragment {
      * Digito actual a presionar.
      */
     private int mPinIndex;
-    /**
-     *
-     */
-    private View.OnClickListener mHandlerBackSpace = new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-            if (mPinIndex > 0) {
-                mPinIndex--;
-                cleanPin(mPinIndex);
-            }
-        }
-    };
     /**
      * Valores del pin.
      */
@@ -150,7 +132,7 @@ public final class AuthenticateDialog extends DialogFragment {
     /**
      *
      */
-    private boolean mShowing;
+    private boolean mIsShowing;
     /**
      *
      */
@@ -163,48 +145,24 @@ public final class AuthenticateDialog extends DialogFragment {
     /**
      *
      */
-    private DialogInterface mListener;
+
+    private Runnable mOnDismiss;
+
+    private Runnable mOnCancel;
+
     /**
      *
      */
-    private boolean mDismissOnAuth;
+    private boolean mIsDismissOnAuth;
     /**
      *
      */
-    private boolean mShowUIProgress;
+    private boolean mIsShowProgress;
     /**
      *
      */
     private String mMessage;
-    /**
-     *
-     */
-    private View.OnClickListener mHandlerPad = new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-            if (mHasError) {
-                if (mMode == REG_PIN)
-                    setInfo(R.string.indications_pin_setup);
-                else
-                    setInfo(R.string.enter_pin);
-                mHasError = false;
-            }
-
-            Button mPad = (Button) view;
-
-            if (isCompleted(mPinIndex))
-                return;
-
-            mPinValues[mPinIndex] = mPad.getText().toString();
-
-            fillPin(mPinIndex);
-
-            mPinIndex++;
-
-            processAuth();
-        }
-    };
-
+    private FingerprintHandler mFingerprintHandler;
 
     /**
      *
@@ -219,10 +177,31 @@ public final class AuthenticateDialog extends DialogFragment {
     @Override
     public void onDismiss(DialogInterface dialog) {
         super.onDismiss(dialog);
-        mShowing = false;
 
-        if (!Utils.isNull(mListener))
-            mListener.dismiss();
+        if (!Utils.isNull(mOnDismiss) && mIsDone && !Utils.isNull(mAuthData))
+            mOnDismiss.run();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        mIsDone = false;
+        mIsShowing = false;
+        mHasError = false;
+        mIsDismissOnAuth = false;
+        mIsShowProgress = false;
+        mToCommit = false;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        cancelFingerprint();
+
+        if (mIsShowing && AppPreference.getUseFingerprint(getActivity()))
+            initFingerprint();
     }
 
     /**
@@ -236,42 +215,56 @@ public final class AuthenticateDialog extends DialogFragment {
      *
      */
     public void showUIProgress(final String message, Activity caller) {
-        if (!isShowing() && !mShowUIProgress) {
+        if (!mIsShowing && !mIsShowProgress) {
             show(caller);
-            mShowUIProgress = true;
+            mIsShowProgress = true;
             mMessage = message;
         } else {
-            mShowUIProgress = false;
-            mMessage = null;
+            Objects.requireNonNull(getActivity()).runOnUiThread(() -> {
+                Log.v(TAG, "Configurando cuadro de dialogo, con vista de progreso.");
 
-            Objects.requireNonNull(getActivity()).runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    setCancelable(false);
+                mIsShowProgress = false;
+                mMessage = null;
 
-                    View view = Objects.requireNonNull(getView());
+                setCancelable(false);
 
-                    view.findViewById(R.id.mAuthMain).setVisibility(View.GONE);
-                    view.findViewById(R.id.mProgress).setVisibility(View.VISIBLE);
+                View view = Objects.requireNonNull(getView());
 
-                    ((TextView) view.findViewById(R.id.mCaptionText)).setText(message);
-                }
+                view.findViewById(R.id.mAuthMain).setVisibility(View.GONE);
+                view.findViewById(R.id.mProgress).setVisibility(View.VISIBLE);
+
+                ((TextView) view.findViewById(R.id.mCaptionText)).setText(message);
             });
         }
     }
 
-    public void showUIAuth() {
-        Objects.requireNonNull(getActivity()).runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                setCancelable(true);
+    public synchronized void showUIAuth() {
+        cancelFingerprint();
 
-                View view = Objects.requireNonNull(getView());
+        Objects.requireNonNull(getActivity()).runOnUiThread(() -> {
+            if (mMode == REG_FINGER || AppPreference.getUseFingerprint(getActivity()))
+                initFingerprint();
 
-                view.findViewById(R.id.mProgress).setVisibility(View.GONE);
-                view.findViewById(R.id.mAuthMain).setVisibility(View.VISIBLE);
-            }
+            setCancelable(true);
+
+            View view = Objects.requireNonNull(getView());
+
+            view.findViewById(R.id.mProgress).setVisibility(View.GONE);
+            view.findViewById(R.id.mAuthMain).setVisibility(View.VISIBLE);
         });
+    }
+
+    private void cancelFingerprint() {
+        Log.d(TAG, "Intentando cancelar lector de huellas.");
+
+        if (Utils.isNull(mFingerprintHandler))
+            return;
+
+        if (Utils.isNull(mFingerprintHandler.getCancellationSignal()))
+            return;
+
+        if (!mFingerprintHandler.getCancellationSignal().isCanceled())
+            mFingerprintHandler.getCancellationSignal().cancel();
     }
 
     private void processAuth() {
@@ -368,18 +361,18 @@ public final class AuthenticateDialog extends DialogFragment {
         View view = localInflater.inflate(R.layout.dialog_loginwallet_fullscreen, container,
                 false);
 
-        view.findViewById(R.id.mNum0).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum1).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum2).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum3).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum4).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum5).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum6).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum7).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum8).setOnClickListener(mHandlerPad);
-        view.findViewById(R.id.mNum9).setOnClickListener(mHandlerPad);
+        view.findViewById(R.id.mNum0).setOnClickListener(this);
+        view.findViewById(R.id.mNum1).setOnClickListener(this);
+        view.findViewById(R.id.mNum2).setOnClickListener(this);
+        view.findViewById(R.id.mNum3).setOnClickListener(this);
+        view.findViewById(R.id.mNum4).setOnClickListener(this);
+        view.findViewById(R.id.mNum5).setOnClickListener(this);
+        view.findViewById(R.id.mNum6).setOnClickListener(this);
+        view.findViewById(R.id.mNum7).setOnClickListener(this);
+        view.findViewById(R.id.mNum8).setOnClickListener(this);
+        view.findViewById(R.id.mNum9).setOnClickListener(this);
 
-        view.findViewById(R.id.mBackSpace).setOnClickListener(mHandlerBackSpace);
+        view.findViewById(R.id.mBackSpace).setOnClickListener(this);
 
         return view;
     }
@@ -388,7 +381,7 @@ public final class AuthenticateDialog extends DialogFragment {
      * @param index
      * @return
      */
-    public ImageView getPinView(int index) {
+    private ImageView getPinView(int index) {
         switch (index) {
             case 0:
                 return Objects.requireNonNull(getView()).findViewById(R.id.mPin1);
@@ -420,24 +413,31 @@ public final class AuthenticateDialog extends DialogFragment {
                 ViewGroup.LayoutParams.MATCH_PARENT
         );
 
-        if (mShowUIProgress)
+        if (mIsShowProgress)
             showUIProgress(mMessage, getActivity());
     }
 
     /**
      * Muestra el cuadro de diálogo.
      */
-    public void show(final Activity caller) {
+    public void show(Activity caller) {
+        if (mIsShowing)
+            return;
+
         Objects.requireNonNull(caller);
+
+        FragmentManager manager = ((FragmentActivity) caller).getSupportFragmentManager();
+        Objects.requireNonNull(manager);
+        final FragmentTransaction transaction = manager.beginTransaction();
 
         caller.runOnUiThread(new NamedRunnable("Run-Dialog") {
             @Override
             protected void execute() {
-                FragmentManager manager = ((FragmentActivity) caller).getSupportFragmentManager();
-                Objects.requireNonNull(manager);
-                FragmentTransaction transaction = manager.beginTransaction();
+                mIsShowing = true;
+
+                Log.v(TAG, "Mostrando cuadro de dialogo.");
+
                 show(transaction, TAG);
-                mShowing = true;
             }
         });
 
@@ -450,12 +450,16 @@ public final class AuthenticateDialog extends DialogFragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        if (AppPreference.getUseFingerprint(getActivity()))
+        if (AppPreference.getUseFingerprint(getActivity())) {
+            Log.d(TAG, "Modo autenticación | lector de huellas.");
             initFingerprint();
-        else if (mMode == REG_PIN)
+        } else if (mMode == REG_PIN) {
+            Log.d(TAG, "Modo registro.");
             setInfo(R.string.indications_pin_setup);
-        else
+        } else {
+            Log.d(TAG, "Modo autenticación.");
             setInfo(R.string.enter_pin);
+        }
     }
 
     /**
@@ -468,41 +472,41 @@ public final class AuthenticateDialog extends DialogFragment {
 
         View view = getView();
 
-        if (view == null)
+        if (view == null) {
+            cancel();
             return;
+        }
+
+        final Context context = view.getContext();
 
         view.findViewById(R.id.mUsePin).setVisibility(View.GONE);
         view.findViewById(R.id.mFingerprintLayout).setVisibility(View.VISIBLE);
 
-        KeyguardManager keyguardManager = (KeyguardManager) Objects.requireNonNull(getActivity())
+        KeyguardManager keyguardManager = (KeyguardManager) context
                 .getSystemService(KEYGUARD_SERVICE);
         FingerprintManager fingerprintManager
-                = (FingerprintManager) getActivity().getSystemService(FINGERPRINT_SERVICE);
+                = (FingerprintManager) context.getSystemService(FINGERPRINT_SERVICE);
 
         if (fingerprintManager.isHardwareDetected()) {
-            if (ActivityCompat.checkSelfPermission(getActivity(),
+            if (ActivityCompat.checkSelfPermission(context,
                     Manifest.permission.USE_FINGERPRINT) != PackageManager.PERMISSION_GRANTED) {
-                Utils.showSnackbar(view.findViewById(R.id.mAuthMain),
-                        getString(R.string.require_finger_permission));
+                cancel();
             } else {
 
                 if (!fingerprintManager.hasEnrolledFingerprints()) {
-                    Utils.showSnackbar(view.findViewById(R.id.mAuthMain),
-                            getString(R.string.require_finger_register));
+                    cancel();
                 } else {
 
                     if (!keyguardManager.isKeyguardSecure()) {
-                        Utils.showSnackbar(view.findViewById(R.id.mAuthMain),
-                                getString(R.string.no_lock_screen));
+                        cancel();
                     } else {
                         Security.get().createAndroidKeyIfRequire();
 
                         FingerprintManager.CryptoObject cryptoObject
                                 = new FingerprintManager.CryptoObject(
-                                Security.get().getCipher(getActivity(),
-                                        mMode != REG_FINGER));
+                                Security.get().getCipher(context, mMode != REG_FINGER));
 
-                        new FingerprintHandler(getActivity()) {
+                        (mFingerprintHandler = new FingerprintHandler(context) {
 
                             @Override
                             public void onAuthenticationSucceeded(
@@ -512,10 +516,10 @@ public final class AuthenticateDialog extends DialogFragment {
                                 if (mMode == REG_FINGER) {
                                     byte[] dataPin = Base64.decode(Utils.concatAll(mPinValues),
                                             Base64.DEFAULT);
-                                    Security.get().encrypteKeyData(getActivity(), cipher, dataPin);
-                                    AppPreference.setUseFingerprint(getActivity(), true);
+                                    Security.get().encrypteKeyData(context, cipher, dataPin);
+                                    AppPreference.setUseFingerprint(context, true);
                                 } else
-                                    Security.get().decryptKey(getActivity(), cipher);
+                                    Security.get().decryptKey(context, cipher);
 
                                 mAuthData = Security.get().getKey();
                                 done();
@@ -523,10 +527,11 @@ public final class AuthenticateDialog extends DialogFragment {
 
                             @Override
                             public void onAuthenticationFailed() {
-                                done();
+                                getCancellationSignal().cancel();
+                                cancel();
                             }
 
-                        }.startAuth(fingerprintManager, cryptoObject);
+                        }).startAuth(fingerprintManager, cryptoObject);
                     }
                 }
             }
@@ -547,7 +552,9 @@ public final class AuthenticateDialog extends DialogFragment {
      *
      */
     public void cancel() {
-        if (isShowing() && isCancelable())
+        Log.v(TAG, "Cuadro de diálogo cancelado.");
+
+        if (mIsShowing && isCancelable())
             getDialog().cancel();
     }
 
@@ -555,10 +562,10 @@ public final class AuthenticateDialog extends DialogFragment {
      *
      */
     private synchronized void done() {
-        mDone = true;
+        mIsDone = true;
         notify();
 
-        if (mDismissOnAuth)
+        if (mIsDismissOnAuth)
             dismiss();
     }
 
@@ -568,10 +575,10 @@ public final class AuthenticateDialog extends DialogFragment {
      * @return Información de autenticación.
      */
     public synchronized byte[] getAuthData() throws InterruptedException {
-        if (!mDone)
+        if (!mIsDone)
             wait();
 
-        mLogger.info("Devolviendo la información del cuadro de autenticación.");
+        Log.i(TAG, "Devolviendo la información del cuadro de autenticación.");
         return mAuthData;
     }
 
@@ -581,15 +588,13 @@ public final class AuthenticateDialog extends DialogFragment {
     @Override
     public void onCancel(DialogInterface dialog) {
         super.onCancel(dialog);
-        mDone = true;
 
-        if (!Utils.isNull(mListener))
-            mListener.cancel();
-    }
+        if (!Utils.isNull(mOnCancel))
+            mOnCancel.run();
 
-    @Override
-    public void onResume() {
-        super.onResume();
+        cancelFingerprint();
+
+        done();
     }
 
     /**
@@ -598,14 +603,18 @@ public final class AuthenticateDialog extends DialogFragment {
      * @param idRes Identificador del texto a visualizar.
      */
     private void setInfo(@StringRes final int idRes) {
+        Activity activity = getActivity();
+
+        if (Utils.isNull(activity))
+            return;
+
         final TextView mInfoLabel = Objects.requireNonNull(getView()).findViewById(R.id.mInfo);
-        Objects.requireNonNull(getActivity()).runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mInfoLabel.setText(idRes);
-                if (mInfoLabel.getVisibility() != View.VISIBLE)
-                    mInfoLabel.setVisibility(View.VISIBLE);
-            }
+
+        activity.runOnUiThread(() -> {
+            mInfoLabel.setText(idRes);
+
+            if (mInfoLabel.getVisibility() != View.VISIBLE)
+                mInfoLabel.setVisibility(View.VISIBLE);
         });
     }
 
@@ -615,14 +624,10 @@ public final class AuthenticateDialog extends DialogFragment {
     private void cleanPin() {
         for (int i = 0; i < PIN_LENGHT; i++) {
             final int index = i;
-            Objects.requireNonNull(getActivity()).runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Objects.requireNonNull(getPinView(index))
+            Objects.requireNonNull(getActivity())
+                    .runOnUiThread(() -> Objects.requireNonNull(getPinView(index))
                             .setImageDrawable(Objects.requireNonNull(getView()).getContext()
-                                    .getDrawable(R.drawable.br_pin));
-                }
-            });
+                                    .getDrawable(R.drawable.br_pin)));
         }
     }
 
@@ -672,86 +677,66 @@ public final class AuthenticateDialog extends DialogFragment {
      * @return
      */
     public boolean isShowing() {
-        return mShowing;
-    }
-
-    /**
-     * @param listener
-     */
-    public void setListener(DialogInterface listener) {
-        mListener = listener;
+        return mIsShowing;
     }
 
     public AuthenticateDialog dismissOnAuth() {
-        mDismissOnAuth = true;
+        mIsDismissOnAuth = true;
 
         return this;
     }
 
     public AuthenticateDialog setOnDesmiss(final Runnable command) {
-        if (mListener != null)
-            mListener = new DialogInterface() {
-                @Override
-                public void cancel() {
-                    mListener.cancel();
-                }
-
-                @Override
-                public void dismiss() {
-                    mListener.dismiss();
-                    command.run();
-                }
-            };
-        else
-            mListener = new DialogInterface() {
-                @Override
-                public void cancel() {
-
-                }
-
-                @Override
-                public void dismiss() {
-                    command.run();
-                }
-            };
+        mOnDismiss = command;
         return this;
     }
 
-
     public AuthenticateDialog setOnCancel(final Runnable command) {
-        if (mListener != null)
-            mListener = new DialogInterface() {
-                @Override
-                public void cancel() {
-                    mListener.cancel();
-                    command.run();
-                }
-
-                @Override
-                public void dismiss() {
-                    mListener.dismiss();
-                }
-            };
-        else
-            mListener = new DialogInterface() {
-                @Override
-                public void cancel() {
-                    command.run();
-                }
-
-                @Override
-                public void dismiss() {
-
-                }
-            };
+        mOnCancel = command;
         return this;
+    }
+
+    /**
+     * Called when a view has been clicked.
+     *
+     * @param view The view that was clicked.
+     */
+    @Override
+    public void onClick(View view) {
+        if (view.getId() == R.id.mBackSpace) {
+            if (mPinIndex > 0) {
+                mPinIndex--;
+                cleanPin(mPinIndex);
+            }
+        } else {
+            if (mHasError) {
+                if (mMode == REG_PIN)
+                    setInfo(R.string.indications_pin_setup);
+                else
+                    setInfo(R.string.enter_pin);
+                mHasError = false;
+            }
+
+            Button mPad = (Button) view;
+
+            if (isCompleted(mPinIndex))
+                return;
+
+            mPinValues[mPinIndex] = mPad.getText().toString();
+
+            fillPin(mPinIndex);
+
+            mPinIndex++;
+
+            processAuth();
+        }
     }
 
     /**
      *
      */
     @IntDef(value = {AUTH, REG_PIN, REG_FINGER})
-    public @interface Mode {
+    @interface Mode {
     }
 
     /**
@@ -797,13 +782,7 @@ public final class AuthenticateDialog extends DialogFragment {
             if (self.mWallet != null && self.mWallet.validateAccess(dataPin)) {
 
                 if (self.mMode == REG_FINGER) {
-                    Objects.requireNonNull(self.getView()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            self.initFingerprint();
-                            isRetryAuth = true;
-                        }
-                    });
+                    isRetryAuth = true;
                 } else {
                     self.mAuthData = dataPin;
                     isFinalized = true;
@@ -836,7 +815,7 @@ public final class AuthenticateDialog extends DialogFragment {
         protected void onPostExecute(AuthenticateDialog dialog) {
             if (isFinalized)
                 if (dialog.mHasError)
-                    dialog.getDialog().cancel();
+                    dialog.cancel();
                 else
                     dialog.done();
 

@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 
 package com.cryptowallet.utils;
 
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
@@ -28,8 +29,10 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
@@ -228,11 +231,22 @@ public final class Utils {
 
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            notificationCompat.createNotificationChannel(
+                    new NotificationChannel(
+                            CHANNEL_ID,
+                            context.getString(R.string.app_name),
+                            NotificationManager.IMPORTANCE_HIGH
+                    )
+            );
+
         notificationCompat.notify(staticNotify == 0 ? notifyID : staticNotify, builder.build());
 
         if (notifyID > 9999) notifyID = 0;
         else notifyID++;
     }
+
 
     /**
      * Envía una notificación al sistema operativo.
@@ -263,7 +277,8 @@ public final class Utils {
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(String.format(template,
                         message, txID
                 )))
-                .setSound(soundUri);
+                .setSound(soundUri)
+                .setAutoCancel(true);
 
 
         if (onTap != null) {
@@ -277,6 +292,22 @@ public final class Utils {
 
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(R.string.app_name),
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+
+            channel.setSound(soundUri, new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build());
+
+            notificationCompat.createNotificationChannel(channel);
+        }
+
         notificationCompat.notify(notifyID, builder.build());
 
         if (notifyID > 9999) notifyID = 0;
@@ -324,6 +355,16 @@ public final class Utils {
 
         NotificationManager notificationCompat
                 = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            notificationCompat.createNotificationChannel(
+                    new NotificationChannel(
+                            CHANNEL_ID,
+                            context.getString(R.string.app_name),
+                            NotificationManager.IMPORTANCE_HIGH
+                    )
+            );
+
         notificationCompat.notify(notifyID, builder.build());
 
         if (notifyID > 9999) notifyID = 0;

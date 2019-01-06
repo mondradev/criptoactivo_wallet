@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package com.cryptowallet.bitcoin;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
 
 import org.bitcoinj.core.Address;
-import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
@@ -29,7 +28,6 @@ import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.wallet.Wallet;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -80,11 +78,11 @@ public class BitcoinAddress implements IAddressBalance {
                 if (input.getConnectedOutput() == null)
                     continue;
 
-                Address address = input.getConnectedOutput()
-                        .getScriptPubKey().getToAddress(parameters);
-
                 if (!input.getConnectedOutput().isMine(wallet))
                     continue;
+
+                Address address = input.getConnectedOutput()
+                        .getScriptPubKey().getToAddress(parameters);
 
                 BitcoinAddress bitcoinAddress = addIfNotContains(addresses, address);
 
@@ -98,15 +96,6 @@ public class BitcoinAddress implements IAddressBalance {
                 Address address = output.getScriptPubKey().getToAddress(parameters);
 
                 if (!output.isMine(wallet))
-                    continue;
-
-                boolean isFeeTarget = false;
-
-                for (byte[] feeTarget : BitcoinService.FEE_DATA)
-                    isFeeTarget |= address.toBase58().contentEquals(
-                            Base58.encode(Arrays.copyOfRange(feeTarget, 8, feeTarget.length)));
-
-                if (isFeeTarget)
                     continue;
 
                 BitcoinAddress bitcoinAddress = addIfNotContains(addresses, address);
@@ -137,8 +126,7 @@ public class BitcoinAddress implements IAddressBalance {
      * @param address   Dirección de Bitcoin a evaluar.
      * @return Una dirección de Bitcoin.
      */
-    private static BitcoinAddress addIfNotContains(
-            List<BitcoinAddress> addresses, Address address) {
+    private static BitcoinAddress addIfNotContains(List<BitcoinAddress> addresses, Address address) {
         for (BitcoinAddress bitcoinAddress : addresses)
             if (bitcoinAddress.mAddress.equals(address))
                 return bitcoinAddress;

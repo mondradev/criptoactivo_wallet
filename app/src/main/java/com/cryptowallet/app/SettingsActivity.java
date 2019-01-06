@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,14 +31,12 @@ import android.support.v7.app.AlertDialog;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.security.Security;
 import com.cryptowallet.utils.WifiManager;
-import com.cryptowallet.wallet.IRequestKey;
 import com.squareup.okhttp.internal.NamedRunnable;
 
 import java.util.concurrent.Executor;
@@ -53,14 +51,9 @@ import java.util.concurrent.Executors;
 public class SettingsActivity extends ActivityBase {
 
     /**
-     * Indica si se intenta remover la huella.
+     * Evita que el escucha se cicle.
      */
-    private boolean mTryRemoveFingerprint = false;
-
-    /**
-     * Indica si se está configurando la autenticación con huella.
-     */
-    private boolean mConfigFingerprint = false;
+    private boolean mDisableListener;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -84,7 +77,7 @@ public class SettingsActivity extends ActivityBase {
         ((Button) findViewById(R.id.mSelectFiat))
                 .setText(AppPreference.getSelectedCurrency(this));
 
-        if (BitcoinService.isRunning() && BitcoinService.get().isUnencrypted()) {
+        if (BitcoinService.get().isRunning() && BitcoinService.get().isUnencrypted()) {
             ((Button) findViewById(R.id.mChangePin)).setText(R.string.init_pin);
             findViewById(R.id.mUseFingerprint).setEnabled(false);
         }
@@ -93,20 +86,17 @@ public class SettingsActivity extends ActivityBase {
                 .setChecked(AppPreference.getUseOnlyWifi(this));
 
         ((CheckBox) findViewById(R.id.mOnlyWifi))
-                .setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean onlyWifi) {
-                        AppPreference.setUseOnlyWifi(buttonView.getContext(), onlyWifi);
+                .setOnCheckedChangeListener((buttonView, onlyWifi) -> {
+                    AppPreference.setUseOnlyWifi(buttonView.getContext(), onlyWifi);
 
-                        boolean wifiConnected = WifiManager
-                                .hasInternet(buttonView.getContext());
+                    boolean wifiConnected = WifiManager
+                            .hasInternet(buttonView.getContext());
 
-                        if (onlyWifi
-                                && !wifiConnected)
-                            BitcoinService.get().disconnectNetwork();
-                        else if (!onlyWifi)
-                            BitcoinService.get().connectNetwork();
-                    }
+                    if (onlyWifi
+                            && !wifiConnected)
+                        BitcoinService.get().disconnectNetwork();
+                    else if (!onlyWifi)
+                        BitcoinService.get().connectNetwork();
                 });
 
 
@@ -160,53 +150,48 @@ public class SettingsActivity extends ActivityBase {
                 .setChecked(AppPreference.getUseFingerprint(this));
 
         if (AppPreference.getUseFingerprint(this))
-            findViewById(R.id.mChangePin).setEnabled(false);
+            findViewById(R.id.mChangePin).setVisibility(View.GONE);
 
         ((CheckBox) findViewById(R.id.mUseFingerprint))
-                .setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                .setOnCheckedChangeListener((buttonView, isChecked) -> {
 
-                        mConfigFingerprint = isChecked;
-
-                        if (isChecked) {
-                            new AuthenticateDialog()
-                                    .dismissOnAuth()
-                                    .setWallet(BitcoinService.get())
-                                    .setMode(AuthenticateDialog.REG_FINGER)
-                                    .setOnCancel(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            ((CheckBox) findViewById(R.id.mUseFingerprint))
-                                                    .setChecked(false);
-                                        }
-                                    })
-                                    .show(SettingsActivity.this);
-                        } else
-                            new AuthenticateDialog()
-                                    .dismissOnAuth()
-                                    .setWallet(BitcoinService.get())
-                                    .setMode(AuthenticateDialog.AUTH)
-                                    .setOnDesmiss(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            AppPreference.setUseFingerprint(
-                                                    SettingsActivity.this, false);
-                                            AppPreference.removeData(SettingsActivity.this);
-                                            Security.get().removeKeyFromStore();
-                                            findViewById(R.id.mChangePin).setEnabled(true);
-                                        }
-                                    })
-                                    .setOnCancel(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            ((CheckBox) findViewById(R.id.mUseFingerprint))
-                                                    .setChecked(true);
-                                        }
-                                    })
-                                    .show(SettingsActivity.this);
-
+                    if (mDisableListener) {
+                        mDisableListener = false;
+                        return;
                     }
+
+                    if (isChecked) {
+                        new AuthenticateDialog()
+                                .dismissOnAuth()
+                                .setWallet(BitcoinService.get())
+                                .setMode(AuthenticateDialog.REG_FINGER)
+                                .setOnDesmiss(() ->
+                                        findViewById(R.id.mChangePin).setVisibility(View.GONE))
+                                .setOnCancel(() -> {
+                                    mDisableListener = true;
+                                    ((CheckBox) findViewById(R.id.mUseFingerprint))
+                                            .setChecked(false);
+                                })
+                                .show(SettingsActivity.this);
+                    } else
+                        new AuthenticateDialog()
+                                .dismissOnAuth()
+                                .setWallet(BitcoinService.get())
+                                .setMode(AuthenticateDialog.AUTH)
+                                .setOnDesmiss(() -> {
+                                    AppPreference.setUseFingerprint(
+                                            SettingsActivity.this, false);
+                                    AppPreference.removeData(SettingsActivity.this);
+                                    Security.get().removeKeyFromStore();
+                                    findViewById(R.id.mChangePin).setVisibility(View.VISIBLE);
+                                })
+                                .setOnCancel(() -> {
+                                    mDisableListener = true;
+                                    ((CheckBox) findViewById(R.id.mUseFingerprint))
+                                            .setChecked(true);
+                                })
+                                .show(SettingsActivity.this);
+
                 });
 
         return true;
@@ -232,51 +217,41 @@ public class SettingsActivity extends ActivityBase {
         executor.execute(new NamedRunnable("AuthenticateDialog") {
             @Override
             protected void execute() {
-                if (!BitcoinService.isRunning())
+                if (!BitcoinService.get().isRunning())
                     return;
 
                 setCanLock(false);
 
-                BitcoinService.get().encryptWallet(
-                        new IRequestKey() {
-                            @Override
-                            public byte[] onRequest() {
-                                regDialog.show(SettingsActivity.this);
+                BitcoinService.get().encryptWallet(() -> {
+                    regDialog.show(SettingsActivity.this);
 
-                                if (authDialog.isShowing())
-                                    authDialog.dismiss();
+                    if (authDialog.isShowing())
+                        authDialog.dismiss();
 
-                                try {
-                                    return regDialog.getAuthData();
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                    return null;
-                                } finally {
-                                    regDialog.showUIProgress(getString(R.string.encrypt_message));
-                                }
-                            }
-                        }, new IRequestKey() {
-                            @Override
-                            public byte[] onRequest() {
-                                authDialog.show(SettingsActivity.this);
-                                try {
-                                    return authDialog.getAuthData();
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                    return null;
-                                }
-                            }
-                        });
+                    try {
+                        return regDialog.getAuthData();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        return null;
+                    } finally {
+                        regDialog.showUIProgress(getString(R.string.encrypt_message));
+                    }
+                }, () -> {
+                    authDialog.show(SettingsActivity.this);
+                    try {
+                        return authDialog.getAuthData();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        return null;
+                    }
+                });
 
                 regDialog.dismiss();
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        ((Button) findViewById(R.id.mChangePin))
-                                .setText(R.string.change_pin_setting);
-                        checkCanUseFingerprint();
-                    }
+                runOnUiThread(() -> {
+                    ((Button) findViewById(R.id.mChangePin))
+                            .setText(R.string.change_pin_setting);
+                    checkCanUseFingerprint();
                 });
 
                 setCanLock(true);

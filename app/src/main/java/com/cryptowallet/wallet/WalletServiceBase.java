@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
  * Provee una clase base para la implementación de una billetera.
  *
  * @author Ing. Javier Flores
- * @version 1.1
+ * @version 1.2
  */
 public abstract class WalletServiceBase extends IntentService {
 
@@ -56,6 +56,10 @@ public abstract class WalletServiceBase extends IntentService {
      * Activo de la billetera.
      */
     private SupportedAssets mAsset;
+    /**
+     * Estado del servicio.
+     */
+    private WalletServiceState mState;
 
     /**
      * Crea una nueva instancia de billetera.
@@ -121,6 +125,21 @@ public abstract class WalletServiceBase extends IntentService {
     }
 
     /**
+     * Obtiene un valor que indica si el servicio del activo especificado está en ejecución.
+     *
+     * @param asset Activo a verificar el servicio.
+     * @return Un valor true si el servicio está en ejecución.
+     */
+    public static boolean isRunning(SupportedAssets asset) {
+        WalletServiceBase service = get(asset);
+
+        if (Utils.isNull(service))
+            return false;
+
+        return service.isRunning();
+    }
+
+    /**
      * Obtiene la comisión por envío a direcciones que no utilizan la aplicación.
      *
      * @return Comisión por envío.
@@ -166,7 +185,6 @@ public abstract class WalletServiceBase extends IntentService {
      * @return La lista de transacciones.
      */
     public abstract List<GenericTransactionBase> getTransactionsByTime();
-
 
     /**
      * Obtiene la transacciones más recientes.
@@ -268,6 +286,35 @@ public abstract class WalletServiceBase extends IntentService {
      * Conecta la billetera a la red.
      */
     public abstract void connectNetwork();
+
+    /**
+     * Obtiene el estado actual del servicio.
+     *
+     * @return El estado actual.
+     */
+    public final WalletServiceState getState() {
+        return mState;
+    }
+
+    /**
+     * Establece el estado del servicio.
+     *
+     * @param state Estado del servicio.
+     */
+    protected final void setState(WalletServiceState state) {
+        mState = state;
+    }
+
+    /**
+     * Obtiene un valor que indica que el servicio está en ejecución. Esto es un alias a
+     * {@code getState() ==  WalletServiceState#RUNNING }
+     *
+     * @return Un valor true si el estado está en ejecución.
+     */
+    public final boolean isRunning() {
+        return getState() == WalletServiceState.RUNNING
+                || getState() == WalletServiceState.CONNECTED;
+    }
 
     /**
      * You should not override this method for your IntentService. Instead,

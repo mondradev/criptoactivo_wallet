@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import com.cryptowallet.wallet.coinmarket.ExchangeService;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -108,12 +107,7 @@ public final class TransactionHistoryAdapter
 
         if (position == getItemCount() - 1) {
             viewHolder.hideDivider();
-            viewHolder.itemView.post(new Runnable() {
-                @Override
-                public void run() {
-                    expandList();
-                }
-            });
+            viewHolder.itemView.post(this::expandList);
         } else
             viewHolder.showDivider();
     }
@@ -129,12 +123,7 @@ public final class TransactionHistoryAdapter
 
         getItems().add(item);
 
-        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
-            @Override
-            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
-                return o2.compareTo(o1);
-            }
-        });
+        Collections.sort(getItems(), (o1, o2) -> o2.compareTo(o1));
 
         notifyChanged();
 
@@ -163,12 +152,7 @@ public final class TransactionHistoryAdapter
         getItems().clear();
         getItems().addAll(items);
 
-        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
-            @Override
-            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
-                return o2.compareTo(o1);
-            }
-        });
+        Collections.sort(getItems(), (o1, o2) -> o2.compareTo(o1));
 
         mSize = PAGE_SIZE;
 
@@ -255,12 +239,7 @@ public final class TransactionHistoryAdapter
 
         getItems().addAll(items);
 
-        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
-            @Override
-            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
-                return o2.compareTo(o1);
-            }
-        });
+        Collections.sort(getItems(), (o1, o2) -> o2.compareTo(o1));
 
         notifyChanged();
 
@@ -321,30 +300,28 @@ public final class TransactionHistoryAdapter
             ImageView mIcon = itemView.findViewById(R.id.mIcon);
 
             mAmount.setText(ExchangeService.get().getExchange(mDisplayedAsset)
-                    .ToStringFriendly(item.getAsset(), item.getUsignedAmount()));
+                    .ToStringFriendly(mItem.getAsset(), mItem.getUsignedAmount()));
 
-            mOperKind.setText(item.getAmount() < 0
+            mOperKind.setText(mItem.getAmount() < 0
                     ? itemView.getContext().getString(R.string.sent_text)
                     : itemView.getContext().getString(R.string.received_text));
 
-            mAmount.setBackground(item.getAmount() < 0
+            mAmount.setBackground(mItem.getAmount() < 0
                     ? itemView.getResources().getDrawable(R.drawable.bg_tx_send)
                     : itemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
             mAmount.setOnClickListener(TransactionHistoryAdapter.this);
 
-            mTime.setText(Utils.getDateTime(item.getTime(),
+            mTime.setText(Utils.getDateTime(mItem.getTime(),
                     itemView.getContext().getString(R.string.today_text),
                     itemView.getContext().getString(R.string.yesterday_text)));
 
-            mIcon.setImageDrawable(itemView.getContext().getDrawable(item.getImage()));
+            mIcon.setImageDrawable(itemView.getContext().getDrawable(mItem.getImage()));
 
-            item.setOnUpdateDepthListener(new GenericTransactionBase.IOnUpdateDepthListener() {
-                @Override
-                public void onUpdate(GenericTransactionBase tx) {
-                    setCommitColor(mStatus, tx.getDepth());
-                }
-            });
+            setCommitColor(mStatus, mItem.getDepth());
+
+            mItem.setOnUpdateDepthListener(tx -> setCommitColor(mStatus, tx.getDepth()));
+
         }
 
         /**
@@ -371,12 +348,10 @@ public final class TransactionHistoryAdapter
 
             final int color = commits == 0 ? uncommit : commits > 6 ? commitedPlus : commited;
 
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mCommits.setText(commits > 6 ? "6+" : Integer.toString(commits));
-                    mCommits.setTextColor(color);
-                }
+            mHandler.post(() -> {
+                mCommits.setVisibility(View.VISIBLE);
+                mCommits.setText(commits > 6 ? "6+" : Integer.toString(commits));
+                mCommits.setTextColor(color);
             });
         }
 

@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,9 @@
 
 package com.cryptowallet.app;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
@@ -128,7 +126,7 @@ public class WalletAppActivity extends ActivityBase {
             SupportedAssets currentAsset = SupportedAssets.valueOf(
                     AppPreference.getSelectedCurrency(WalletAppActivity.this));
 
-            if (asset != currentAsset || !BitcoinService.isRunning())
+            if (asset != currentAsset || !WalletServiceBase.isRunning(SupportedAssets.BTC))
                 return;
 
             if (mCanUpdate)
@@ -215,19 +213,9 @@ public class WalletAppActivity extends ActivityBase {
                     = ExchangeService.get().getExchange(assets)
                     .ToStringFriendly(SupportedAssets.BTC, value);
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mBalanceText.setText(service.getFormatter().format(value));
-                }
-            });
+            runOnUiThread(() -> mBalanceText.setText(service.getFormatter().format(value)));
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mUsdBalance.setText(balanceFiat);
-                }
-            });
+            runOnUiThread(() -> mUsdBalance.setText(balanceFiat));
 
         }
 
@@ -243,14 +231,18 @@ public class WalletAppActivity extends ActivityBase {
 
             if (mDialogOnLoad != null)
                 if (mAuthenticated) {
+                    Log.v(TAG, "Ocultando cuadro de diálogo, ya está autenticada la billetera.");
                     mAuthenticated = false;
                     mDialogOnLoad.dismiss();
-                } else
+                } else {
+                    Log.v(TAG, "Mostrando cuadro de diálogo para autenticar al iniciar el " +
+                            "servicio.");
                     mDialogOnLoad
                             .setMode(AuthenticateDialog.AUTH)
                             .setWallet(service)
                             .dismissOnAuth()
                             .showUIAuth();
+                }
         }
 
         /**
@@ -274,12 +266,9 @@ public class WalletAppActivity extends ActivityBase {
 
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mStatus.setVisibility(View.GONE);
-                    mInitDownload = false;
-                }
+            runOnUiThread(() -> {
+                mStatus.setVisibility(View.GONE);
+                mInitDownload = false;
             });
         }
 
@@ -294,22 +283,19 @@ public class WalletAppActivity extends ActivityBase {
             final TextView mLastBlock = findViewById(R.id.mLastBlock);
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (status.getLeftBlocks() == 0) {
-                        mStatus.setVisibility(View.GONE);
-                        return;
-                    }
-
-                    mBlockCountDown.cancel();
-
-                    if (mStatus.getVisibility() == View.GONE)
-                        mStatus.setVisibility(View.VISIBLE);
-
-                    mLastBlock.setText(
-                            getString(R.string.last_block_date_text, status.getLeftBlocks()));
+            runOnUiThread(() -> {
+                if (status.getLeftBlocks() == 0) {
+                    mStatus.setVisibility(View.GONE);
+                    return;
                 }
+
+                mBlockCountDown.cancel();
+
+                if (mStatus.getVisibility() == View.GONE)
+                    mStatus.setVisibility(View.VISIBLE);
+
+                mLastBlock.setText(
+                        getString(R.string.last_block_date_text, status.getLeftBlocks()));
             });
 
         }
@@ -325,16 +311,13 @@ public class WalletAppActivity extends ActivityBase {
             final CardView mStatus = findViewById(R.id.mBlockchainDownloadCard);
             final TextView mLastBlock = findViewById(R.id.mLastBlock);
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mBlockCountDown.start();
-                    mInitDownload = true;
+            runOnUiThread(() -> {
+                mBlockCountDown.start();
+                mInitDownload = true;
 
-                    mStatus.setVisibility(View.VISIBLE);
+                mStatus.setVisibility(View.VISIBLE);
 
-                    mLastBlock.setText(getString(R.string.calculate_blocks));
-                }
+                mLastBlock.setText(getString(R.string.calculate_blocks));
             });
         }
 
@@ -407,43 +390,39 @@ public class WalletAppActivity extends ActivityBase {
         mToggle.syncState();
 
         NavigationView mLeftDrawer = findViewById(R.id.mLeftDrawer);
-        mLeftDrawer.setNavigationItemSelectedListener(new NavigationView
-                .OnNavigationItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                int id = item.getItemId();
-                switch (id) {
-                    case R.id.mSettings:
-                        handlerShowSettingsActivity();
-                        break;
+        mLeftDrawer.setNavigationItemSelectedListener(item -> {
+            int id = item.getItemId();
+            switch (id) {
+                case R.id.mSettings:
+                    handlerShowSettingsActivity();
+                    break;
 
-                    case R.id.mBackup:
-                        handlerShowBackupFundsActivity();
-                        break;
+                case R.id.mBackup:
+                    handlerShowBackupFundsActivity();
+                    break;
 
-                    case R.id.mAddressViewer:
-                        handlerShowAddressesActivity();
-                        break;
+                case R.id.mAddressViewer:
+                    handlerShowAddressesActivity();
+                    break;
 
-                    case R.id.mDrop:
-                        handlerShowDropWalletActivity();
-                        break;
+                case R.id.mDrop:
+                    handlerShowDropWalletActivity();
+                    break;
 
-                    case R.id.mSend:
-                        handlerShowSendPaymentsActivity(null);
-                        break;
+                case R.id.mSend:
+                    handlerShowSendPaymentsActivity(null);
+                    break;
 
-                    case R.id.mReceive:
-                        handlerShowRequestPaymentsActivity();
-                        break;
+                case R.id.mReceive:
+                    handlerShowRequestPaymentsActivity();
+                    break;
 
-                    case R.id.mHistory:
-                        handlerShowHistory(null);
-                        break;
-                }
-
-                return true;
+                case R.id.mHistory:
+                    handlerShowHistory(null);
+                    break;
             }
+
+            return true;
         });
 
         RecyclerView mRecentsRecycler = findViewById(R.id.mRecentsRecycler);
@@ -463,104 +442,82 @@ public class WalletAppActivity extends ActivityBase {
         mSwipeRefreshData.setProgressBackgroundColorSchemeColor(
                 Utils.getColorFromTheme(this, R.attr.colorAccent));
 
-        mSwipeRefreshData.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+        mSwipeRefreshData.setOnRefreshListener(() -> Executors.newSingleThreadExecutor().execute(new NamedRunnable(
+                "WalletAppActivity.SwipeRefreshLayout.OnRefresh") {
             @Override
-            public void onRefresh() {
-                Executors.newSingleThreadExecutor().execute(new NamedRunnable(
-                        "WalletAppActivity.SwipeRefreshLayout.OnRefresh") {
+            public void execute() {
+                BitcoinService.notifyOnBalanceChange();
+                ExchangeService.get().reloadMarketPrice();
+
+                mRecentsAdapter.setSource(BitcoinService.get()
+                        .getRecentTransactions(5));
+
+                runOnUiThread(new NamedRunnable(
+                        "WalletAppActivity.SwipeRefreshLayout") {
                     @Override
-                    public void execute() {
-                        BitcoinService.notifyOnBalanceChange();
-                        ExchangeService.get().reloadMarketPrice();
-
-                        mRecentsAdapter.setSource(BitcoinService.get()
-                                .getRecentTransactions(5));
-
-                        runOnUiThread(new NamedRunnable(
-                                "WalletAppActivity.SwipeRefreshLayout") {
-                            @Override
-                            protected void execute() {
-                                mSwipeRefreshData.setRefreshing(false);
-                            }
-                        });
+                    protected void execute() {
+                        mSwipeRefreshData.setRefreshing(false);
                     }
                 });
             }
-        });
+        }));
 
         setCanLock(true);
 
         BitcoinService.addEventListener(mListener);
 
         mCanUpdate = false;
-
-        createAuthDialog();
-
-
     }
 
     /**
-     * @return
+     * Crea el cuadro de diálogo de autenticación.
+     *
+     * @return El cuadro de diálogo.
      */
     private AuthenticateDialog createAuthDialog() {
-        mDialogOnLoad = new AuthenticateDialog();
 
-        mDialogOnLoad.setListener(new DialogInterface() {
-            @Override
-            public void cancel() {
-                System.exit(0);
-            }
+        if (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing())
+            return null;
 
-            @Override
-            public void dismiss() {
-                setCanLock(true);
-                getLockTimer().start();
+        Log.v(TAG, "Configurando un nuevo cuadro de autenticación.");
 
-                showData();
-            }
-        });
-
-        return mDialogOnLoad;
+        return (mDialogOnLoad = new AuthenticateDialog())
+                .setOnCancel(() -> {
+                    finishAffinity();
+                    System.exit(0);
+                })
+                .setOnDesmiss(this::showData);
     }
 
     /**
      * Muestra la información de la billetera.
      */
     private void showData() {
+        Log.v(TAG, "Visualizando la información sensible.");
+
         setCanLock(true);
 
         mCanUpdate = true;
         mRecentsAdapter.addAll(BitcoinService.get().getRecentTransactions(5));
 
         BitcoinService.notifyOnBalanceChange();
+
+        if (ExchangeService.isInitialized())
+            ExchangeService.get().reloadMarketPrice();
     }
 
     /**
      * Oculta la información de la billetera.
      */
     private void hideData() {
+        Log.v(TAG, "Ocultando la información sensible.");
         mCanUpdate = true;
         mRecentsAdapter.clear();
 
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ((TextView) findViewById(R.id.mBalanceText)).setText(R.string.hide_data);
-                ((TextView) findViewById(R.id.mBalanceFiat)).setText(R.string.hide_data);
-            }
+        runOnUiThread(() -> {
+            ((TextView) findViewById(R.id.mBalanceText)).setText(R.string.hide_data);
+            ((TextView) findViewById(R.id.mBalanceFiat)).setText(R.string.hide_data);
         });
-    }
-
-    /**
-     * Este método es llamado cuando se minimiza la aplicación.
-     */
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        if (!Utils.isNull(mDialogOnLoad))
-            mDialogOnLoad.cancel();
-
     }
 
     /**
@@ -582,19 +539,25 @@ public class WalletAppActivity extends ActivityBase {
 
         Log.v(TAG, "Billetera autenticada: " + (mAuthenticated && !reqAuth));
 
-        if (!isLockApp() && !reqAuth && BitcoinService.isRunning()) {
+        boolean requireLock = isLockApp()
+                || (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing());
+
+        if (!requireLock && !reqAuth && WalletServiceBase.isRunning(SupportedAssets.BTC)) {
             showData();
             return;
         }
 
-        Log.v(TAG, "Mostrando cuadro de autenticación.");
-
         hideData();
 
-        if (!BitcoinService.isRunning()) {
-            createAuthDialog().showUIProgress(getString(R.string.loading_text), this);
+        if (createAuthDialog() == null) {
+            Log.d(TAG, "El cuadro de diálogo a sido mostrado");
+            return;
+        }
+
+        if (!WalletServiceBase.isRunning(SupportedAssets.BTC)) {
+            mDialogOnLoad.showUIProgress(getString(R.string.loading_text), this);
         } else {
-            createAuthDialog().setMode(AuthenticateDialog.AUTH).dismissOnAuth()
+            mDialogOnLoad.setMode(AuthenticateDialog.AUTH).dismissOnAuth()
                     .setWallet(BitcoinService.get()).show(this);
         }
 
@@ -749,5 +712,20 @@ public class WalletAppActivity extends ActivityBase {
     public void handlerShowHistory(View view) {
         Intent intent = new Intent(this, TransactionHistoryActivity.class);
         startActivityForResult(intent, 0);
+    }
+
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+
+        if (!Utils.isNull(mDialogOnLoad))
+            mDialogOnLoad.cancel();
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        lockApp();
     }
 }

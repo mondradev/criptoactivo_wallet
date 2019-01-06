@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import com.cryptowallet.wallet.IWalletListener;
 import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
+import com.cryptowallet.wallet.WalletServiceState;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
@@ -87,7 +88,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 
 import javax.annotation.Nullable;
 
@@ -96,7 +96,7 @@ import javax.annotation.Nullable;
  * ver transacciones pasadas.
  *
  * @author Ing. Javier Flores
- * @version 1.1
+ * @version 1.2
  */
 public final class BitcoinService extends WalletServiceBase {
 
@@ -132,17 +132,13 @@ public final class BitcoinService extends WalletServiceBase {
      */
     private static final String TAG = "Wallet[Asset=BTC]";
 
-
-    /**
-     * Indica si el servicio de la billetera se encuentra en ejecución.
-     */
-    private static boolean mRunning = false;
-
     static {
-        FEE_DATA.add(Hex
-                .decode("00000000000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
-        FEE_DATA.add(Hex
-                .decode("00000000000053fc6fb59398057bba9163a297d18f001b3c0c9a35b680efd97238"));
+        if (NETWORK_PARAMS.equals(TestNet3Params.get())) {
+            FEE_DATA.add(Hex
+                    .decode("00000000000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
+            FEE_DATA.add(Hex
+                    .decode("00000000000053fc6fb59398057bba9163a297d18f001b3c0c9a35b680efd97238"));
+        }
     }
 
     /**
@@ -204,18 +200,9 @@ public final class BitcoinService extends WalletServiceBase {
      * @param transaction Transacción confirmada.
      */
     static void notifyOnCommited(final BitcoinTransaction transaction) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (final IWalletListener listener : mListeners)
                 listener.onCommited(BitcoinService.get(), transaction);
-    }
-
-    /**
-     * Obtiene un valor que indica si el servicio de la billetera está en ejecución.
-     *
-     * @return Un valor true cuando la billetera está en ejecución.
-     */
-    public static boolean isRunning() {
-        return mRunning;
     }
 
     /**
@@ -250,7 +237,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param listener Escucha a notificar.
      */
     private static void notifyOnReady(IWalletListener listener) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             listener.onReady(BitcoinService.get());
     }
 
@@ -260,7 +247,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param e Excepción producida que se notificará.
      */
     private static void notifyOnException(final Exception e) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onException(BitcoinService.get(), e);
     }
@@ -271,7 +258,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param transaction Transacción propagada.
      */
     private static void notifyOnPropagated(final Transaction transaction) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onPropagated(BitcoinService.get(),
                         new BitcoinTransaction(transaction, BitcoinService.get().mWallet));
@@ -281,7 +268,7 @@ public final class BitcoinService extends WalletServiceBase {
      * Notifica a los escuchas que la billetera fue inicializada.
      */
     private static void notifyOnReady() {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onReady(BitcoinService.get());
     }
@@ -290,7 +277,7 @@ public final class BitcoinService extends WalletServiceBase {
      * Notifica a los escuchas que la descarga ha finalizado.
      */
     private static void notifyOnCompletedDownload() {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onCompletedDownloaded(BitcoinService.get());
     }
@@ -301,7 +288,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param blocks Total de bloques a descargar.
      */
     private static void notifyOnStartDownload(final int blocks) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onStartDownload(BitcoinService.get(),
                         BlockchainStatus.build(blocks, null));
@@ -314,7 +301,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param date        Fecha del último bloque descargado.
      */
     private static void notifyOnDownloaded(final int blocksSoFar, final Date date) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onBlocksDownloaded(BitcoinService.get(),
                         BlockchainStatus.build(blocksSoFar, date));
@@ -326,7 +313,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param transaction Transacción que envía pagos a esta billetera.
      */
     private static void notifyOnReceived(final BitcoinTransaction transaction) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners) {
                 listener.onReceived(BitcoinService.get(), transaction);
                 listener.onBalanceChanged(BitcoinService.get(),
@@ -340,7 +327,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param transaction Transacción que envía pagos fuera de esta billetera.
      */
     private static void notifyOnSent(final BitcoinTransaction transaction) {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners) {
                 listener.onSent(BitcoinService.get(), transaction);
                 listener.onBalanceChanged(BitcoinService.get(),
@@ -352,7 +339,7 @@ public final class BitcoinService extends WalletServiceBase {
      * Notifica a los escucha que el servicio ha conectado a la red de Bitcoin.
      */
     private static void nofityOnConnected() {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (final IWalletListener listener : mListeners)
                 listener.onConnected(BitcoinService.get());
     }
@@ -361,7 +348,7 @@ public final class BitcoinService extends WalletServiceBase {
      * Notifica a los escucha que la billetera ha cambiado.
      */
     public static void notifyOnBalanceChange() {
-        if (BitcoinService.isRunning())
+        if (isRunning(SupportedAssets.BTC))
             for (final IWalletListener listener : mListeners)
                 listener.onBalanceChanged(BitcoinService.get(),
                         BitcoinService.get().getBalance());
@@ -388,12 +375,7 @@ public final class BitcoinService extends WalletServiceBase {
 
         final Handler handler = new Handler();
 
-        Threading.USER_THREAD = new Executor() {
-            @Override
-            public void execute(Runnable command) {
-                handler.post(command);
-            }
-        };
+        Threading.USER_THREAD = handler::post;
 
         mDirectory = getApplicationContext().getApplicationInfo().dataDir;
 
@@ -403,7 +385,7 @@ public final class BitcoinService extends WalletServiceBase {
         WifiManager.addEventListener(new WifiManager.IListener() {
             @Override
             public void onConnect() {
-                if (!BitcoinService.isRunning())
+                if (!isRunning(SupportedAssets.BTC))
                     return;
 
                 if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
@@ -412,7 +394,7 @@ public final class BitcoinService extends WalletServiceBase {
 
             @Override
             public void onDisconnect() {
-                if (!BitcoinService.isRunning())
+                if (!isRunning(SupportedAssets.BTC))
                     return;
 
                 if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
@@ -476,7 +458,7 @@ public final class BitcoinService extends WalletServiceBase {
      * @param tx Transacción recibida.
      */
     private void notifyReceived(Transaction tx) {
-        if (!BitcoinService.isRunning())
+        if (!isRunning(SupportedAssets.BTC))
             return;
 
         if (new BitcoinTransaction(tx, mWallet).getAmount() < 0) return;
@@ -497,16 +479,21 @@ public final class BitcoinService extends WalletServiceBase {
     public void onDestroy() {
         super.onDestroy();
 
+        saveWallet();
+
         mListeners.clear();
 
-        mPeerGroup.removeWallet(mWallet);
-        mPeerGroup.stop();
+        if (!Utils.isNull(mPeerGroup)) {
+            mPeerGroup.removeWallet(mWallet);
+            mPeerGroup.stop();
+        }
 
-        mRunning = false;
         mStore = null;
         mWallet = null;
         mPeerGroup = null;
         mDirectory = null;
+
+        setState(WalletServiceState.STOPPED);
 
         Log.d(TAG, "Servicio fue destruido correctamente.");
     }
@@ -555,13 +542,15 @@ public final class BitcoinService extends WalletServiceBase {
      * Inicia la billetera y comienza la sincronización.
      */
     private synchronized void init(final DeterministicSeed seed, final byte[] key) {
-        if (mRunning) {
+        if (isRunning()) {
             if (!mPeerGroup.isRunning())
                 mPeerGroup.startAsync();
 
             Log.v(TAG, "El servicio ha sido iniciado con anterioridad.");
             return;
         }
+
+        setState(WalletServiceState.STARTING);
 
         Context.propagate(getContext());
 
@@ -614,7 +603,7 @@ public final class BitcoinService extends WalletServiceBase {
             mChain.addWallet(mWallet);
             mPeerGroup.addWallet(mWallet);
 
-            mRunning = true;
+            setState(WalletServiceState.RUNNING);
 
             notifyOnReady();
 
@@ -642,6 +631,7 @@ public final class BitcoinService extends WalletServiceBase {
     /**
      * Prepara todas las configuraciones del grupo de puntos remotos.
      */
+    @SuppressWarnings("unchecked")
     private void preparePeerGroup() {
         final int MAX_PEERS = 10;
 
@@ -654,9 +644,7 @@ public final class BitcoinService extends WalletServiceBase {
         mPeerGroup.setMaxConnections(MAX_PEERS);
         mPeerGroup.startBlockChainDownload(new DownloadProgressTracker() {
 
-            private int mTotalBlocks = 0;
-
-            private double mLastPercentage = 0;
+            private int mDownloadedBlocks = 0;
 
             /**
              * Este método es llamado cuando el progreso avanza.
@@ -671,14 +659,14 @@ public final class BitcoinService extends WalletServiceBase {
                                            @Nullable FilteredBlock filteredBlock, int blocksLeft) {
                 super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
 
-                double percentage = 100.0 - (double) blocksLeft / mTotalBlocks;
+                mDownloadedBlocks++;
 
-                if (percentage > mLastPercentage && percentage % 0.5 == 0) {
-                    mLastPercentage = percentage;
+                if (mDownloadedBlocks >= 200) {
                     saveWallet();
+                    mDownloadedBlocks = 0;
                 }
 
-                if (percentage % 0.1 == 0)
+                if (mDownloadedBlocks % 100 == 0)
                     notifyOnDownloaded(blocksLeft, block.getTime());
             }
 
@@ -690,8 +678,6 @@ public final class BitcoinService extends WalletServiceBase {
              */
             @Override
             public void onChainDownloadStarted(Peer peer, int blocksLeft) {
-                mTotalBlocks = blocksLeft;
-
                 super.onChainDownloadStarted(peer, blocksLeft);
 
                 notifyOnStartDownload(blocksLeft);
@@ -713,6 +699,7 @@ public final class BitcoinService extends WalletServiceBase {
             public void onSuccess(@Nullable Object result) {
                 Log.d(TAG, "El grupo de puntos remotos se ha inicilizado.");
                 nofityOnConnected();
+                setState(WalletServiceState.CONNECTED);
             }
 
             @Override
@@ -869,7 +856,7 @@ public final class BitcoinService extends WalletServiceBase {
         List<BitcoinAddress> addresses = BitcoinAddress
                 .getAll(mWallet.getTransactionsByTime(), mWallet);
 
-        return new ArrayList<IAddressBalance>(addresses);
+        return new ArrayList<>(addresses);
     }
 
     /**
@@ -1034,12 +1021,7 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public ICoinFormatter getFormatter() {
-        return new ICoinFormatter() {
-            @Override
-            public String format(long value) {
-                return Coin.valueOf(value).toFriendlyString();
-            }
-        };
+        return value -> Coin.valueOf(value).toFriendlyString();
     }
 
     /**
@@ -1050,6 +1032,9 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public GenericTransactionBase findTransaction(String id) {
+        if (Utils.isNull(mWallet))
+            return null;
+
         Transaction transaction = mWallet.getTransaction(Sha256Hash.wrap(id));
 
         if (transaction == null)
@@ -1065,6 +1050,9 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public boolean isUnencrypted() {
+        if (Utils.isNull(mWallet))
+            return false;
+
         return !mWallet.isEncrypted();
     }
 
@@ -1073,16 +1061,17 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public void disconnectNetwork() {
-        if (mPeerGroup == null)
+        if (Utils.isNull(mPeerGroup))
             return;
 
         Log.d(TAG, "Desconectando el servicio de la red.");
 
         mPeerGroup.removeWallet(mWallet);
-        mPeerGroup.setMaxConnections(0);
         mPeerGroup.stop();
 
         mPeerGroup = null;
+
+        setState(WalletServiceState.RUNNING);
     }
 
     /**
@@ -1091,9 +1080,17 @@ public final class BitcoinService extends WalletServiceBase {
     private void saveWallet() {
         synchronized (this) {
             try {
+                if (!isRunning())
+                    return;
+
                 String walletFileName = String.format("wallet%s", FILE_EXT);
                 File walletFile = new File(mDirectory, walletFileName);
-                BitcoinService.get().mWallet.saveToFile(walletFile);
+                Wallet wallet = BitcoinService.get().mWallet;
+
+                if (Utils.isNull(wallet))
+                    return;
+
+                wallet.saveToFile(walletFile);
 
                 Log.v(TAG, "La billetera se guardó correctamente.");
             } catch (IOException ex) {
@@ -1107,7 +1104,7 @@ public final class BitcoinService extends WalletServiceBase {
      */
     @Override
     public void connectNetwork() {
-        if (mPeerGroup != null)
+        if (!Utils.isNull(mPeerGroup))
             return;
 
         Log.v(TAG, "Conectando el servicio a la red.");

@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import android.os.CountDownTimer;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.MotionEvent;
 
 /**
  * Provee una base para las actividades que soporten los cambios de temas desde la aplicación.
@@ -37,6 +36,11 @@ public abstract class ActivityBase extends AppCompatActivity {
      *
      */
     private static final String TAG = "ActivityBase";
+
+    /**
+     * Tiempo de espera para el bloqueo.
+     */
+    private static final int LOCK_TIME = 60000;
 
     /**
      *
@@ -54,10 +58,15 @@ public abstract class ActivityBase extends AppCompatActivity {
     private boolean mCanLock = true;
 
     /**
+     *
+     */
+    private boolean mUserLeaved;
+
+    /**
      * Cuenta regresiva para bloquear la interfaz.
      */
     private CountDownTimer mLockTimer
-            = new CountDownTimer(60000, 1) {
+            = new CountDownTimer(LOCK_TIME, 1) {
 
 
         @Override
@@ -70,26 +79,26 @@ public abstract class ActivityBase extends AppCompatActivity {
             if (!mCanLock)
                 return;
 
-            Log.v(TAG, "Inactividad de la aplicación por 30s.");
+            if (mRequireLock)
+                return;
 
-            Intent intent = new Intent(ActivityBase.this,
-                    WalletAppActivity.class);
+            Log.v(TAG, "Inactividad de la aplicación por " + (LOCK_TIME / 1000) + "s.");
 
-            intent.putExtra(ExtrasKey.REQ_AUTH, true);
-            ActivityBase.this.startActivity(intent);
-            ActivityBase.this.finish();
+            lockApp();
+
+            if (!mUserLeaved)
+                callMainActivity();
         }
 
     };
 
-    @Override
-    protected void onPause() {
-        Log.v(TAG, "Pausando la actividad.");
-        super.onPause();
+    private void callMainActivity() {
+        Intent intent = new Intent(ActivityBase.this,
+                WalletAppActivity.class);
 
-        mLockTimer.cancel();
-
-        lockApp();
+        intent.putExtra(ExtrasKey.REQ_AUTH, true);
+        ActivityBase.this.startActivity(intent);
+        ActivityBase.this.finish();
     }
 
     /**
@@ -102,26 +111,35 @@ public abstract class ActivityBase extends AppCompatActivity {
     }
 
     /**
-     * Called when a touch screen event was not handled by any of the views
-     * under it.  This is most useful to process touch events that happen
-     * outside of your window bounds, where there is no view to receive it.
+     * Called whenever a key, touch, or trackball event is dispatched to the
+     * activity.  Implement this method if you wish to know that the user has
+     * interacted with the device in some way while your activity is running.
+     * This callback and {@link #onUserLeaveHint} are intended to help
+     * activities manage status bar notifications intelligently; specifically,
+     * for helping activities determine the proper time to cancel a notfication.
      *
-     * @param event The touch screen event being processed.
-     * @return Return true if you have consumed the event, false if you haven't.
-     * The default implementation always returns false.
+     * <p>All calls to your activity's {@link #onUserLeaveHint} callback will
+     * be accompanied by calls to {@link #onUserInteraction}.  This
+     * ensures that your activity will be told of relevant user activity such
+     * as pulling down the notification pane and touching an item there.
+     *
+     * <p>Note that this callback will be invoked for the touch down action
+     * that begins a touch gesture, but may not be invoked for the touch-moved
+     * and touch-up actions that follow.
+     *
+     * @see #onUserLeaveHint()
      */
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        boolean result = super.onTouchEvent(event);
+    public void onUserInteraction() {
+        if (mCanLock)
+            if (mRequireLock)
+                callMainActivity();
+            else {
+                mLockTimer.cancel();
+                mLockTimer.start();
 
-        if (mCanLock) {
-            mLockTimer.cancel();
-            mLockTimer.start();
-
-            Log.d(TAG, "Reiniciando contador de inactividad");
-        }
-
-        return result;
+                Log.d(TAG, "Reiniciando contador de inactividad");
+            }
     }
 
     /**
@@ -145,17 +163,28 @@ public abstract class ActivityBase extends AppCompatActivity {
     protected void onResume() {
         Log.v(TAG, "Retomando la actividad.");
 
+        mUserLeaved = false;
+
         super.onResume();
         if (!mCurrentTheme.contentEquals(AppPreference.getThemeName()))
             AppPreference.reloadTheme(this);
 
         if (mCanLock) {
-            Log.v(TAG, "Bloqueando aplicación.");
+            Log.v(TAG, "Validando si requiere bloqueo de aplicación.");
             if (mRequireLock)
-                mLockTimer.onFinish();
+                callMainActivity();
             else
                 mLockTimer.start();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        Log.v(TAG, "Desactivando el contador de inactividad.");
+
+        mLockTimer.cancel();
     }
 
     /**
@@ -166,12 +195,17 @@ public abstract class ActivityBase extends AppCompatActivity {
 
         if (!canLock)
             mLockTimer.cancel();
+        else {
+            mLockTimer.cancel();
+            mLockTimer.start();
+        }
     }
 
     /**
      *
      */
     protected void lockApp() {
+        mLockTimer.cancel();
         Log.v(TAG, "Bloqueando aplicación.");
         mRequireLock = true;
     }
@@ -191,4 +225,11 @@ public abstract class ActivityBase extends AppCompatActivity {
         return mRequireLock;
     }
 
+
+    @Override
+    protected void onUserLeaveHint() {
+        lockApp();
+
+        mUserLeaved = true;
+    }
 }

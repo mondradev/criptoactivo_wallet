@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,8 @@ public class RestoreWalletActivity extends ActivityBase {
 
         EditText mWords = findViewById(R.id.mSeedWords);
         mWords.setFocusable(true);
+
+        setCanLock(false);
     }
 
     /**

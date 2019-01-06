@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Logger;
 
 /**
  * Adaptador de la lista de transacciones recientes.
@@ -53,11 +52,6 @@ import java.util.logging.Logger;
 public final class RecentListAdapter
         extends AdapterBase<GenericTransactionBase, RecentListAdapter.RecentItemHolder>
         implements View.OnClickListener {
-
-    /**
-     * Envia mensajes al LogCat.
-     */
-    private static Logger mLogger = Logger.getLogger("RecentListAdapter");
 
     /**
      * Activo utilizado para visualizar el monto de la transacción.
@@ -299,7 +293,8 @@ public final class RecentListAdapter
 
             mIcon.setImageDrawable(mIcon.getContext().getDrawable(item.getImage()));
 
-            mStatus.setVisibility(View.VISIBLE);
+            if (item.getDepth() == 0)
+                mStatus.setVisibility(View.VISIBLE);
 
             item.setOnUpdateDepthListener(new GenericTransactionBase.IOnUpdateDepthListener() {
                 @Override

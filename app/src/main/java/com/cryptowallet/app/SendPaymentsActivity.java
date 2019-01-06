@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,11 +73,6 @@ public class SendPaymentsActivity extends ActivityBase
     private static final String TAG = "SendPayment";
 
     /**
-     * Indica que ha regresado desde el escaner QR.
-     */
-    private boolean mFromQrScan = false;
-
-    /**
      * Instancia del lector de códigos QR.
      */
     private IntentIntegrator mQrReader;
@@ -131,6 +126,11 @@ public class SendPaymentsActivity extends ActivityBase
     };
 
     /**
+     * Indica que se está utilizando el lector de códigos QR.
+     */
+    private boolean mUseQrReader;
+
+    /**
      * Obtiene un valor que indica si el pago se hará fuera de la aplicación.
      *
      * @param token   Etiqueta con token a validar.
@@ -161,6 +161,8 @@ public class SendPaymentsActivity extends ActivityBase
 
         boolean canSend = true;
 
+        String amountStr = mAmountText.getText().toString();
+
         if (!validateAddress(mAddressRecipient.getText().toString())) {
             if (!mAddressRecipient.getText().toString().isEmpty())
                 mAddressRecipient.setError(getString(R.string.address_error));
@@ -175,10 +177,12 @@ public class SendPaymentsActivity extends ActivityBase
                 mOutOfTheApp = !mAddress.contentEquals(mAddressOnApp);
         }
 
-        CharSequence amountSecuences = mAmountText.getText();
-        double amount = Double.parseDouble(amountSecuences.length() == 0
-                || amountSecuences.charAt(amountSecuences.length() - 1) == '.' ? "0" :
-                Utils.coalesce(amountSecuences.toString(), "0"));
+        if (Strings.isNullOrEmpty(amountStr))
+            amountStr = "0";
+
+        double amount = Double.parseDouble(amountStr.length() == 0
+                || amountStr.charAt(amountStr.length() - 1) == '.' ? "0" :
+                Utils.coalesce(amountStr, "0"));
 
         if ((getBalance() - getMaxFraction(amount) - mFeePerKb) < 0) {
             mAmountText.setError(getString(R.string.no_enought_funds));
@@ -252,7 +256,18 @@ public class SendPaymentsActivity extends ActivityBase
         mAddressRecipient.addTextChangedListener(mUpdateContent);
         mAmount.addTextChangedListener(mUpdateContent);
         mAmount.setFilters(new InputFilter[]{new DecimalsFilter(16, 8)});
+    }
 
+    @Override
+    protected void onResume() {
+        if (mUseQrReader) {
+            unlockApp();
+            setCanLock(true);
+
+            mUseQrReader = false;
+        }
+
+        super.onResume();
     }
 
     /**
@@ -332,19 +347,7 @@ public class SendPaymentsActivity extends ActivityBase
     public void handlerScanQr(View view) {
         mQrReader.initiateScan();
         setCanLock(false);
-    }
-
-    /**
-     *
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (mFromQrScan) {
-            setCanLock(true);
-            mFromQrScan = false;
-        }
+        mUseQrReader = true;
     }
 
     /**
@@ -500,7 +503,6 @@ public class SendPaymentsActivity extends ActivityBase
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
 
         if (result != null) {
-            mFromQrScan = true;
 
             if (result.getContents() == null) {
                 Utils.showSnackbar(mSendPayment, getString(R.string.address_error));

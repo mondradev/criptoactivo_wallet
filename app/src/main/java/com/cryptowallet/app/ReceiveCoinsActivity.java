@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -175,11 +175,10 @@ public class ReceiveCoinsActivity extends ActivityBase {
 
         if (mAmount == 0)
             sendIntent.putExtra(Intent.EXTRA_TEXT,
-                    String.format(getString(R.string.request_payment_template),
-                            mAddress));
+                    getString(R.string.request_payment_template, mAddress));
         else
             sendIntent.putExtra(Intent.EXTRA_TEXT,
-                    String.format(getString(R.string.request_payment_template_2),
+                    getString(R.string.request_payment_template_2,
                             cointToStringFriendly(mAmount), mAddress));
 
         sendIntent.setType("text/plain");
