@@ -37,7 +37,6 @@ import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.DecimalsFilter;
 import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.IRequestKey;
 import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
@@ -434,38 +433,32 @@ public class SendPaymentsActivity extends ActivityBase
                     switch (mSelectCoin) {
                         case BTC:
                             BitcoinService.get().sendPayment(mAddress, mAmount, mFeePerKb,
-                                    mOutOfTheApp, new IRequestKey() {
-                                        @Override
-                                        public byte[] onRequest() {
-                                            dialog.show(SendPaymentsActivity.this);
+                                    mOutOfTheApp, () -> {
+                                        dialog.show(SendPaymentsActivity.this);
 
-                                            byte[] authData = null;
-                                            try {
-                                                authData = dialog.getAuthData();
-                                            } catch (InterruptedException ignored) {
-                                            }
-                                            if (!Utils.isNull(authData))
-                                                dialog.showUIProgress(
-                                                        getString(R.string.sending_payment));
-
-                                            return authData;
+                                        byte[] authData = null;
+                                        try {
+                                            authData = dialog.getAuthData();
+                                        } catch (InterruptedException ignored) {
                                         }
+                                        if (!Utils.isNull(authData))
+                                            dialog.showUIProgress(
+                                                    getString(R.string.sending_payment));
+
+                                        return authData;
                                     });
                             break;
                     }
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Intent intent = new Intent();
-                            intent.putExtra(
-                                    ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
-                            intent.putExtra(ExtrasKey.SELECTED_COIN, mSelectCoin.name());
-                            intent.putExtra(ExtrasKey.SEND_AMOUNT, mAmount);
-                            setResult(Activity.RESULT_OK, intent);
+                    runOnUiThread(() -> {
+                        Intent intent = new Intent();
+                        intent.putExtra(
+                                ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
+                        intent.putExtra(ExtrasKey.SELECTED_COIN, mSelectCoin.name());
+                        intent.putExtra(ExtrasKey.SEND_AMOUNT, mAmount);
+                        setResult(Activity.RESULT_OK, intent);
 
-                            finish();
-                        }
+                        finish();
                     });
                 } catch (InSufficientBalanceException ex) {
                     String require = WalletServiceBase.get(mSelectCoin).getFormatter()

@@ -33,7 +33,7 @@ import android.util.Log;
 public abstract class ActivityBase extends AppCompatActivity {
 
     /**
-     *
+     * Etiqueta de la clase.
      */
     private static final String TAG = "ActivityBase";
 
@@ -43,7 +43,7 @@ public abstract class ActivityBase extends AppCompatActivity {
     private static final int LOCK_TIME = 60000;
 
     /**
-     *
+     * Indica que la aplicación requiere ser bloqueda.
      */
     private static boolean mRequireLock = false;
 
@@ -58,7 +58,7 @@ public abstract class ActivityBase extends AppCompatActivity {
     private boolean mCanLock = true;
 
     /**
-     *
+     * Indica si el usuario a dejado la aplicación.
      */
     private boolean mUserLeaved;
 
@@ -69,11 +69,19 @@ public abstract class ActivityBase extends AppCompatActivity {
             = new CountDownTimer(LOCK_TIME, 1) {
 
 
+        /**
+         * Este método es llamado cuando el temporizador realiza un tick.
+         *
+         * @param ignored Parametro ignorado.
+         */
         @Override
-        public void onTick(long millisUntilFinished) {
-
+        public void onTick(long ignored) {
         }
 
+        /**
+         * Este método es llamado cuando el temporizador se agota. Este método configura la
+         * actividad para que esta se bloquee al momento de interactuar con ella.
+         */
         @Override
         public void onFinish() {
             if (!mCanLock)
@@ -92,6 +100,9 @@ public abstract class ActivityBase extends AppCompatActivity {
 
     };
 
+    /**
+     * Llama la actividad principal requiriendo que esta sea bloqueada.
+     */
     private void callMainActivity() {
         Intent intent = new Intent(ActivityBase.this,
                 WalletAppActivity.class);
@@ -102,32 +113,8 @@ public abstract class ActivityBase extends AppCompatActivity {
     }
 
     /**
-     * Obtiene el temporizador de la vista de autenticación.
-     *
-     * @return Temporizador de autenticación.
-     */
-    protected CountDownTimer getLockTimer() {
-        return mLockTimer;
-    }
-
-    /**
-     * Called whenever a key, touch, or trackball event is dispatched to the
-     * activity.  Implement this method if you wish to know that the user has
-     * interacted with the device in some way while your activity is running.
-     * This callback and {@link #onUserLeaveHint} are intended to help
-     * activities manage status bar notifications intelligently; specifically,
-     * for helping activities determine the proper time to cancel a notfication.
-     *
-     * <p>All calls to your activity's {@link #onUserLeaveHint} callback will
-     * be accompanied by calls to {@link #onUserInteraction}.  This
-     * ensures that your activity will be told of relevant user activity such
-     * as pulling down the notification pane and touching an item there.
-     *
-     * <p>Note that this callback will be invoked for the touch down action
-     * that begins a touch gesture, but may not be invoked for the touch-moved
-     * and touch-up actions that follow.
-     *
-     * @see #onUserLeaveHint()
+     * Este método es llamado cuando el usuario realiza cualquier tipo de interacción con la
+     * actividad.
      */
     @Override
     public void onUserInteraction() {
@@ -178,6 +165,10 @@ public abstract class ActivityBase extends AppCompatActivity {
         }
     }
 
+    /**
+     * Este método es llamado cuando se pausa la actividad. Desactiva el temporizador de
+     * inactividad.
+     */
     @Override
     protected void onPause() {
         super.onPause();
@@ -202,7 +193,7 @@ public abstract class ActivityBase extends AppCompatActivity {
     }
 
     /**
-     *
+     * Establece la bandera de bloqueo de la aplicación y desactiva el temporizador de inactividad.
      */
     protected void lockApp() {
         mLockTimer.cancel();
@@ -211,7 +202,7 @@ public abstract class ActivityBase extends AppCompatActivity {
     }
 
     /**
-     *
+     * Borra la bandera de bloqueo e inicia el temporizador de inactividad.
      */
     protected void unlockApp() {
         Log.v(TAG, "Desbloqueando aplicación.");
@@ -219,13 +210,19 @@ public abstract class ActivityBase extends AppCompatActivity {
     }
 
     /**
-     * @return
+     * Obtiene un valor que indica si la aplicación está bloqueada.
+     *
+     * @return Un valor true cuando la aplicación está bloqueda.
      */
     protected boolean isLockApp() {
         return mRequireLock;
     }
 
 
+    /**
+     * Este método es llamado cuando el usuario abandona la actividad actual, bloqueando la
+     * aplicación.
+     */
     @Override
     protected void onUserLeaveHint() {
         lockApp();

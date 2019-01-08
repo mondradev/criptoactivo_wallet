@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,6 @@ package com.cryptowallet.wallet;
 public final class InSufficientBalanceException extends Exception {
 
     /**
-     * Saldo durante la excepción.
-     */
-    private final long mBalance;
-
-    /**
      * Activo del envío.
      */
     private final SupportedAssets mAsset;
@@ -41,48 +36,17 @@ public final class InSufficientBalanceException extends Exception {
      */
     private final long mRequireAmount;
 
-    /**
-     * Crea una nueva excepción de saldo insuficiente.
-     *
-     * @param balance       Saldo actual.
-     * @param asset         Activo que se trató de enviar.
-     * @param requireAmount Saldo requerido.
-     */
-    public InSufficientBalanceException(long balance, SupportedAssets asset, long requireAmount) {
-        this("No hay saldo disponible para ser enviado.", balance, asset, requireAmount);
-
-    }
-
 
     /**
      * Crea una nueva excepción de saldo insuficiente.
      *
-     * @param balance        Saldo actual.
      * @param asset          Activo que se trató de enviar.
      * @param requireAmount  Saldo requerido.
      * @param innerException Excepción que causó este error.
      */
-    public InSufficientBalanceException(long balance, SupportedAssets asset, long requireAmount,
+    public InSufficientBalanceException(SupportedAssets asset, long requireAmount,
                                         Exception innerException) {
         super("No hay saldo disponible para ser enviado.", innerException);
-        mAsset = asset;
-        mBalance = balance;
-        mRequireAmount = requireAmount;
-    }
-
-    /**
-     * Crea una nueva instancia especificando la causa de la excepción.
-     *
-     * @param message       Mensaje que especifica la causa de la excepción.
-     * @param balance       Saldo actual.
-     * @param asset         Activo que se trató de enviar.
-     * @param requireAmount Saldo requerido.
-     */
-    public InSufficientBalanceException(String message, long balance, SupportedAssets asset,
-                                        long requireAmount) {
-        super(message);
-
-        mBalance = balance;
         mAsset = asset;
         mRequireAmount = requireAmount;
     }
@@ -94,15 +58,6 @@ public final class InSufficientBalanceException extends Exception {
      */
     public long getRequireAmount() {
         return mRequireAmount;
-    }
-
-    /**
-     * Obtiene el saldo de la billetera cuando ocurrió el error.
-     *
-     * @return Saldo de la billetera.
-     */
-    public long getBalance() {
-        return mBalance;
     }
 
     /**

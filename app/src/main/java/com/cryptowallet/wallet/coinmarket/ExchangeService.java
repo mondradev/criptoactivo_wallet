@@ -1,18 +1,18 @@
 /*
- *    Copyright 2018 InnSy Tech
- *    Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.cryptowallet.wallet.coinmarket;
@@ -122,12 +122,9 @@ public final class ExchangeService {
      * @param smallestUnit El precio expresado en su unidad más pequeña.
      */
     void notifyListeners(final SupportedAssets assets, final long smallestUnit) {
-        Executors.newSingleThreadExecutor().execute(new Runnable() {
-            @Override
-            public void run() {
-                for (IListener listener : mListeners)
-                    listener.onUpdatePrice(assets, smallestUnit);
-            }
+        Executors.newSingleThreadExecutor().execute(() -> {
+            for (IListener listener : mListeners)
+                listener.onUpdatePrice(assets, smallestUnit);
         });
     }
 
@@ -165,16 +162,6 @@ public final class ExchangeService {
     }
 
     /**
-     * Obtiene el precio expresando en otro activo del monto especificado en BTC.
-     *
-     * @param value El monto en BTC expresado en su unidad más pequeña.
-     * @return El precio del monto.
-     */
-    public String getBtcPrice(SupportedAssets asset, long value) {
-        return getExchange(asset).ToStringFriendly(SupportedAssets.BTC, value);
-    }
-
-    /**
      * Agrega un escucha de eventos para los cambios del precio.
      *
      * @param listener Escucha del precio.
@@ -192,18 +179,6 @@ public final class ExchangeService {
     private void completedTasks() {
         mInstance.mxnPriceRequest.notifyIfDone();
         mInstance.usdPriceRequest.notifyIfDone();
-    }
-
-    /**
-     * Obtiene el precio del monto espeficado.
-     *
-     * @param usignedAmount Monto sin signo.
-     * @param assetBase     Activo del monto.
-     * @param valued        Activo del precio.
-     * @return Precio del monto especificado con formato legible.
-     */
-    public String getPrice(long usignedAmount, SupportedAssets assetBase, SupportedAssets valued) {
-        return getExchange(valued).ToStringFriendly(assetBase, usignedAmount);
     }
 
     /**

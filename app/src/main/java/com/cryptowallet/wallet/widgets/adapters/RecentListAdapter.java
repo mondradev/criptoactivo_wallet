@@ -38,7 +38,6 @@ import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -115,12 +114,7 @@ public final class RecentListAdapter
         getItems().clear();
         getItems().addAll(items);
 
-        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
-            @Override
-            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
-                return o2.compareTo(o1);
-            }
-        });
+        Collections.sort(getItems(), (o1, o2) -> o2.compareTo(o1));
 
         if (getItemCount() > 0)
             hideEmptyView();
@@ -146,12 +140,7 @@ public final class RecentListAdapter
 
         getItems().addAll(uniqueList);
 
-        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
-            @Override
-            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
-                return o2.compareTo(o1);
-            }
-        });
+        Collections.sort(getItems(), (o1, o2) -> o2.compareTo(o1));
 
         hideEmptyView();
 
@@ -168,12 +157,7 @@ public final class RecentListAdapter
             return;
 
         getItems().add(item);
-        Collections.sort(getItems(), new Comparator<GenericTransactionBase>() {
-            @Override
-            public int compare(GenericTransactionBase o1, GenericTransactionBase o2) {
-                return o2.compareTo(o1);
-            }
-        });
+        Collections.sort(getItems(), (o1, o2) -> o2.compareTo(o1));
 
         hideEmptyView();
 
@@ -296,18 +280,10 @@ public final class RecentListAdapter
             if (item.getDepth() == 0)
                 mStatus.setVisibility(View.VISIBLE);
 
-            item.setOnUpdateDepthListener(new GenericTransactionBase.IOnUpdateDepthListener() {
-                @Override
-                public void onUpdate(GenericTransactionBase tx) {
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mStatus.setVisibility(View.GONE);
-                            item.setOnUpdateDepthListener(null);
-                        }
-                    });
-                }
-            });
+            item.setOnUpdateDepthListener(tx -> mHandler.post(() -> {
+                mStatus.setVisibility(View.GONE);
+                item.setOnUpdateDepthListener(null);
+            }));
         }
 
         /**

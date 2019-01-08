@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
      * @param layout Layout que representará cada elemento.
      */
     public AdapterBase(@LayoutRes int layout) {
-        this(layout, new ArrayList<TItem>());
+        this(layout, new ArrayList<>());
     }
 
     /**
@@ -176,15 +176,6 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
     }
 
     /**
-     * Obtiene la vista que representa al adaptador cuando éste no contiene elementos.
-     *
-     * @return Vista que representa a la colección vacía.
-     */
-    public View getEmptyView() {
-        return mEmptyView;
-    }
-
-    /**
      * Establece la vista que se mostrará cuando la colección está vacía. Este {@link View}
      * deberá estar incluido en el layout de la vista donde se visualizará, ya que el
      * adaptador solo controla la propiedad {@link View#setVisibility(int)} estableciendo
@@ -271,40 +262,6 @@ public abstract class AdapterBase<TItem, TViewHolder extends RecyclerView.ViewHo
      * @return Una instancia de {@link TViewHolder}.
      */
     protected abstract TViewHolder createViewHolder(View view);
-
-    /**
-     * Remueve el elemento especificado de la colección del adaptador.
-     *
-     * @param item Elemento a borrar.
-     */
-    public boolean remove(TItem item) {
-        Objects.requireNonNull(item);
-
-        if (!mItems.contains(item))
-            return false;
-
-        boolean res = mItems.remove(item);
-
-        notifyChanged();
-
-        return res;
-    }
-
-    /**
-     * Remueve cada uno de los elementos contenidos en la colección del adaptador.
-     *
-     * @param items Colección de elementos a remover.
-     */
-    public boolean removeAll(List<TItem> items) {
-        boolean res = false;
-
-        for (TItem item : items)
-            res |= mItems.remove(item);
-
-        notifyChanged();
-
-        return res;
-    }
 
     /**
      * Muestra la vista que representa a la colección vacía.

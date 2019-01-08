@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,12 +112,7 @@ public final class WifiManager {
      */
     private static void notifyConnect() {
         for (final IListener listener : mListeners)
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
-                @Override
-                public void run() {
-                    listener.onConnect();
-                }
-            });
+            Executors.newSingleThreadExecutor().execute(listener::onConnect);
     }
 
     /**
@@ -125,12 +120,7 @@ public final class WifiManager {
      */
     private static void notifyDisconnect() {
         for (final IListener listener : mListeners)
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
-                @Override
-                public void run() {
-                    listener.onDisconnect();
-                }
-            });
+            Executors.newSingleThreadExecutor().execute(listener::onDisconnect);
     }
 
     /**

@@ -29,7 +29,6 @@ import org.bitcoinj.wallet.Wallet;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -107,13 +106,7 @@ public class BitcoinAddress implements IAddressBalance {
         }
 
         // Ordenamos las direcciones por saldo de mayor a menor.
-        Collections.sort(addresses, new Comparator<BitcoinAddress>() {
-            @Override
-            public int compare(BitcoinAddress o1, BitcoinAddress o2) {
-                int i = o1.mBalance.compareTo(o2.mBalance);
-                return i * -1;
-            }
-        });
+        Collections.sort(addresses, (o1, o2) -> o1.mBalance.compareTo(o2.mBalance) * -1);
 
         return addresses;
     }

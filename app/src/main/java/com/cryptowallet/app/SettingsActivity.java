@@ -20,7 +20,6 @@ package com.cryptowallet.app;
 import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.KeyguardManager;
-import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
@@ -272,24 +271,22 @@ public class SettingsActivity extends ActivityBase {
                         getString(R.string.lightMode),
                         getString(R.string.darkMode),
                         getString(R.string.blueMode)
-                }, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        switch (which) {
-                            case 0:
-                                AppPreference.enableLightTheme(SettingsActivity.this);
-                                break;
-                            case 1:
-                                AppPreference.enableDarkTheme(SettingsActivity.this);
-                                break;
-                            case 2:
-                                AppPreference.enableBlueTheme(SettingsActivity.this);
-                                break;
-                        }
-
-                        recreate();
-
-                        dialog.dismiss();
+                }, (dialog1, which) -> {
+                    switch (which) {
+                        case 0:
+                            AppPreference.enableLightTheme(SettingsActivity.this);
+                            break;
+                        case 1:
+                            AppPreference.enableDarkTheme(SettingsActivity.this);
+                            break;
+                        case 2:
+                            AppPreference.enableBlueTheme(SettingsActivity.this);
+                            break;
                     }
+
+                    recreate();
+
+                    dialog1.dismiss();
                 }).create();
 
         dialog.show();
@@ -308,16 +305,14 @@ public class SettingsActivity extends ActivityBase {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         AlertDialog dialog = builder.setTitle(R.string.select_currency)
-                .setItems(currencies, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
+                .setItems(currencies, (dialog1, which) -> {
 
-                        AppPreference.setSelectedCurrency(
-                                SettingsActivity.this, currencies[which]);
+                    AppPreference.setSelectedCurrency(
+                            SettingsActivity.this, currencies[which]);
 
-                        ((Button) findViewById(R.id.mSelectFiat)).setText(currencies[which]);
+                    ((Button) findViewById(R.id.mSelectFiat)).setText(currencies[which]);
 
-                        dialog.dismiss();
-                    }
+                    dialog1.dismiss();
                 }).create();
 
         dialog.show();

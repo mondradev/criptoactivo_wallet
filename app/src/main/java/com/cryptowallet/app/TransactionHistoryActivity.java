@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,27 +82,14 @@ public class TransactionHistoryActivity extends ActivityBase {
         mSwipeRefreshTx.setProgressBackgroundColorSchemeColor(
                 Utils.getColorFromTheme(this, R.attr.colorAccent));
 
-        mSwipeRefreshTx.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                Executors.newSingleThreadExecutor()
-                        .execute(new Runnable() {
-                                     @Override
-                                     public void run() {
-                                         ExchangeService.get().reloadMarketPrice();
-                                         loadTransactions();
+        mSwipeRefreshTx.setOnRefreshListener(() -> Executors.newSingleThreadExecutor()
+                .execute(() -> {
+                            ExchangeService.get().reloadMarketPrice();
+                            loadTransactions();
 
-                                         mSwipeRefreshTx.post(new Runnable() {
-                                             @Override
-                                             public void run() {
-                                                 mSwipeRefreshTx.setRefreshing(false);
-                                             }
-                                         });
-                                     }
-                                 }
-                        );
-            }
-        });
+                            mSwipeRefreshTx.post(() -> mSwipeRefreshTx.setRefreshing(false));
+                        }
+                ));
 
         loadTransactions();
 

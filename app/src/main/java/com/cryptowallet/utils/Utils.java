@@ -315,63 +315,6 @@ public final class Utils {
     }
 
     /**
-     * Envía una notificación al sistema operativo.
-     *
-     * @param context   Contexto de la aplicación.
-     * @param assetIcon Icono del activo involucrádo.
-     * @param title     Título de la aplicación.
-     * @param message   Mensaje de la aplicación.
-     * @param largeText Resto del mensaje de la notificación.
-     */
-    public static void sendLargeTextNotificationOs(Context context,
-                                                   @DrawableRes int assetIcon,
-                                                   String title,
-                                                   String message,
-                                                   String largeText,
-                                                   Intent onTap) {
-        if (message == null || message.isEmpty())
-            return;
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(assetIcon)
-                .setContentTitle(title)
-                .setContentText(message)
-                .setVibrate(new long[]{500, 500, 500, 500, 500, 500, 500, 500, 500})
-                .setColor(context.getResources().getColor(R.color.light_primary))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(largeText))
-                .setSound(RingtoneManager
-                        .getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION));
-
-
-        if (onTap != null) {
-            onTap.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            PendingIntent pendingIntent
-                    = PendingIntent.getActivity(context, 0, onTap,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
-
-            builder.setContentIntent(pendingIntent);
-        }
-
-        NotificationManager notificationCompat
-                = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            notificationCompat.createNotificationChannel(
-                    new NotificationChannel(
-                            CHANNEL_ID,
-                            context.getString(R.string.app_name),
-                            NotificationManager.IMPORTANCE_HIGH
-                    )
-            );
-
-        notificationCompat.notify(notifyID, builder.build());
-
-        if (notifyID > 9999) notifyID = 0;
-        else notifyID++;
-    }
-
-    /**
      * Genera un código QR a partir de la URI especificada.
      *
      * @param uri  Información del código QR.

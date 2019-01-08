@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,20 +54,17 @@ public final class SplashActivity extends AppCompatActivity {
 
 
         if (!mIsInitializeLogger) {
-            Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-                @Override
-                public void uncaughtException(Thread t, Throwable e) {
-                    try {
-                        String dataDir = getApplicationContext().getApplicationInfo().dataDir;
-                        File loggerFile = new File(dataDir, "cryptowallet.log");
+            Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+                try {
+                    String dataDir = getApplicationContext().getApplicationInfo().dataDir;
+                    File loggerFile = new File(dataDir, "cryptowallet.log");
 
-                        e.printStackTrace(new PrintStream(loggerFile));
-                        e.printStackTrace();
-                    } catch (IOException ignored) {
+                    e.printStackTrace(new PrintStream(loggerFile));
+                    e.printStackTrace();
+                } catch (IOException ignored) {
 
-                    }
-                    System.exit(2);
                 }
+                System.exit(2);
             });
 
             mIsInitializeLogger = true;

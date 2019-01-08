@@ -17,6 +17,8 @@
 
 package com.cryptowallet.bitcoin;
 
+import android.support.annotation.NonNull;
+
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
@@ -68,7 +70,7 @@ public final class BitcoinTransaction extends GenericTransactionBase {
      *
      * @param tx Transacción de Bitcoin.
      */
-    public BitcoinTransaction(Transaction tx, Wallet wallet) {
+    BitcoinTransaction(Transaction tx, Wallet wallet) {
         super(R.mipmap.img_bitcoin, SupportedAssets.BTC);
 
         mWallet = wallet;
@@ -257,6 +259,7 @@ public final class BitcoinTransaction extends GenericTransactionBase {
      *
      * @return El identificador de la transacción.
      */
+    @NonNull
     @Override
     public String getID() {
         return mBitcoinTransaction.getHashAsString();

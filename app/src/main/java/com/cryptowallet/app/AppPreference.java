@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,15 +91,6 @@ public final class AppPreference {
      */
     static boolean isBlueTheme() {
         return mCurrentTheme.contentEquals(BLUE_THEME);
-    }
-
-    /**
-     * Determina si el tema es claro.
-     *
-     * @return Un valor true para indicar que si es.
-     */
-    static boolean isLightTheme() {
-        return mCurrentTheme.contentEquals(LIGHT_THEME);
     }
 
     /**

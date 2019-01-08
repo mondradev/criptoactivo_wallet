@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,12 +43,12 @@ public final class ExtrasKey {
     /**
      * Saldo enviado.
      */
-    public static final String SEND_AMOUNT = "send-amount";
+    static final String SEND_AMOUNT = "send-amount";
 
     /**
      * Actividad autenticado.
      */
-    public static final String AUTHENTICATED = "authenticated";
+    static final String AUTHENTICATED = "authenticated";
 
     /**
      * Información del PIN.
@@ -58,10 +58,6 @@ public final class ExtrasKey {
      * Especifica que se requiere autenticar.
      */
     static final String REQ_AUTH = "req-auth";
-    /**
-     * Registro de PIN.
-     */
-    static final String REG_PIN = "reg-pin";
     /**
      * Restauración de la billetera.
      */

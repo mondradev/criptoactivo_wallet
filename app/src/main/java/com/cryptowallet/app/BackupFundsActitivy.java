@@ -96,51 +96,42 @@ public class BackupFundsActitivy extends ActivityBase {
 
             Executor executor = Executors.newSingleThreadExecutor();
 
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    if (BitcoinService.get().isRunning()) {
-                        mSeed = BitcoinService.get().getSeedWords(new IRequestKey() {
+            executor.execute(() -> {
+                if (BitcoinService.get().isRunning()) {
+                    mSeed = BitcoinService.get().getSeedWords(new IRequestKey() {
 
-                            /**
-                             * Este método es llamado cuando se requiere obtener la clave de la
-                             * billetera.
-                             *
-                             * @return La clave de la billetera.
-                             */
-                            @Override
-                            public byte[] onRequest() {
-                                dialog.show(BackupFundsActitivy.this);
+                        /**
+                         * Este método es llamado cuando se requiere obtener la clave de la
+                         * billetera.
+                         *
+                         * @return La clave de la billetera.
+                         */
+                        @Override
+                        public byte[] onRequest() {
+                            dialog.show(BackupFundsActitivy.this);
 
-                                try {
-                                    return dialog.getAuthData();
-                                } catch (InterruptedException e) {
-                                    return null;
-                                }
+                            try {
+                                return dialog.getAuthData();
+                            } catch (InterruptedException e) {
+                                return null;
                             }
-                        });
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                dialog.dismiss();
+                        }
+                    });
+                    runOnUiThread(() -> {
+                        dialog.dismiss();
 
-                                if (mSeed == null) {
-                                    setResult(Activity.RESULT_OK);
-                                    finish();
-                                } else
-                                    nextWord();
-                            }
-                        });
+                        if (mSeed == null) {
+                            setResult(Activity.RESULT_OK);
+                            finish();
+                        } else
+                            nextWord();
+                    });
 
-                    } else
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                setResult(Activity.RESULT_OK);
-                                finish();
-                            }
-                        });
-                }
+                } else
+                    runOnUiThread(() -> {
+                        setResult(Activity.RESULT_OK);
+                        finish();
+                    });
             });
         } else
             nextWord();

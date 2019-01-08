@@ -138,6 +138,7 @@ public class WalletAppActivity extends ActivityBase {
      * La billetera fue autenticada.
      */
     private boolean mAuthenticated;
+
     /**
      * Escucha de los eventos de la billetera de bitcoin.
      */
@@ -180,16 +181,6 @@ public class WalletAppActivity extends ActivityBase {
         public void onCommited(WalletServiceBase service, GenericTransactionBase tx) {
             if (tx.getDepth() == 1)
                 onBalanceChanged(service, 0);
-        }
-
-        /**
-         * Este método se ejecuta cuando la billetera sufre un cambio.
-         *
-         * @param service Información de la billetera que desencadena el evento.
-         */
-        @Override
-        public void onWalletChanged(WalletServiceBase service) {
-
         }
 
         /**
@@ -442,25 +433,26 @@ public class WalletAppActivity extends ActivityBase {
         mSwipeRefreshData.setProgressBackgroundColorSchemeColor(
                 Utils.getColorFromTheme(this, R.attr.colorAccent));
 
-        mSwipeRefreshData.setOnRefreshListener(() -> Executors.newSingleThreadExecutor().execute(new NamedRunnable(
-                "WalletAppActivity.SwipeRefreshLayout.OnRefresh") {
-            @Override
-            public void execute() {
-                BitcoinService.notifyOnBalanceChange();
-                ExchangeService.get().reloadMarketPrice();
-
-                mRecentsAdapter.setSource(BitcoinService.get()
-                        .getRecentTransactions(5));
-
-                runOnUiThread(new NamedRunnable(
-                        "WalletAppActivity.SwipeRefreshLayout") {
+        mSwipeRefreshData.setOnRefreshListener(() -> Executors.newSingleThreadExecutor()
+                .execute(new NamedRunnable(
+                        "WalletAppActivity.SwipeRefreshLayout.OnRefresh") {
                     @Override
-                    protected void execute() {
-                        mSwipeRefreshData.setRefreshing(false);
+                    public void execute() {
+                        BitcoinService.notifyOnBalanceChange();
+                        ExchangeService.get().reloadMarketPrice();
+
+                        mRecentsAdapter.setSource(BitcoinService.get()
+                                .getRecentTransactions(5));
+
+                        runOnUiThread(new NamedRunnable(
+                                "WalletAppActivity.SwipeRefreshLayout") {
+                            @Override
+                            protected void execute() {
+                                mSwipeRefreshData.setRefreshing(false);
+                            }
+                        });
                     }
-                });
-            }
-        }));
+                }));
 
         setCanLock(true);
 
@@ -715,14 +707,34 @@ public class WalletAppActivity extends ActivityBase {
     }
 
 
+    /**
+     * Este método es llamado cuando el usuario deja la aplicación, lo que provoca que el cuadro de
+     * autenticación sea ocultado.
+     */
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
 
-        if (!Utils.isNull(mDialogOnLoad))
+        if (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing())
             mDialogOnLoad.cancel();
     }
 
+    /**
+     * Este método es llamado cuando la actividad es pausada, lo que provoca que el cuadro de
+     * autenticación sea ocultado.
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing())
+            mDialogOnLoad.cancel();
+    }
+
+    /**
+     * Este método es llamado cuando el usuario presiona el botón hacia atrás, lo que provoca el
+     * bloquedo de la aplicación.
+     */
     @Override
     public void onBackPressed() {
         super.onBackPressed();

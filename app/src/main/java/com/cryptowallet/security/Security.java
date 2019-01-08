@@ -1,6 +1,6 @@
 /*
- * Copyright 2018 InnSy Tech
- * Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+ * Copyright 2019 InnSy Tech
+ * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,6 @@ import android.util.Base64;
 
 import com.cryptowallet.app.AppPreference;
 import com.cryptowallet.utils.Utils;
-
-import org.spongycastle.util.encoders.Hex;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -97,19 +95,6 @@ public final class Security {
             mInstance = new Security();
 
         return mInstance;
-    }
-
-    /**
-     * Obtiene la llave expreseda en una cadena de caracteres.
-     *
-     * @return Una cadena que representa la llave.
-     * @throws IllegalStateException En el caso que la llave no haya sido asignada.
-     */
-    public String getKeyAsString() {
-        if (mKey == null)
-            throw new IllegalStateException("No se ha asignado la clave");
-
-        return Hex.toHexString(mKey);
     }
 
     /**

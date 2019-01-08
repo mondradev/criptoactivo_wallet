@@ -98,7 +98,7 @@ import javax.annotation.Nullable;
  * @author Ing. Javier Flores
  * @version 1.2
  */
-public final class BitcoinService extends WalletServiceBase {
+public final class BitcoinService extends WalletServiceBase implements WifiManager.IListener {
 
     /**
      * Valor del BTC en satoshis.
@@ -387,25 +387,7 @@ public final class BitcoinService extends WalletServiceBase {
         Objects.requireNonNull(mDirectory);
 
         WifiManager.init(this);
-        WifiManager.addEventListener(new WifiManager.IListener() {
-            @Override
-            public void onConnect() {
-                if (!isRunning(SupportedAssets.BTC))
-                    return;
-
-                if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
-                    BitcoinService.get().connectNetwork();
-            }
-
-            @Override
-            public void onDisconnect() {
-                if (!isRunning(SupportedAssets.BTC))
-                    return;
-
-                if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
-                    BitcoinService.get().disconnectNetwork();
-            }
-        });
+        WifiManager.addEventListener(this);
 
         Log.d(TAG, "Creación del servicio correctamente.");
     }
@@ -483,6 +465,8 @@ public final class BitcoinService extends WalletServiceBase {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        WifiManager.removeEventListener(this);
 
         if (!mDeleted)
             saveWallet();
@@ -800,7 +784,6 @@ public final class BitcoinService extends WalletServiceBase {
 
         } catch (InsufficientMoneyException ex) {
             throw new InSufficientBalanceException(
-                    mWallet.getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE).getValue(),
                     SupportedAssets.BTC, Objects.requireNonNull(ex.missing).getValue(), ex);
         }
     }
@@ -1123,5 +1106,29 @@ public final class BitcoinService extends WalletServiceBase {
         mPeerGroup.addWallet(mWallet);
 
         preparePeerGroup();
+    }
+
+    /**
+     * Este método se desencadena cuando la interface es conectada.
+     */
+    @Override
+    public void onConnect() {
+        if (!isRunning(SupportedAssets.BTC))
+            return;
+
+        if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
+            BitcoinService.get().connectNetwork();
+    }
+
+    /**
+     * Este método se desencadena cuando la interface es desconectada.
+     */
+    @Override
+    public void onDisconnect() {
+        if (!isRunning(SupportedAssets.BTC))
+            return;
+
+        if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
+            BitcoinService.get().disconnectNetwork();
     }
 }
