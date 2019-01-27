@@ -20,6 +20,7 @@ package com.cryptowallet.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
@@ -332,6 +333,9 @@ public class WalletAppActivity extends ActivityBase {
         @Override
         public void onException(WalletServiceBase service, Exception exception) {
             Utils.showSnackbar(findViewById(R.id.mSendFab), exception.getMessage());
+
+            if (Utils.isNull(service))
+                System.exit(0);
         }
 
         /**
@@ -454,8 +458,6 @@ public class WalletAppActivity extends ActivityBase {
                     }
                 }));
 
-        setCanLock(true);
-
         BitcoinService.addEventListener(mListener);
 
         mCanUpdate = false;
@@ -487,8 +489,6 @@ public class WalletAppActivity extends ActivityBase {
     private void showData() {
         Log.v(TAG, "Visualizando la información sensible.");
 
-        setCanLock(true);
-
         mCanUpdate = true;
         mRecentsAdapter.addAll(BitcoinService.get().getRecentTransactions(5));
 
@@ -517,7 +517,6 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     protected void onResume() {
-        setCanLock(false);
 
         super.onResume();
 
@@ -720,16 +719,9 @@ public class WalletAppActivity extends ActivityBase {
     }
 
     /**
-     * Este método es llamado cuando la actividad es pausada, lo que provoca que el cuadro de
-     * autenticación sea ocultado.
+     * Indica que se puede salir de la aplicación.
      */
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        if (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing())
-            mDialogOnLoad.cancel();
-    }
+    private boolean mCanExit;
 
     /**
      * Este método es llamado cuando el usuario presiona el botón hacia atrás, lo que provoca el
@@ -737,7 +729,14 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     public void onBackPressed() {
-        super.onBackPressed();
-        lockApp();
+        if (mCanExit) {
+            super.onBackPressed();
+            mCanExit = false;
+        } else {
+            Utils.showSnackbar(findViewById(R.id.mSendFab), getString(R.string.exit_indications));
+            mCanExit = true;
+            new Handler().postDelayed(() -> mCanExit = false, 10000);
+        }
+
     }
 }

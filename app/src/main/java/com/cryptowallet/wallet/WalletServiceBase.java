@@ -59,7 +59,7 @@ public abstract class WalletServiceBase extends IntentService {
     /**
      * Estado del servicio.
      */
-    private WalletServiceState mState;
+    private WalletServiceState mState = WalletServiceState.STOPPED;
 
     /**
      * Crea una nueva instancia de billetera.

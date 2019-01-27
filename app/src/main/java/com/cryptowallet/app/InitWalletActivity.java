@@ -51,8 +51,6 @@ public class InitWalletActivity extends ActivityBase {
 
         Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_init_wallet);
-
-        setCanLock(false);
     }
 
     /**

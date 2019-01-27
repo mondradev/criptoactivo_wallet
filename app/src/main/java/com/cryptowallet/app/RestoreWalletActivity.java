@@ -57,8 +57,6 @@ public class RestoreWalletActivity extends ActivityBase {
 
         EditText mWords = findViewById(R.id.mSeedWords);
         mWords.setFocusable(true);
-
-        setCanLock(false);
     }
 
     /**

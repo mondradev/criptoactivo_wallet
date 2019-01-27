@@ -41,19 +41,21 @@ public final class ExtrasKey {
     public static final String SEED = "seed";
 
     /**
+     * Información del PIN.
+     */
+    public static final String PIN_DATA = "pin-data";
+    /**
+     * Información leída por el lector de códigos QR.
+     */
+    static final String ASSET_DATA_TO_SEND = "asset-data-to-send";
+    /**
      * Saldo enviado.
      */
     static final String SEND_AMOUNT = "send-amount";
-
     /**
      * Actividad autenticado.
      */
     static final String AUTHENTICATED = "authenticated";
-
-    /**
-     * Información del PIN.
-     */
-    public static final String PIN_DATA = "pin-data";
     /**
      * Especifica que se requiere autenticar.
      */

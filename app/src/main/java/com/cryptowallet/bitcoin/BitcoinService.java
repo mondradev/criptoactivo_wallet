@@ -252,9 +252,8 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
      * @param e Excepción producida que se notificará.
      */
     private static void notifyOnException(final Exception e) {
-        if (isRunning(SupportedAssets.BTC))
-            for (IWalletListener listener : mListeners)
-                listener.onException(BitcoinService.get(), e);
+        for (IWalletListener listener : mListeners)
+            listener.onException(isRunning(SupportedAssets.BTC) ? BitcoinService.get() : null, e);
     }
 
     /**
@@ -613,8 +612,14 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
         } catch (InterruptedException | UnreadableWalletException | BlockStoreException ex) {
             Log.d(TAG, "Servicio finalizado forzadamente.");
 
+            ex.printStackTrace();
+
             notifyOnException(ex);
-            stopSelf();
+
+            if (ex instanceof UnreadableWalletException)
+                deleteWallet();
+            else
+                stopSelf();
         }
     }
 
@@ -626,8 +631,8 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
         final int MAX_PEERS = 10;
 
         Log.d(TAG, "Configurando el grupo de puntos remotos de Bitcoin.");
-
         mPeerGroup.addPeerDiscovery(new DnsDiscovery(NETWORK_PARAMS));
+
         mPeerGroup.setUserAgent("CryptoWallet.BTC",
                 AppPreference.getVesion(getApplicationContext()).toString());
         mPeerGroup.setStallThreshold(10, 20 * 1024);
@@ -1073,7 +1078,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
     private void saveWallet() {
         synchronized (this) {
             try {
-                if (!isRunning())
+                if (getState() == WalletServiceState.STOPPED)
                     return;
 
                 String walletFileName = String.format("wallet%s", FILE_EXT);

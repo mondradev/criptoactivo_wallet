@@ -41,8 +41,6 @@ import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
 import com.google.common.base.Strings;
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
 import com.squareup.okhttp.internal.NamedRunnable;
 
 import org.bitcoinj.core.Address;
@@ -70,11 +68,6 @@ public class SendPaymentsActivity extends ActivityBase
      * Etiqueta de la clase.
      */
     private static final String TAG = "SendPayment";
-
-    /**
-     * Instancia del lector de códigos QR.
-     */
-    private IntentIntegrator mQrReader;
 
     /**
      * Opciones disponibles de comisión.
@@ -123,11 +116,6 @@ public class SendPaymentsActivity extends ActivityBase
             validateFundsAndAddress();
         }
     };
-
-    /**
-     * Indica que se está utilizando el lector de códigos QR.
-     */
-    private boolean mUseQrReader;
 
     /**
      * Obtiene un valor que indica si el pago se hará fuera de la aplicación.
@@ -229,10 +217,6 @@ public class SendPaymentsActivity extends ActivityBase
                 getString(R.string.priority_fee_text)
         };
 
-        mQrReader = new IntentIntegrator(this);
-        mQrReader.setPrompt(getString(R.string.qr_reader_indications));
-        mQrReader.setBarcodeImageEnabled(false);
-
         Spinner mFeeSelector = findViewById(R.id.mFeeSelector);
         mFeeSelector.setAdapter(new ArrayAdapter<>(
                 this,
@@ -255,18 +239,6 @@ public class SendPaymentsActivity extends ActivityBase
         mAddressRecipient.addTextChangedListener(mUpdateContent);
         mAmount.addTextChangedListener(mUpdateContent);
         mAmount.setFilters(new InputFilter[]{new DecimalsFilter(16, 8)});
-    }
-
-    @Override
-    protected void onResume() {
-        if (mUseQrReader) {
-            unlockApp();
-            setCanLock(true);
-
-            mUseQrReader = false;
-        }
-
-        super.onResume();
     }
 
     /**
@@ -344,9 +316,8 @@ public class SendPaymentsActivity extends ActivityBase
      * @param view Componente que desencadena el evento Click.
      */
     public void handlerScanQr(View view) {
-        mQrReader.initiateScan();
-        setCanLock(false);
-        mUseQrReader = true;
+        Intent intent = new Intent(this, ScanQRActivity.class);
+        startActivityForResult(intent, 0);
     }
 
     /**
@@ -418,8 +389,6 @@ public class SendPaymentsActivity extends ActivityBase
      * Efectua el pago a realizar y finaliza la actividad.
      */
     private void doPay() {
-        setCanLock(false);
-
         final AuthenticateDialog dialog = new AuthenticateDialog()
                 .setMode(AuthenticateDialog.AUTH)
                 .setWallet(BitcoinService.get());
@@ -471,8 +440,6 @@ public class SendPaymentsActivity extends ActivityBase
                 } finally {
                     if (dialog.isShowing())
                         dialog.dismiss();
-
-                    setCanLock(true);
                 }
             }
         });
@@ -490,18 +457,17 @@ public class SendPaymentsActivity extends ActivityBase
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         Button mSendPayment = findViewById(R.id.mSendPayment);
         TextView mAddressRecipient = findViewById(R.id.mAddressRecipientText);
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
 
-        if (result != null) {
+        if (data != null) {
 
-            if (result.getContents() == null) {
+            if (!data.hasExtra(ExtrasKey.ASSET_DATA_TO_SEND)) {
                 Utils.showSnackbar(mSendPayment, getString(R.string.address_error));
             } else {
                 try {
-                    String uri = result.getContents();
+                    String uri = data.getStringExtra(ExtrasKey.ASSET_DATA_TO_SEND);
 
                     BitcoinURI uriParsed = new BitcoinURI(uri);
 
@@ -531,16 +497,17 @@ public class SendPaymentsActivity extends ActivityBase
 
                     try {
                         Address addressRead = Address.fromBase58(
-                                BitcoinService.NETWORK_PARAMS, result.getContents());
+                                BitcoinService.NETWORK_PARAMS,
+                                data.getStringExtra(ExtrasKey.ASSET_DATA_TO_SEND)
+                        );
 
                         mAddressRecipient.setText(addressRead.toBase58());
                     } catch (AddressFormatException ignored) {
                         Utils.showSnackbar(mSendPayment, getString(R.string.qr_reader_error)
-                                + ": " + result.getContents());
+                                + ": " + data.getStringExtra(ExtrasKey.ASSET_DATA_TO_SEND));
                     }
                 }
             }
-        } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
     }

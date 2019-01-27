@@ -24,6 +24,9 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
+import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletServiceBase;
+
 /**
  * Provee una base para las actividades que soporten los cambios de temas desde la aplicación.
  *
@@ -38,11 +41,6 @@ public abstract class ActivityBase extends AppCompatActivity {
     private static final String TAG = "ActivityBase";
 
     /**
-     * Tiempo de espera para el bloqueo.
-     */
-    private static final int LOCK_TIME = 60000;
-
-    /**
      * Indica que la aplicación requiere ser bloqueda.
      */
     private static boolean mRequireLock = false;
@@ -53,80 +51,23 @@ public abstract class ActivityBase extends AppCompatActivity {
     private String mCurrentTheme = "";
 
     /**
-     * Indica si la aplicación puede bloquearse.
-     */
-    private boolean mCanLock = true;
-
-    /**
-     * Indica si el usuario a dejado la aplicación.
-     */
-    private boolean mUserLeaved;
-
-    /**
      * Cuenta regresiva para bloquear la interfaz.
      */
-    private CountDownTimer mLockTimer
-            = new CountDownTimer(LOCK_TIME, 1) {
-
-
-        /**
-         * Este método es llamado cuando el temporizador realiza un tick.
-         *
-         * @param ignored Parametro ignorado.
-         */
-        @Override
-        public void onTick(long ignored) {
-        }
-
-        /**
-         * Este método es llamado cuando el temporizador se agota. Este método configura la
-         * actividad para que esta se bloquee al momento de interactuar con ella.
-         */
-        @Override
-        public void onFinish() {
-            if (!mCanLock)
-                return;
-
-            if (mRequireLock)
-                return;
-
-            Log.v(TAG, "Inactividad de la aplicación por " + (LOCK_TIME / 1000) + "s.");
-
-            lockApp();
-
-            if (!mUserLeaved)
-                callMainActivity();
-        }
-
-    };
+    private CountDownTimer mLockTimer;
 
     /**
      * Llama la actividad principal requiriendo que esta sea bloqueada.
      */
     private void callMainActivity() {
+        if (mLockTimer != null)
+            mLockTimer.cancel();
+
         Intent intent = new Intent(ActivityBase.this,
                 WalletAppActivity.class);
 
         intent.putExtra(ExtrasKey.REQ_AUTH, true);
         ActivityBase.this.startActivity(intent);
         ActivityBase.this.finish();
-    }
-
-    /**
-     * Este método es llamado cuando el usuario realiza cualquier tipo de interacción con la
-     * actividad.
-     */
-    @Override
-    public void onUserInteraction() {
-        if (mCanLock)
-            if (mRequireLock)
-                callMainActivity();
-            else {
-                mLockTimer.cancel();
-                mLockTimer.start();
-
-                Log.d(TAG, "Reiniciando contador de inactividad");
-            }
     }
 
     /**
@@ -150,46 +91,13 @@ public abstract class ActivityBase extends AppCompatActivity {
     protected void onResume() {
         Log.v(TAG, "Retomando la actividad.");
 
-        mUserLeaved = false;
-
         super.onResume();
         if (!mCurrentTheme.contentEquals(AppPreference.getThemeName()))
             AppPreference.reloadTheme(this);
 
-        if (mCanLock) {
-            Log.v(TAG, "Validando si requiere bloqueo de aplicación.");
-            if (mRequireLock)
-                callMainActivity();
-            else
-                mLockTimer.start();
-        }
-    }
 
-    /**
-     * Este método es llamado cuando se pausa la actividad. Desactiva el temporizador de
-     * inactividad.
-     */
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        Log.v(TAG, "Desactivando el contador de inactividad.");
-
-        mLockTimer.cancel();
-    }
-
-    /**
-     * Establece que la actividad puede ser bloqueada.
-     */
-    protected void setCanLock(boolean canLock) {
-        mCanLock = canLock;
-
-        if (!canLock)
-            mLockTimer.cancel();
-        else {
-            mLockTimer.cancel();
-            mLockTimer.start();
-        }
+        if (mRequireLock)
+            callMainActivity();
     }
 
     /**
@@ -220,13 +128,58 @@ public abstract class ActivityBase extends AppCompatActivity {
 
 
     /**
+     * Crea e inicia el contador de la aplicación.
+     */
+    private void createLockTimer() {
+
+        if (!WalletServiceBase.isRunning(SupportedAssets.BTC))
+            return;
+
+        int time = AppPreference.getLockTime(this.getApplicationContext()) * 1000;
+
+        if (time < 0)
+            return;
+
+        Log.d(TAG, "Creando temporizador de seguridad: " + time);
+
+        mLockTimer = new CountDownTimer(time, 1) {
+
+
+            /**
+             * Este método es llamado cuando el temporizador realiza un tick.
+             *
+             * @param ignored Parametro ignorado.
+             */
+            @Override
+            public void onTick(long ignored) {
+            }
+
+            /**
+             * Este método es llamado cuando el temporizador se agota. Este método configura la
+             * actividad para que esta se bloquee al momento de interactuar con ella.
+             */
+            @Override
+            public void onFinish() {
+
+                if (mRequireLock)
+                    return;
+
+                Log.v(TAG, "Inactividad de la aplicación por " + (time / 1000) + "s.");
+
+                lockApp();
+            }
+
+        };
+
+        mLockTimer.start();
+    }
+
+    /**
      * Este método es llamado cuando el usuario abandona la actividad actual, bloqueando la
      * aplicación.
      */
     @Override
     protected void onUserLeaveHint() {
-        lockApp();
-
-        mUserLeaved = true;
+        createLockTimer();
     }
 }

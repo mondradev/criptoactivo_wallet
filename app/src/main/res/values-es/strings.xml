@@ -86,7 +86,7 @@
     <string name="lightMode">Claro</string>
     <string name="general_title_setting">General</string>
     <string name="about_title_setting">Acerca de</string>
-    <string name="network_title_setting">Red</string>
+    <string name="network_category_title">Red</string>
     <string name="security_title_setting">Seguridad</string>
     <string name="use_only_wifi_setting">Blockchain solo WI-FI</string>
     <string name="change_pin_setting">Cambiar PIN</string>
@@ -133,4 +133,17 @@
     <string name="reconnect_setting">Reconectar red</string>
     <string name="empty_address_text">Dirección no disponible</string>
     <string name="sending_payment">Espere mientra se envía tu pago</string>
+    <string name="immediately_text">Inmediatamente</string>
+    <string name="time_lock_text">Tiempo de espera</string>
+    <string name="second_caption">%d seg</string>
+    <string name="select_time">Seleccionar tiempo</string>
+    <string name="disable_caption">Desactivar</string>
+    <string name="theme_summary">Establece el tema que deseas visualizar</string>
+    <string name="currency_summary">Divisa que se utilizará para visualizar los precios en FIAT</string>
+    <string name="pin_summary">Establece o cambia el PIN de la billetera</string>
+    <string name="fingerprint_summary">Habilita si deseas utilizar la huella digital para desbloquear la billetera</string>
+    <string name="onlywifi_summary">Habilita si deseas descargar la blockchain solo si la conexión wifi está activa</string>
+    <string name="reconnect_summary">Reconecta el nodo a la red de Bitcoin</string>
+    <string name="time_lock_summary">Establece el tiempo de espera para el bloqueo de la billetera</string>
+    <string name="exit_indications">Presione atrás nuevamente para salir</string>
 </resources>

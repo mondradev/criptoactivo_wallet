@@ -13,13 +13,12 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
-  -->
-
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     package="com.cryptowallet">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
@@ -31,17 +30,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <service
             android:name=".bitcoin.BitcoinService"
             android:exported="false"
             android:icon="@mipmap/img_bitcoin" />
-
-        <activity
-            android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="portrait"
-            android:stateNotNeeded="true"
-            tools:replace="android:screenOrientation" />
         <activity
             android:name=".app.SplashActivity"
             android:screenOrientation="portrait"
@@ -136,6 +128,14 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".app.WalletAppActivity" />
+        </activity>
+        <activity
+            android:name=".app.ScanQRActivity"
+            android:parentActivityName=".app.SendPaymentsActivity"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".app.SendPaymentsActivity" />
         </activity>
     </application>
 

@@ -40,16 +40,16 @@ public final class AppPreference {
     /**
      * Tema claro/día.
      */
-    private static final String LIGHT_THEME = "AppTheme";
+    static final String LIGHT_THEME = "AppTheme";
     /**
      * Tema oscuro/nocturno.
      */
-    private static final String DARK_THEME = "AppTheme.Dark";
+    static final String DARK_THEME = "AppTheme.Dark";
 
     /**
      * Tema especial azul.
      */
-    private static final String BLUE_THEME = "AppTheme.Blue";
+    static final String BLUE_THEME = "AppTheme.Blue";
 
     /**
      * Tema actual en ejecución.
@@ -339,6 +339,28 @@ public final class AppPreference {
     static void clear(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferences.edit().clear().apply();
+    }
+
+    /**
+     * Establece el tiempo en el cual se bloquea la aplicación.
+     *
+     * @param context  Contexto de la aplicación.
+     * @param lockTime Tiempo en segundos.
+     */
+    static void setLockTime(Context context, int lockTime) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit().putInt("LockTime", lockTime).apply();
+    }
+
+    /**
+     * Obtiene el tiempo en el cual se bloquea la aplicación.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Tiempo en segudnos.
+     */
+    static int getLockTime(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getInt("LockTime", 0);
     }
 
     /**

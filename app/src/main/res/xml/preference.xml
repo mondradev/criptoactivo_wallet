@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category_title"
+        android:title="@string/general_title_setting">
+        <ListPreference
+            android:dialogTitle="@string/select_theme"
+            android:entries="@array/themes_availables_entries"
+            android:entryValues="@array/themes_availables_values"
+            android:key="selectedTheme"
+            android:summary="@string/theme_summary"
+            android:title="@string/theme_title_setting"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:dialogTitle="@string/select_currency"
+            android:key="selectedCurrency"
+            android:summary="@string/currency_summary"
+            android:title="@string/currency_title_setting"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category_title"
+        android:title="@string/security_title_setting">
+        <Preference
+            android:key="useOrChangePin"
+            android:summary="@string/pin_summary"
+            android:title="@string/change_pin_setting"
+            app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat
+            android:key="useFingerprint"
+            android:summary="@string/fingerprint_summary"
+            android:title="@string/fingerprint_setting"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:dialogTitle="@string/time_lock_text"
+            android:entryValues="@array/lock_time_values"
+            android:key="lockTime"
+            android:summary="@string/time_lock_summary"
+            android:title="@string/time_lock_text"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category_title"
+        android:title="@string/network_category_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="onlyWifi"
+            android:summary="@string/onlywifi_summary"
+            android:title="@string/use_only_wifi_setting"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="reconnect"
+            android:summary="@string/reconnect_summary"
+            android:title="@string/reconnect_setting"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+
+    <PreferenceCategory
+        android:layout="@layout/preference_category_title"
+        android:title="@string/about_title_setting">
+        <Preference
+            android:key="version_app"
+            android:summary="@string/unknown_version"
+            android:title="@string/version_title_setting"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

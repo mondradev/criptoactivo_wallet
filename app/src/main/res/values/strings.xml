@@ -93,7 +93,7 @@
     <string name="lightMode">Light</string>
     <string name="general_title_setting">General</string>
     <string name="about_title_setting">About</string>
-    <string name="network_title_setting">Network</string>
+    <string name="network_category_title">Network</string>
     <string name="security_title_setting">Security</string>
     <string name="use_only_wifi_setting">Blockchain only WI-FI</string>
     <string name="change_pin_setting">Change PIN</string>
@@ -156,4 +156,20 @@
     <string name="empty_address_text">No address available</string>
     <string name="sending_payment">Wait while sending your payment</string>
     <string name="hide_data" translatable="false">**********</string>
+    <string name="immediately_text">Immediately</string>
+    <string name="time_lock_text">Wait Time</string>
+    <string name="second_caption">%d sec</string>
+    <string name="minute_caption" translatable="false">%d min</string>
+    <string name="select_time">Select time</string>
+    <string name="disable_caption">Disable</string>
+    <string name="theme_summary">Set the theme you want to see</string>
+    <string name="currency_summary">Currency that will be used to display the prices in FIAT</string>
+    <string name="pin_summary">Set o change the PIN of wallet</string>
+    <string name="fingerprint_summary">Enable if you want to use the fingerprint to unlock wallet</string>
+    <string name="onlywifi_summary">Enable if you want to download the blockchian only if wifi connection is active</string>
+    <string name="reconnect_summary">Reconnect the node to the Bitcoin Network</string>
+    <string name="time_lock_summary">Set the time you wait to block the wallet</string>
+    <string name="exit_indications">Press Back again to exit</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
 </resources>
