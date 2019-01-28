@@ -258,14 +258,14 @@ public class SettingsFragment extends PreferenceFragment {
 
         SwitchPreferenceCompat useFingerprint = (SwitchPreferenceCompat) findPreference("useFingerprint");
 
-        if (!Utils.isNull(useFingerprint))
+        if (Utils.isNull(useFingerprint))
             return false;
 
         useFingerprint.setChecked(AppPreference.getUseFingerprint(context));
 
         Preference useOrChangePin = findPreference("useOrChangePin");
 
-        if (!Utils.isNull(useOrChangePin))
+        if (Utils.isNull(useOrChangePin))
             return false;
 
         if (AppPreference.getUseFingerprint(context))
@@ -281,17 +281,12 @@ public class SettingsFragment extends PreferenceFragment {
      */
     private boolean onEnableFingerprint(Preference preference, Object o) {
 
-        Boolean enableFingerprint = Boolean.parseBoolean(o.toString());
+        Boolean enableFingerprint = AppPreference.getUseFingerprint(getActivity());
         Preference useOrChangePin = findPreference("useOrChangePin");
         SwitchPreferenceCompat useFingerprint
                 = (SwitchPreferenceCompat) findPreference("useFingerprint");
 
-        if (mDisableListener) {
-            mDisableListener = false;
-            return false;
-        }
-
-        if (enableFingerprint) {
+        if (!enableFingerprint) {
             new AuthenticateDialog()
                     .dismissOnAuth()
                     .setWallet(BitcoinService.get())
@@ -299,7 +294,6 @@ public class SettingsFragment extends PreferenceFragment {
                     .setOnDesmiss(() ->
                             useOrChangePin.setVisible(false))
                     .setOnCancel(() -> {
-                        mDisableListener = true;
                         useFingerprint.setChecked(false);
                     })
                     .show(getActivity());
@@ -316,10 +310,10 @@ public class SettingsFragment extends PreferenceFragment {
                         useOrChangePin.setVisible(true);
                     })
                     .setOnCancel(() -> {
-                        mDisableListener = true;
                         useFingerprint.setChecked(true);
                     })
                     .show(getActivity());
+
         return false;
     }
 

@@ -146,4 +146,5 @@
     <string name="reconnect_summary">Reconecta el nodo a la red de Bitcoin</string>
     <string name="time_lock_summary">Establece el tiempo de espera para el bloqueo de la billetera</string>
     <string name="exit_indications">Presione atrás nuevamente para salir</string>
+    <string name="require_camera_permission">Requiere permisos de camara</string>
 </resources>

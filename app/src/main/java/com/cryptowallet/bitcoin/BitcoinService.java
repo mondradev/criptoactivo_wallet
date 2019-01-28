@@ -64,6 +64,7 @@ import org.bitcoinj.crypto.KeyCrypter;
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
 import org.bitcoinj.net.discovery.DnsDiscovery;
+import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
@@ -108,7 +109,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
     /**
      * Parametro de red.
      */
-    public static final NetworkParameters NETWORK_PARAMS = TestNet3Params.get();
+    public static final NetworkParameters NETWORK_PARAMS = MainNetParams.get();
 
     /**
      * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
@@ -138,6 +139,9 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
                     .decode("00000000000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
             FEE_DATA.add(Hex
                     .decode("00000000000053fc6fb59398057bba9163a297d18f001b3c0c9a35b680efd97238"));
+        } else if (NETWORK_PARAMS.equals(MainNetParams.get())) {
+            FEE_DATA.add(Hex
+                    .decode("00000000000053fc00cfe78d9a10f412af262817571d02ebe21271111e88df9bb0"));
         }
     }
 

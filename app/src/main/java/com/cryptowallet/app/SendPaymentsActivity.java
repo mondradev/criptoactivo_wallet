@@ -17,10 +17,13 @@
 
 package com.cryptowallet.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.util.Log;
@@ -316,6 +319,12 @@ public class SendPaymentsActivity extends ActivityBase
      * @param view Componente que desencadena el evento Click.
      */
     public void handlerScanQr(View view) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            Utils.showSnackbar(findViewById(R.id.mSendPayment),
+                    getString(R.string.require_camera_permission));
+            return;
+        }
         Intent intent = new Intent(this, ScanQRActivity.class);
         startActivityForResult(intent, 0);
     }

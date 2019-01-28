@@ -33,6 +33,7 @@
             android:key="useFingerprint"
             android:summary="@string/fingerprint_summary"
             android:title="@string/fingerprint_setting"
+            android:defaultValue="false"
             app:iconSpaceReserved="false" />
         <ListPreference
             android:dialogTitle="@string/time_lock_text"
@@ -48,7 +49,7 @@
         android:title="@string/network_category_title">
 
         <SwitchPreferenceCompat
-            android:defaultValue="true"
+            android:defaultValue="false"
             android:key="onlyWifi"
             android:summary="@string/onlywifi_summary"
             android:title="@string/use_only_wifi_setting"

@@ -30,5 +30,8 @@
 
         <attr name="textIconsColor" format="color" />
         <attr name="mainTextColor" format="color" />
+
+        <attr name="colorBackground" format="color" />
+        <attr name="textColorSecondary" format="color" />
     </declare-styleable>
 </resources>

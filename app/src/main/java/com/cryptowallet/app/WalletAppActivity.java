@@ -735,7 +735,8 @@ public class WalletAppActivity extends ActivityBase {
         } else {
             Utils.showSnackbar(findViewById(R.id.mSendFab), getString(R.string.exit_indications));
             mCanExit = true;
-            new Handler().postDelayed(() -> mCanExit = false, 10000);
+            new Handler().postDelayed(() ->
+                    mCanExit = false, 3000);
         }
 
     }
