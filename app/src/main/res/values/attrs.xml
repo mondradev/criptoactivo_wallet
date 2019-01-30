@@ -33,5 +33,7 @@
 
         <attr name="colorBackground" format="color" />
         <attr name="textColorSecondary" format="color" />
+
+        <attr name="chipColor" format="color" />
     </declare-styleable>
 </resources>

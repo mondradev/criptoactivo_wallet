@@ -171,6 +171,7 @@
     <string name="time_lock_summary">Set the time you wait to block the wallet</string>
     <string name="exit_indications">Press Back again to exit</string>
     <string name="require_camera_permission">Require camera permission</string>
+    <string name="wrong_word">Wrong words: %s</string>
 
     <!-- TODO: Remove or change this placeholder text -->
 </resources>

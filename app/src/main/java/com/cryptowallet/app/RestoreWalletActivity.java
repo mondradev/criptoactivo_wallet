@@ -21,18 +21,27 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.text.Editable;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.squareup.okhttp.internal.NamedRunnable;
 
+import org.bitcoinj.crypto.MnemonicCode;
 import org.bitcoinj.crypto.MnemonicException;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.UnreadableWalletException;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -40,9 +49,11 @@ import java.util.concurrent.Executors;
  * Esta actividad permite la restauraación de la billetera a través de las 12 palabras.
  *
  * @author Ing. Javier Flores
- * @version 1.1
+ * @version 1.2
  */
 public class RestoreWalletActivity extends ActivityBase {
+
+    private List<String> mWords;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -55,8 +66,111 @@ public class RestoreWalletActivity extends ActivityBase {
         setContentView(R.layout.activity_restore_wallet);
         setTitle(R.string.restore_wallet);
 
-        EditText mWords = findViewById(R.id.mSeedWords);
-        mWords.setFocusable(true);
+        try {
+            mWords = new MnemonicCode().getWordList();
+        } catch (IOException ignored) {
+        }
+
+        EditText seedWords = findViewById(R.id.mSeedWords);
+        seedWords.setFocusable(true);
+
+        seedWords.addTextChangedListener(new OnAfterTextChangedListenerBase() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                LinearLayout group = findViewById(R.id.mWordsGroup);
+                group.removeAllViews();
+
+                if (Strings.isNullOrEmpty(s.toString()))
+                    return;
+
+                String wordsStr = s.toString();
+                String[] wordsArr = wordsStr.split("\\s");
+
+                String[] wrongWords = verify(wordsArr);
+                if (wrongWords.length > 0 && wordsStr.endsWith(" ")) {
+                    showWrongWord(wrongWords);
+                    return;
+                }
+
+                if (wordsArr.length == 0 || wordsStr.endsWith(" "))
+                    return;
+
+                String pattern = wordsArr[wordsArr.length - 1];
+
+                List<String> filtered = new ArrayList<>();
+
+                for (String word : mWords)
+                    if (filtered.size() == 10)
+                        break;
+                    else if (word.startsWith(pattern))
+                        filtered.add(word);
+
+                for (String word : filtered) {
+                    TextView wordChip = (TextView) getLayoutInflater()
+                            .inflate(R.layout.chip_layout, null);
+                    wordChip.setText(word);
+                    LinearLayout.LayoutParams margins = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                    );
+                    margins.setMargins(0, 0, 8, 0);
+                    wordChip.setLayoutParams(margins);
+
+                    wordChip.setOnClickListener(RestoreWalletActivity.this::addWord);
+
+                    group.addView(wordChip);
+                }
+            }
+        });
+    }
+
+    /**
+     * Muestra el mensaje de error de las palabras mal escritas.
+     *
+     * @param wrongWords Palabras mal escritas.
+     */
+    private void showWrongWord(String[] wrongWords) {
+        EditText words = findViewById(R.id.mSeedWords);
+        words.setError(getString(R.string.wrong_word, Joiner.on(", ").join(wrongWords)));
+    }
+
+
+    /**
+     * Obtiene las palabras mal escritas.
+     *
+     * @param words Palabras escritas.
+     * @return Palabras mal escritas.
+     */
+    private String[] verify(String[] words) {
+        List<String> wrongWords = new ArrayList<>();
+
+        for (String word : words)
+            if (!mWords.contains(word))
+                wrongWords.add(word);
+
+        return wrongWords.toArray(new String[0]);
+    }
+
+    /**
+     * Añade la palabra a la cual se realizó el toque.
+     *
+     * @param view Palabra visualizada.
+     */
+    private void addWord(View view) {
+        String wordsStr = ((EditText) findViewById(R.id.mSeedWords)).getText().toString();
+        String[] wordsArr = wordsStr.split("\\s");
+
+        if (wordsArr.length == 0)
+            return;
+
+        String pattern = wordsArr[wordsArr.length - 1];
+        String word = ((TextView) view).getText().toString();
+
+        wordsArr[wordsArr.length - 1] = word.concat(" ");
+
+        wordsStr = Joiner.on(" ").join(wordsArr);
+        ((EditText) findViewById(R.id.mSeedWords)).setText(wordsStr);
+        ((EditText) findViewById(R.id.mSeedWords)).setSelection(wordsStr.length());
     }
 
     /**
