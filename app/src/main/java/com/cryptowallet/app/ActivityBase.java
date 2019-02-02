@@ -24,6 +24,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
 
@@ -55,10 +56,14 @@ public abstract class ActivityBase extends AppCompatActivity {
      */
     private CountDownTimer mLockTimer;
 
+    protected static boolean mCallActivity;
+
     /**
      * Llama la actividad principal requiriendo que esta sea bloqueada.
      */
     private void callMainActivity() {
+        Log.d(TAG, "Invocando la vista principal");
+
         if (mLockTimer != null)
             mLockTimer.cancel();
 
@@ -67,7 +72,7 @@ public abstract class ActivityBase extends AppCompatActivity {
 
         intent.putExtra(ExtrasKey.REQ_AUTH, true);
         ActivityBase.this.startActivity(intent);
-        ActivityBase.this.finish();
+        ActivityBase.this.finishAfterTransition();
     }
 
     /**
@@ -80,8 +85,6 @@ public abstract class ActivityBase extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         AppPreference.loadTheme(this);
         mCurrentTheme = AppPreference.getThemeName();
-
-        unlockApp();
     }
 
     /**
@@ -96,15 +99,20 @@ public abstract class ActivityBase extends AppCompatActivity {
             AppPreference.reloadTheme(this);
 
 
-        if (mRequireLock)
+        if (mRequireLock && !(this instanceof WalletAppActivity))
             callMainActivity();
+
+        if (!mRequireLock && !Utils.isNull(mLockTimer))
+            mLockTimer.cancel();
     }
 
     /**
      * Establece la bandera de bloqueo de la aplicación y desactiva el temporizador de inactividad.
      */
     protected void lockApp() {
-        mLockTimer.cancel();
+        if (!Utils.isNull(mLockTimer))
+            mLockTimer.cancel();
+
         Log.v(TAG, "Bloqueando aplicación.");
         mRequireLock = true;
     }
@@ -139,6 +147,11 @@ public abstract class ActivityBase extends AppCompatActivity {
 
         if (time < 0)
             return;
+
+        if (time == 0) {
+            lockApp();
+            return;
+        }
 
         Log.d(TAG, "Creando temporizador de seguridad: " + time);
 
@@ -180,6 +193,21 @@ public abstract class ActivityBase extends AppCompatActivity {
      */
     @Override
     protected void onUserLeaveHint() {
-        createLockTimer();
+        if (!mCallActivity)
+            createLockTimer();
+
+        mCallActivity = false;
+    }
+
+    @Override
+    public void startActivity(Intent intent) {
+        mCallActivity = true;
+        super.startActivity(intent);
+    }
+
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode) {
+        mCallActivity = true;
+        super.startActivityForResult(intent, requestCode);
     }
 }

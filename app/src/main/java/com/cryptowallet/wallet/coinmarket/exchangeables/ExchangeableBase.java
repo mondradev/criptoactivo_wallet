@@ -1,5 +1,7 @@
 package com.cryptowallet.wallet.coinmarket.exchangeables;
 
+import android.util.Log;
+
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.coinmarket.PairBase;
@@ -15,6 +17,11 @@ import java.util.Hashtable;
  * @version 1.1
  */
 public abstract class ExchangeableBase {
+
+    /**
+     * Etiqueta de la clase.
+     */
+    private final static String TAG = "ExchangeableBase";
 
     /**
      * Servicios que actualizan el precio.
@@ -74,6 +81,7 @@ public abstract class ExchangeableBase {
      * Se intenta actualizar el precio.
      */
     public void updatePrice() {
+        Log.d(TAG, "Actualizando precios");
         for (PairBase service
                 : ((Hashtable<SupportedAssets, PairBase>) mService).values())
             service.sendRequest();

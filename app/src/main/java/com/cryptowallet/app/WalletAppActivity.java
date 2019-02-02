@@ -126,6 +126,9 @@ public class WalletAppActivity extends ActivityBase {
         @Override
         public void onUpdatePrice(SupportedAssets asset, CoinBase price) {
 
+            Log.d(TAG, "Actualizando precio de " + asset.name() + ": "
+                    + price.toStringFriendly());
+
             SupportedAssets currentAsset =
                     AppPreference.getSelectedCurrency(WalletAppActivity.this);
 
@@ -478,9 +481,14 @@ public class WalletAppActivity extends ActivityBase {
         Log.v(TAG, "Configurando un nuevo cuadro de autenticación.");
 
         return (mDialogOnLoad = new AuthenticateDialog())
-                .setOnCancel(() -> {
+                .setOnFail(() -> {
+                    WalletAppActivity.this.moveTaskToBack(true);
                     finishAffinity();
                     System.exit(0);
+                })
+                .setOnCancel(() -> {
+                    lockApp();
+                    WalletAppActivity.this.moveTaskToBack(true);
                 })
                 .setOnDesmiss(this::showData);
     }
@@ -489,6 +497,8 @@ public class WalletAppActivity extends ActivityBase {
      * Muestra la información de la billetera.
      */
     private void showData() {
+        unlockApp();
+
         Log.v(TAG, "Visualizando la información sensible.");
 
         mCanUpdate = true;
@@ -505,13 +515,11 @@ public class WalletAppActivity extends ActivityBase {
      */
     private void hideData() {
         Log.v(TAG, "Ocultando la información sensible.");
-        mCanUpdate = true;
+        mCanUpdate = false;
         mRecentsAdapter.clear();
 
-        runOnUiThread(() -> {
-            ((TextView) findViewById(R.id.mBalanceText)).setText(R.string.hide_data);
-            ((TextView) findViewById(R.id.mBalanceFiat)).setText(R.string.hide_data);
-        });
+        ((TextView) findViewById(R.id.mBalanceText)).setText(R.string.hide_data);
+        ((TextView) findViewById(R.id.mBalanceFiat)).setText(R.string.hide_data);
     }
 
     /**
@@ -519,8 +527,11 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     protected void onResume() {
+        hideData();
 
         super.onResume();
+
+        // Ajustar algoritmo de bloqueo.
 
         boolean reqAuth = getIntent().getBooleanExtra(ExtrasKey.REQ_AUTH, false);
 
@@ -532,27 +543,30 @@ public class WalletAppActivity extends ActivityBase {
 
         Log.v(TAG, "Billetera autenticada: " + (mAuthenticated && !reqAuth));
 
-        boolean requireLock = isLockApp()
-                || (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing());
+        boolean requireLock = isLockApp();
+        boolean unlockWallet = !reqAuth && !requireLock
+                && WalletServiceBase.isRunning(SupportedAssets.BTC);
 
-        if (!requireLock && !reqAuth && WalletServiceBase.isRunning(SupportedAssets.BTC)) {
+        Log.d(TAG, "Billetera bloqueada: " + !unlockWallet);
+
+        if (unlockWallet) {
             showData();
             return;
         }
-
-        hideData();
 
         if (createAuthDialog() == null) {
             Log.d(TAG, "El cuadro de diálogo a sido mostrado");
             return;
         }
 
-        if (!WalletServiceBase.isRunning(SupportedAssets.BTC)) {
+        if (!WalletServiceBase.isRunning(SupportedAssets.BTC))
             mDialogOnLoad.showUIProgress(getString(R.string.loading_text), this);
-        } else {
-            mDialogOnLoad.setMode(AuthenticateDialog.AUTH).dismissOnAuth()
-                    .setWallet(BitcoinService.get()).show(this);
-        }
+        else
+            mDialogOnLoad.setMode(AuthenticateDialog.AUTH)
+                    .dismissOnAuth()
+                    .setWallet(BitcoinService.get())
+                    .show(this);
+
 
         Log.v(TAG, "Billetera iniciada.");
 
@@ -714,10 +728,17 @@ public class WalletAppActivity extends ActivityBase {
      */
     @Override
     protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
+        if (mCallActivity) {
+            mCallActivity = false;
+            return;
+        }
+        Log.d(TAG, "Abandonado la vista principal");
 
         if (!Utils.isNull(mDialogOnLoad) && mDialogOnLoad.isShowing())
             mDialogOnLoad.cancel();
+        else
+            super.onUserLeaveHint();
+
     }
 
     /**

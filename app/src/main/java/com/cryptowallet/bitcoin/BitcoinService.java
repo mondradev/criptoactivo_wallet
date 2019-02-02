@@ -136,7 +136,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
                     .decode("00000000000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
         } else if (NETWORK_PARAMS.equals(MainNetParams.get())) {
             FEE_DATA.add(Hex
-                    .decode("00000000000053fc05726d0c3c923de6703a9bfbc61f9890e27cfaea24c2efcca1"));
+                    .decode("00000000000053fc0557ceb8704e1cd7c36aa39372c74c38635bb9a554b1c1f5cd"));
         }
     }
 

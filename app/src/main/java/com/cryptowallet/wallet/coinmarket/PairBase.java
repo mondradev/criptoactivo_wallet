@@ -138,7 +138,7 @@ public abstract class PairBase {
      */
     public void notifyIfDone() {
         if (mDone)
-            ExchangeService.get().notifyListeners(mLeft.getAsset(), mRight);
+            ExchangeService.get().notifyListeners(mRight.getAsset(), mRight);
     }
 
     /**
@@ -149,7 +149,7 @@ public abstract class PairBase {
             mDone = true;
             notify();
 
-            ExchangeService.get().notifyListeners(mLeft.getAsset(), mRight);
+            ExchangeService.get().notifyListeners(mRight.getAsset(), mRight);
         }
     }
 

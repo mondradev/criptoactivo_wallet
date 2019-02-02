@@ -184,6 +184,11 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
     private FingerprintHandler mFingerprintHandler;
 
     /**
+     *
+     */
+    private Runnable mOnFail;
+
+    /**
      * Crea una nueva instancia de cuadro de diálogo.
      */
     public AuthenticateDialog() {
@@ -644,6 +649,19 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
         }
     }
 
+    public void onFailAuth() {
+        if (!Utils.isNull(mOnFail))
+            mOnFail.run();
+
+        dismiss();
+    }
+
+    public AuthenticateDialog setOnFail(Runnable callback) {
+        mOnFail = callback;
+
+        return this;
+    }
+
     /**
      * Establece el cuadro de diálogo como completado. Finaliza si se hizo la llamada a
      * {@link #dismissOnAuth()}.
@@ -920,7 +938,7 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
         protected void onPostExecute(AuthenticateDialog dialog) {
             if (isFinalized)
                 if (dialog.mHasError)
-                    dialog.cancel(true);
+                    dialog.onFailAuth();
                 else
                     dialog.done();
 
