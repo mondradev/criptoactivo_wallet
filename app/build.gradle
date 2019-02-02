@@ -23,7 +23,7 @@ android {
         applicationId "com.cryptowallet"
         minSdkVersion 21
         targetSdkVersion 28
-        versionName '1.3.190128-beta'
+        versionName '1.3.190201-beta'
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {

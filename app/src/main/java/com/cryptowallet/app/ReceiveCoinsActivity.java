@@ -40,6 +40,8 @@ import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
+import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
@@ -65,7 +67,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
     /**
      * Monto de solicitar.
      */
-    private long mAmount;
+    private CoinBase mAmount;
 
     /**
      * Activo seleccionado para la petición.
@@ -107,33 +109,15 @@ public class ReceiveCoinsActivity extends ActivityBase {
 
             String amountStr = mAmountEdit.getText().toString();
 
-            if (amountStr.isEmpty() || amountStr.contentEquals(".")
-                    || Coin.parseCoin(amountStr).equals(Coin.ZERO)) {
-                mAmount = 0;
+            if (amountStr.isEmpty() || amountStr.contentEquals(".")) {
+                mAmount = CoinFactory.getZero(mSelectedAsset);
             } else {
-                mAmount = getMaxFraction(mAmountEdit.getText().toString());
+                mAmount = CoinFactory.parse(mSelectedAsset, mAmountEdit.getText().toString());
             }
 
             mUpdateQrCountDown.start();
         }
     };
-
-    /**
-     * Convierte la cantidad especificada en la fracción más pequeña de la moneda o token.
-     *
-     * @param amountStr Cantidad actual a convertir.
-     * @return La cantidad expresada en la unidad más pequeña.
-     */
-    private long getMaxFraction(@NonNull String amountStr) {
-        double amount = amountStr.isEmpty() ? 0 : Double.parseDouble(amountStr);
-
-        switch (mSelectedAsset) {
-            case BTC:
-                return (long) (amount * BitcoinService.BTC_IN_SATOSHIS);
-        }
-
-        return 0;
-    }
 
     /**
      * Este método es llamado cuando la actividad es creada.
@@ -152,7 +136,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
                 SupportedAssets.valueOf(getIntent().getStringExtra(ExtrasKey.SELECTED_COIN));
 
         mAddress = getAddressRecipient();
-        mAmount = 0;
+        mAmount = CoinFactory.getZero(mSelectedAsset);
 
         TextView mAddressText = findViewById(R.id.mAddressToReceive);
         mAddressText.setText(mAddress);
@@ -173,13 +157,13 @@ public class ReceiveCoinsActivity extends ActivityBase {
         Intent sendIntent = new Intent();
         sendIntent.setAction(Intent.ACTION_SEND);
 
-        if (mAmount == 0)
+        if (mAmount.isZero())
             sendIntent.putExtra(Intent.EXTRA_TEXT,
                     getString(R.string.request_payment_template, mAddress));
         else
             sendIntent.putExtra(Intent.EXTRA_TEXT,
                     getString(R.string.request_payment_template_2,
-                            cointToStringFriendly(mAmount), mAddress));
+                            mAmount.toStringFriendly(), mAddress));
 
         sendIntent.setType("text/plain");
         startActivity(Intent.createChooser(sendIntent, getString(R.string.share_title)));
@@ -253,7 +237,7 @@ public class ReceiveCoinsActivity extends ActivityBase {
 
                 return Uri.parse(BitcoinURI.convertToBitcoinURI(
                         address,
-                        Coin.valueOf(mAmount),
+                        Coin.valueOf(mAmount.getValue()),
                         null,
                         null
                 ) + "&token=" + token);

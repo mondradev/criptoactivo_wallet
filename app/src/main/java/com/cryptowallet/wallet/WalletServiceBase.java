@@ -23,9 +23,9 @@ import android.content.Intent;
 import android.os.IBinder;
 
 import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
-import com.cryptowallet.wallet.widgets.ICoinFormatter;
 
 import org.spongycastle.util.encoders.Hex;
 
@@ -120,7 +120,7 @@ public abstract class WalletServiceBase extends IntentService {
      * @param asset Activo del cual se hace el  envío.
      * @return La comisión por el envío.
      */
-    public static long getFeeForSendOutApp(SupportedAssets asset) {
+    public static CoinBase getFeeForSendOutApp(SupportedAssets asset) {
         return get(asset).getFeeForSend();
     }
 
@@ -144,7 +144,7 @@ public abstract class WalletServiceBase extends IntentService {
      *
      * @return Comisión por envío.
      */
-    public abstract long getFeeForSend();
+    public abstract CoinBase getFeeForSend();
 
     /**
      * Provee de un enlace a este servicio para comunicar con los clientes que lo requieren.
@@ -168,7 +168,7 @@ public abstract class WalletServiceBase extends IntentService {
      * @param outOfTheApp Indica que el pago es fuera de la aplicación.
      * @param requestKey  Solicita la llave de acceso a la billetera en caso de estár cifrada.
      */
-    public abstract void sendPayment(String address, long amount, long feePerKb,
+    public abstract void sendPayment(String address, CoinBase amount, CoinBase feePerKb,
                                      boolean outOfTheApp, IRequestKey requestKey)
             throws InSufficientBalanceException, KeyException;
 
@@ -177,7 +177,7 @@ public abstract class WalletServiceBase extends IntentService {
      *
      * @return El saldo actual.
      */
-    public abstract long getBalance();
+    public abstract CoinBase getBalance();
 
     /**
      * Obtiene todas las transacciones ordenadas por fecha y hora de manera descendente.
@@ -245,13 +245,6 @@ public abstract class WalletServiceBase extends IntentService {
      * @return Una dirección para recibir pagos.
      */
     public abstract String getReceiveAddress();
-
-    /**
-     * Obtiene el formateador utilizado para visualizar los montos de la transacción.
-     *
-     * @return Instancia del formateador.
-     */
-    public abstract ICoinFormatter getFormatter();
 
     /**
      * Obtiene el activo que maneja la billetera.

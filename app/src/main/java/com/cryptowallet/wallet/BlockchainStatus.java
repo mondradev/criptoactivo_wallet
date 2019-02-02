@@ -38,14 +38,21 @@ public final class BlockchainStatus {
     private final Date mTime;
 
     /**
+     * Total de bloques.
+     */
+    private final int mTotal;
+
+    /**
      * Crea una nueva instancia.
      *
-     * @param leftBlocks Cantidad de bloques restantes por descargar.
-     * @param time       Fecha/hora del último bloque descargado.
+     * @param leftBlocks  Cantidad de bloques restantes por descargar.
+     * @param time        Fecha/hora del último bloque descargado.
+     * @param totalBlocks Total de bloques.
      */
-    private BlockchainStatus(int leftBlocks, Date time) {
+    private BlockchainStatus(int leftBlocks, Date time, int totalBlocks) {
         mLeftBlocks = leftBlocks;
         mTime = time;
+        mTotal = totalBlocks;
     }
 
     /**
@@ -55,8 +62,8 @@ public final class BlockchainStatus {
      * @param time       Fecha/hora del último bloque descargado.
      * @return El estado de la blockchain.
      */
-    public static BlockchainStatus build(int leftBlocks, Date time) {
-        return new BlockchainStatus(leftBlocks, time);
+    public static BlockchainStatus build(int leftBlocks, Date time, int totalBlocks) {
+        return new BlockchainStatus(leftBlocks, time, totalBlocks);
     }
 
     /**
@@ -75,5 +82,14 @@ public final class BlockchainStatus {
      */
     public Date getTime() {
         return mTime;
+    }
+
+    /**
+     * Obtiene el total de bloques por descargar.
+     *
+     * @return Total de bloques.
+     */
+    public int getTotalBlocks() {
+        return mTotal;
     }
 }

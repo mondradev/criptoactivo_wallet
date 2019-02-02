@@ -26,7 +26,8 @@ import com.android.volley.toolbox.BasicNetwork;
 import com.android.volley.toolbox.DiskBasedCache;
 import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
+import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
 
 /**
  * Una clase base para solicitar el precio de un activo y permitir realizar las conversiones con los
@@ -35,7 +36,7 @@ import com.cryptowallet.wallet.SupportedAssets;
  * @author Ing. Javier Flores
  * @version 1.0
  */
-public abstract class RequestPriceServiceBase {
+public abstract class PairBase {
 
     /**
      * Cola de peticiones.
@@ -53,14 +54,14 @@ public abstract class RequestPriceServiceBase {
     private final Context mContext;
 
     /**
-     * Activo que se solicita el precio.
+     * Activo utilizado para los montos.
      */
-    private final SupportedAssets mAsset;
+    private final CoinBase mLeft;
 
     /**
-     * Precio del activo.
+     * Activo utilizado para los precios.
      */
-    private Long mSmallestValue = 1L;
+    private final CoinBase mRight;
 
     /**
      * Indica si ya se realizó la petición.
@@ -68,24 +69,16 @@ public abstract class RequestPriceServiceBase {
     private boolean mDone = false;
 
     /**
-     * La unidad expresada en su porción más pequeña.
-     */
-    private Long mSmallestUnit;
-
-    /**
-     * La unidad base expresada en su porcion más pequeña.
-     */
-    private Long mSmallestUnitBase;
-
-    /**
      * Crea una nueva petición del precio.
      *
      * @param context Contexto de la aplicación.
-     * @param asset   Activo base que se solicitará el precio.
+     * @param left    Activo en el que se representan los montos.
+     * @param right   Activo en el que se calcula el precio.
      */
-    protected RequestPriceServiceBase(Context context, SupportedAssets asset) {
+    protected PairBase(Context context, CoinBase left, CoinBase right) {
         mContext = context;
-        mAsset = asset;
+        mLeft = left;
+        mRight = right;
         mRequest = createRequest();
     }
 
@@ -95,18 +88,6 @@ public abstract class RequestPriceServiceBase {
      * @return La petición del precio.
      */
     protected abstract JsonObjectRequest createRequest();
-
-
-    /**
-     * Establece la unidad del activo y su base expresada en su porción más pequeña.
-     *
-     * @param asset Unidad del activo expresada en su porción más pequeña.
-     * @param base  Unidad del activo base expresada en su porción más pequeña.
-     */
-    public final void setSmallestUnits(long asset, long base) {
-        mSmallestUnit = asset;
-        mSmallestUnitBase = base;
-    }
 
     /**
      * Envía la solicitud al servidor.
@@ -135,58 +116,21 @@ public abstract class RequestPriceServiceBase {
     }
 
     /**
-     * Obtiene el precio del activo expresado en su porción más pequeña.
-     *
-     * @return Precio del activo.
-     */
-    public final Long getSmallestValue() {
-        synchronized (this) {
-            try {
-                if (!mDone)
-                    wait();
-
-                return mSmallestValue;
-            } catch (InterruptedException ignored) {
-            }
-
-            return 1L;
-        }
-    }
-
-    /**
-     * Establece el precio del activo expresado en su porción más pequeña.
-     *
-     * @param smallestValue Precio del activo.
-     */
-    public final void setSmallestValue(Long smallestValue) {
-        synchronized (this) {
-            mSmallestValue = smallestValue;
-        }
-    }
-
-    /**
-     * Obtiene la unidad del activo base expresada en su porción más pequeña.
-     *
-     * @return La unidad en su porción más pequeña.
-     */
-    public final Long getSmallestUnitBase() {
-        return mSmallestUnitBase;
-    }
-
-    /**
      * Realiza la conversión de un monto del activo utilizando el último precio consultado.
      *
-     * @param smallestValue Monto del activo.
      * @return El precio del monto del activo.
      */
-    public final Long exchange(Long smallestValue) {
+    public final CoinBase getPrice(CoinBase amount) {
+        double value = reajustDecimals(amount, mLeft);
+        value = value / mLeft.getValue() * mRight.getValue();
+        return CoinFactory.valueOf(mRight.getAsset(), (long) value);
+    }
 
-        double asset = (double) mSmallestValue;
-        double smallestUnit = (double) mSmallestUnit;
-        double amount = (double) smallestValue;
+    private long reajustDecimals(CoinBase amount, CoinBase right) {
+        double value = amount.getValue() / Math.pow(10, amount.getMaxDecimals());
+        value = value * Math.pow(10, right.getMaxDecimals());
 
-        // TODO: Corregir conversión
-        return (long) (amount / smallestUnit * asset);
+        return (long) value;
     }
 
     /**
@@ -194,7 +138,7 @@ public abstract class RequestPriceServiceBase {
      */
     public void notifyIfDone() {
         if (mDone)
-            ExchangeService.get().notifyListeners(mAsset, getSmallestValue());
+            ExchangeService.get().notifyListeners(mLeft.getAsset(), mRight);
     }
 
     /**
@@ -205,7 +149,26 @@ public abstract class RequestPriceServiceBase {
             mDone = true;
             notify();
 
-            ExchangeService.get().notifyListeners(mAsset, getSmallestValue());
+            ExchangeService.get().notifyListeners(mLeft.getAsset(), mRight);
         }
+    }
+
+    /**
+     * @param price
+     */
+    public void setPrice(double price) {
+        mRight.setValue((long) (price * Math.pow(10, mRight.getMaxDecimals())));
+    }
+
+    /**
+     * Realiza la conversión de un precio especificado para obtener el monto.
+     *
+     * @param price Precio del monto del activo.
+     * @return Monto del activo.
+     */
+    public CoinBase getAmount(CoinBase price) {
+        double value = price.getValue();
+        value = value / mRight.getValue() * mLeft.getValue();
+        return CoinFactory.valueOf(mLeft.getAsset(), (long) value);
     }
 }

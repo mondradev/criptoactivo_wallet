@@ -21,10 +21,9 @@ package com.cryptowallet.wallet.coinmarket;
 import android.content.Context;
 
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
 import com.cryptowallet.wallet.coinmarket.exchangeables.BtcExchangeable;
-import com.cryptowallet.wallet.coinmarket.exchangeables.IExchangeable;
-import com.cryptowallet.wallet.coinmarket.exchangeables.MxnExchangeable;
-import com.cryptowallet.wallet.coinmarket.exchangeables.UsdExchangeable;
+import com.cryptowallet.wallet.coinmarket.exchangeables.ExchangeableBase;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -48,7 +47,7 @@ public final class ExchangeService {
     /**
      * Colección de intercambiadores de activos.
      */
-    private Map<SupportedAssets, IExchangeable> mCurrencies = new HashMap<>();
+    private Map<SupportedAssets, ExchangeableBase> mCurrencies = new HashMap<>();
 
     /**
      * Colección de escuchas de eventos.
@@ -57,27 +56,12 @@ public final class ExchangeService {
             = new CopyOnWriteArrayList<>();
 
     /**
-     * Petición de precio a Coinbase de BTCUSD.
-     */
-    private RequestPriceServiceBase usdPriceRequest;
-
-    /**
-     * Petición de precio a Bitso de BTCMXN.
-     */
-    private RequestPriceServiceBase mxnPriceRequest;
-
-    /**
      * Crea una nueva instancia.
      *
      * @param context Contexto de la aplicación Android.
      */
     private ExchangeService(Context context) {
-        usdPriceRequest = new CoinbaseBtcUsdService(context);
-        mxnPriceRequest = new BitsoBtcMxnService(context);
-
-        mCurrencies.put(SupportedAssets.BTC, new BtcExchangeable());
-        mCurrencies.put(SupportedAssets.USD, new UsdExchangeable());
-        mCurrencies.put(SupportedAssets.MXN, new MxnExchangeable());
+        mCurrencies.put(SupportedAssets.BTC, new BtcExchangeable(context));
     }
 
     /**
@@ -119,33 +103,13 @@ public final class ExchangeService {
      * Notifica a todos los escuchas de una actualización de precio.
      *
      * @param assets       Activo que actualizó su precio.
-     * @param smallestUnit El precio expresado en su unidad más pequeña.
+     * @param price El precio expresado en su unidad más pequeña.
      */
-    void notifyListeners(final SupportedAssets assets, final long smallestUnit) {
+    void notifyListeners(final SupportedAssets assets, final CoinBase price) {
         Executors.newSingleThreadExecutor().execute(() -> {
             for (IListener listener : mListeners)
-                listener.onUpdatePrice(assets, smallestUnit);
+                listener.onUpdatePrice(assets, price);
         });
-    }
-
-    /**
-     * Obtiene el precio en USD de un monto especificado en BTC.
-     *
-     * @param smallestUnit Monto de BTC expresado en su unidad más pequeña.
-     * @return El precio en USD del monto.
-     */
-    public long btcToUsd(long smallestUnit) {
-        return mInstance.usdPriceRequest.exchange(smallestUnit);
-    }
-
-    /**
-     * Obtiene el precio en MXN de un monto especificado en BTC.
-     *
-     * @param smallestUnit Monto de BTC expresado en su unidad más pequeña.
-     * @return El precio en MXN del monto.
-     */
-    public long btcToMxn(long smallestUnit) {
-        return mInstance.mxnPriceRequest.exchange(smallestUnit);
     }
 
     /**
@@ -154,7 +118,7 @@ public final class ExchangeService {
      * @param symbol Activo de la función de intercambio.
      * @return Una función de intercambio.
      */
-    public IExchangeable getExchange(SupportedAssets symbol) {
+    public ExchangeableBase getExchange(SupportedAssets symbol) {
         if (mCurrencies.containsKey(symbol))
             return mCurrencies.get(symbol);
         else
@@ -177,8 +141,7 @@ public final class ExchangeService {
      * Verifica si las peticiones fueron completadas, y activa los escuchas.
      */
     private void completedTasks() {
-        mInstance.mxnPriceRequest.notifyIfDone();
-        mInstance.usdPriceRequest.notifyIfDone();
+        getExchange(SupportedAssets.BTC).nofityIfUpdated();
     }
 
     /**
@@ -194,8 +157,7 @@ public final class ExchangeService {
      * Re-inicia las peticiones de precio.
      */
     public void reloadMarketPrice() {
-        usdPriceRequest.sendRequest();
-        mxnPriceRequest.sendRequest();
+        getExchange(SupportedAssets.BTC).updatePrice();
     }
 
     /**
@@ -210,9 +172,9 @@ public final class ExchangeService {
          * Este método se ejecuta cuando el precio de un activo es actualizado.
          *
          * @param asset        Activo que fue actualizado.
-         * @param smallestUnit Precio del activo expresado en su unidad más pequeña.
+         * @param price Precio del activo expresado en su unidad más pequeña.
          */
-        void onUpdatePrice(SupportedAssets asset, long smallestUnit);
+        void onUpdatePrice(SupportedAssets asset, CoinBase price);
     }
 
 }

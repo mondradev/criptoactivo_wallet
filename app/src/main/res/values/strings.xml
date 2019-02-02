@@ -152,7 +152,7 @@
     <string name="restoring_wallet">Restoring</string>
     <string name="restoring_message">Wait while the wallet is restored…</string>
     <string name="insufficient_money">Insufficient money, requires %s</string>
-    <string name="reconnect_setting">Reconnect network</string>
+    <string name="reconnect_title">Reconnect network</string>
     <string name="empty_address_text">No address available</string>
     <string name="sending_payment">Wait while sending your payment</string>
     <string name="hide_data" translatable="false">**********</string>
@@ -172,6 +172,14 @@
     <string name="exit_indications">Press Back again to exit</string>
     <string name="require_camera_permission">Require camera permission</string>
     <string name="wrong_word">Wrong words: %s</string>
+    <string name="fiat_sample_text">$ 0.00 %s</string>
+    <string name="progress_blockchain">Sync: %s\ \nDate: %s</string>
+    <string name="unknown_data">(Unavailable data)</string>
+    <string name="bitcoin_blockchain_status">Bitcoin Blockchain Status</string>
+    <string name="two_factor_summary">Two-factor authentication adds an additional layer of security to the send payments process</string>
+    <string name="two_factor_title">Use 2FA</string>
+    <string name="calculate_progress">calculating progress</string>
+    <string name="reconnect_setting_disable">Reconnect network (connecting)</string>
 
     <!-- TODO: Remove or change this placeholder text -->
 </resources>

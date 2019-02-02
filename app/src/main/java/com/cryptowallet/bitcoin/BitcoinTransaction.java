@@ -21,7 +21,8 @@ import android.support.annotation.NonNull;
 
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.coins.Btc;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
 import org.bitcoinj.core.Address;
@@ -71,7 +72,7 @@ public final class BitcoinTransaction extends GenericTransactionBase {
      * @param tx Transacción de Bitcoin.
      */
     BitcoinTransaction(Transaction tx, Wallet wallet) {
-        super(R.mipmap.img_bitcoin, SupportedAssets.BTC);
+        super(R.mipmap.img_bitcoin);
 
         mWallet = wallet;
         mBitcoinTransaction = tx;
@@ -118,9 +119,12 @@ public final class BitcoinTransaction extends GenericTransactionBase {
      * @return Una cadena que representa la comisión.
      */
     @Override
-    public long getFee() {
+    public CoinBase getFee() {
         long walletFee = getWalletFee(mBitcoinTransaction);
-        return Utils.coalesce(mBitcoinTransaction.getFee(), Coin.ZERO).getValue() + walletFee;
+        return new Btc(Utils.coalesce(
+                mBitcoinTransaction.getFee(),
+                Coin.ZERO
+        ).getValue() + walletFee);
     }
 
     /**
@@ -129,11 +133,11 @@ public final class BitcoinTransaction extends GenericTransactionBase {
      * @return Una cadena que representa la cantidad de la transacción.
      */
     @Override
-    public long getAmount() {
-        return (mBitcoinTransaction.getValue(mWallet).isNegative()
+    public CoinBase getAmount() {
+        return new Btc((mBitcoinTransaction.getValue(mWallet).isNegative()
                 ? mBitcoinTransaction.getValue(mWallet).add(mBitcoinTransaction.getFee())
                 : mBitcoinTransaction.getValueSentToMe(mWallet))
-                .getValue();
+                .getValue());
     }
 
     /**
@@ -195,7 +199,7 @@ public final class BitcoinTransaction extends GenericTransactionBase {
         NetworkParameters params = BitcoinService.NETWORK_PARAMS;
 
         List<TransactionOutput> outputs = mBitcoinTransaction.getOutputs();
-        Boolean isPay = Coin.valueOf(getAmount()).isNegative();
+        boolean isPay = Coin.valueOf(getAmount().getValue()).isNegative();
 
         for (TransactionOutput output : outputs) {
 
@@ -263,16 +267,6 @@ public final class BitcoinTransaction extends GenericTransactionBase {
     @Override
     public String getID() {
         return mBitcoinTransaction.getHashAsString();
-    }
-
-    /**
-     * Obtiene la cantidad movida en la transacción sin signo.
-     *
-     * @return Una cadena que representa la cantidad de la transacción.
-     */
-    @Override
-    public long getUsignedAmount() {
-        return Math.abs(getAmount());
     }
 
     /**

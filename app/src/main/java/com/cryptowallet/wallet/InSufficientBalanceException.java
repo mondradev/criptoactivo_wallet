@@ -17,6 +17,8 @@
 
 package com.cryptowallet.wallet;
 
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
+
 /**
  * Excepción de saldo insuficiente, que ocurre cuando se trata de enviar un pago sin tener saldo
  * disponible en la billetera.
@@ -34,7 +36,7 @@ public final class InSufficientBalanceException extends Exception {
     /**
      * Saldo requerido.
      */
-    private final long mRequireAmount;
+    private final CoinBase mRequireAmount;
 
 
     /**
@@ -44,7 +46,7 @@ public final class InSufficientBalanceException extends Exception {
      * @param requireAmount  Saldo requerido.
      * @param innerException Excepción que causó este error.
      */
-    public InSufficientBalanceException(SupportedAssets asset, long requireAmount,
+    public InSufficientBalanceException(SupportedAssets asset, CoinBase requireAmount,
                                         Exception innerException) {
         super("No hay saldo disponible para ser enviado.", innerException);
         mAsset = asset;
@@ -56,7 +58,7 @@ public final class InSufficientBalanceException extends Exception {
      *
      * @return Saldo requerido.
      */
-    public long getRequireAmount() {
+    public CoinBase getRequireAmount() {
         return mRequireAmount;
     }
 

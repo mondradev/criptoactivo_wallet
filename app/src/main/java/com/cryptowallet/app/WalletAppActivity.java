@@ -45,6 +45,8 @@ import com.cryptowallet.wallet.IWalletListener;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
+import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.adapters.RecentListAdapter;
 import com.squareup.okhttp.internal.NamedRunnable;
@@ -119,13 +121,13 @@ public class WalletAppActivity extends ActivityBase {
          * Este método se ejecuta cuando el precio de un activo es actualizado.
          *
          * @param asset        Activo que fue actualizado.
-         * @param smallestUnit Precio del activo expresado en su unidad más pequeña.
+         * @param price Precio del activo expresado en su unidad más pequeña.
          */
         @Override
-        public void onUpdatePrice(SupportedAssets asset, long smallestUnit) {
+        public void onUpdatePrice(SupportedAssets asset, CoinBase price) {
 
-            SupportedAssets currentAsset = SupportedAssets.valueOf(
-                    AppPreference.getSelectedCurrency(WalletAppActivity.this));
+            SupportedAssets currentAsset =
+                    AppPreference.getSelectedCurrency(WalletAppActivity.this);
 
             if (asset != currentAsset || !WalletServiceBase.isRunning(SupportedAssets.BTC))
                 return;
@@ -181,7 +183,7 @@ public class WalletAppActivity extends ActivityBase {
         @Override
         public void onCommited(WalletServiceBase service, GenericTransactionBase tx) {
             if (tx.getDepth() == 1)
-                onBalanceChanged(service, 0);
+                onBalanceChanged(service, CoinFactory.getZero(service.getAsset()));
         }
 
         /**
@@ -191,21 +193,21 @@ public class WalletAppActivity extends ActivityBase {
          * @param ignored Balance nuevo en la unidad más pequeña de la moneda o token.
          */
         @Override
-        public void onBalanceChanged(final WalletServiceBase service, long ignored) {
+        public void onBalanceChanged(final WalletServiceBase service, CoinBase ignored) {
             if (!mCanUpdate)
                 return;
 
-            final long value = service.getBalance();
+            final CoinBase value = service.getBalance();
             final TextView mUsdBalance = findViewById(R.id.mBalanceFiat);
 
-            SupportedAssets assets = SupportedAssets.valueOf(
-                    AppPreference.getSelectedCurrency(WalletAppActivity.this));
+            SupportedAssets assets =
+                    AppPreference.getSelectedCurrency(WalletAppActivity.this);
 
             final String balanceFiat
-                    = ExchangeService.get().getExchange(assets)
-                    .ToStringFriendly(SupportedAssets.BTC, value);
+                    = ExchangeService.get().getExchange(SupportedAssets.BTC)
+                    .convertTo(assets, value).toStringFriendly();
 
-            runOnUiThread(() -> mBalanceText.setText(service.getFormatter().format(value)));
+            runOnUiThread(() -> mBalanceText.setText(value.toStringFriendly()));
 
             runOnUiThread(() -> mUsdBalance.setText(balanceFiat));
 

@@ -1,33 +1,42 @@
 package com.cryptowallet.wallet.coinmarket.exchangeables;
 
-import com.cryptowallet.wallet.SupportedAssets;
+import android.content.Context;
 
-import org.bitcoinj.core.Coin;
+import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.BitsoBtcMxnService;
+import com.cryptowallet.wallet.coinmarket.CoinbaseBtcUsdService;
+import com.cryptowallet.wallet.coinmarket.PairBase;
+
+import java.util.Dictionary;
+import java.util.Hashtable;
 
 /**
  * Convierte los montos de otros activos a montos expresados en Dolares estadounidenses.
  *
  * @author Ing. Javier Flores
- * @version 1.0
+ * @version 1.2
  */
-public final class BtcExchangeable implements IExchangeable {
+public final class BtcExchangeable extends ExchangeableBase {
 
     /**
-     * Convierte el monto expresado en su unidad más pequeña al activo manejado por la instancia.
-     *
-     * @param currencyBase Activo en el cual se expresa el monto.
-     * @param value        Monto a convertir.
-     * @return Monto convertido.
+     * Crea una nueva instancia de un intercambiador.
      */
-    @Override
-    public String ToStringFriendly(SupportedAssets currencyBase, long value) {
-        Coin btcValue = Coin.valueOf(value);
+    public BtcExchangeable(Context context) {
+        super(SupportedAssets.BTC, getService(context));
+    }
 
-        switch (currencyBase) {
-            case BTC:
-                return btcValue.toFriendlyString();
-            default:
-                return "";
-        }
+    /**
+     * Obtiene los servicios que se encargarán de obtener los precios de BTC.
+     *
+     * @param context Contexto de la aplicación.
+     * @return Un diccionario de servicios.
+     */
+    private static Dictionary<SupportedAssets, PairBase> getService(Context context) {
+        Dictionary<SupportedAssets, PairBase> service = new Hashtable<>();
+
+        service.put(SupportedAssets.USD, new CoinbaseBtcUsdService(context));
+        service.put(SupportedAssets.MXN, new BitsoBtcMxnService(context));
+
+        return service;
     }
 }

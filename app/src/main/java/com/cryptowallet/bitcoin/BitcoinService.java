@@ -37,9 +37,10 @@ import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
 import com.cryptowallet.wallet.WalletServiceState;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
+import com.cryptowallet.wallet.coinmarket.coins.Btc;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
-import com.cryptowallet.wallet.widgets.ICoinFormatter;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -89,6 +90,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 import javax.annotation.Nullable;
 
@@ -102,14 +104,9 @@ import javax.annotation.Nullable;
 public final class BitcoinService extends WalletServiceBase implements WifiManager.IListener {
 
     /**
-     * Valor del BTC en satoshis.
-     */
-    public static final long BTC_IN_SATOSHIS = 100000000;
-
-    /**
      * Parametro de red.
      */
-    public static final NetworkParameters NETWORK_PARAMS = MainNetParams.get();
+    public static final NetworkParameters NETWORK_PARAMS = TestNet3Params.get();
 
     /**
      * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
@@ -137,11 +134,9 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
         if (NETWORK_PARAMS.equals(TestNet3Params.get())) {
             FEE_DATA.add(Hex
                     .decode("00000000000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
-            FEE_DATA.add(Hex
-                    .decode("00000000000053fc6fb59398057bba9163a297d18f001b3c0c9a35b680efd97238"));
         } else if (NETWORK_PARAMS.equals(MainNetParams.get())) {
             FEE_DATA.add(Hex
-                    .decode("00000000000053fc00cfe78d9a10f412af262817571d02ebe21271111e88df9bb0"));
+                    .decode("00000000000053fc05726d0c3c923de6703a9bfbc61f9890e27cfaea24c2efcca1"));
         }
     }
 
@@ -299,7 +294,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
         if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onStartDownload(BitcoinService.get(),
-                        BlockchainStatus.build(blocks, null));
+                        BlockchainStatus.build(blocks, null, 0));
     }
 
     /**
@@ -307,12 +302,13 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
      *
      * @param blocksSoFar Bloques restantes a descargar.
      * @param date        Fecha del último bloque descargado.
+     * @param height
      */
-    private static void notifyOnDownloaded(final int blocksSoFar, final Date date) {
+    private static void notifyOnDownloaded(final int blocksSoFar, final Date date, int height) {
         if (isRunning(SupportedAssets.BTC))
             for (IWalletListener listener : mListeners)
                 listener.onBlocksDownloaded(BitcoinService.get(),
-                        BlockchainStatus.build(blocksSoFar, date));
+                        BlockchainStatus.build(blocksSoFar, date, blocksSoFar + height));
     }
 
     /**
@@ -451,7 +447,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
         if (!isRunning(SupportedAssets.BTC))
             return;
 
-        if (new BitcoinTransaction(tx, mWallet).getAmount() < 0) return;
+        if (new BitcoinTransaction(tx, mWallet).getAmount().isNegative()) return;
 
         Intent intent = new Intent(this, TransactionActivity.class);
         intent.putExtra(ExtrasKey.TX_ID, tx.getHashAsString());
@@ -632,7 +628,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
      */
     @SuppressWarnings("unchecked")
     private void preparePeerGroup() {
-        final int MAX_PEERS = 10;
+        final int MAX_PEERS = 5;
 
         Log.d(TAG, "Configurando el grupo de puntos remotos de Bitcoin.");
         mPeerGroup.addPeerDiscovery(new DnsDiscovery(NETWORK_PARAMS));
@@ -665,8 +661,17 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
                     mDownloadedBlocks = 0;
                 }
 
-                if (mDownloadedBlocks % 100 == 0)
-                    notifyOnDownloaded(blocksLeft, block.getTime());
+                if (mDownloadedBlocks % 100 == 0) {
+                    try {
+                        notifyOnDownloaded(
+                                blocksLeft,
+                                block.getTime(),
+                                mStore.getChainHead().getHeight()
+                        );
+                    } catch (BlockStoreException e) {
+                        notifyOnException(e);
+                    }
+                }
             }
 
             /**
@@ -715,7 +720,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
      * @return Comisión por envío.
      */
     @Override
-    public long getFeeForSend() {
+    public CoinBase getFeeForSend() {
         long fees = 0;
 
         for (byte[] target : BitcoinService.FEE_DATA) {
@@ -723,7 +728,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
             fees += amount.value;
         }
 
-        return fees;
+        return new Btc(fees);
     }
 
     /**
@@ -737,18 +742,19 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
      * @param requestKey  Solicita la llave de acceso a la billetera en caso de estár cifrada.
      */
     @Override
-    public void sendPayment(String address, long amount, long feePerKb, boolean outOfTheApp,
+    public void sendPayment(String address, CoinBase amount, CoinBase feePerKb, boolean outOfTheApp,
                             IRequestKey requestKey)
             throws InSufficientBalanceException, KeyException {
 
         Utils.throwIfNullOrEmpty(address,
                 "La dirección no puede ser una cadena nula o vacía.");
-        Preconditions.checkArgument(amount > 0,
+        Preconditions.checkArgument(amount.getValue() > 0,
                 "La cantidad debe ser mayor a 0");
 
         try {
             Transaction txSend = new Transaction(NETWORK_PARAMS);
-            txSend.addOutput(Coin.valueOf(amount), Address.fromBase58(NETWORK_PARAMS, address));
+            txSend.addOutput(Coin.valueOf(amount.getValue()),
+                    Address.fromBase58(NETWORK_PARAMS, address));
 
             if (outOfTheApp) {
                 for (byte[] feeTarget : FEE_DATA) {
@@ -763,7 +769,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
             }
 
             SendRequest request = SendRequest.forTx(txSend);
-            request.feePerKb = Coin.valueOf(feePerKb);
+            request.feePerKb = Coin.valueOf(feePerKb.getValue());
 
             if (mWallet.isEncrypted() && mWallet.getKeyCrypter() != null && requestKey != null) {
                 request.aesKey = mWallet.getKeyCrypter()
@@ -793,7 +799,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
 
         } catch (InsufficientMoneyException ex) {
             throw new InSufficientBalanceException(
-                    SupportedAssets.BTC, Objects.requireNonNull(ex.missing).getValue(), ex);
+                    SupportedAssets.BTC, new Btc(Objects.requireNonNull(ex.missing).getValue()), ex);
         }
     }
 
@@ -803,12 +809,12 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
      * @return El saldo actual.
      */
     @Override
-    public long getBalance() {
+    public CoinBase getBalance() {
         if (Utils.isNull(mWallet))
-            return Coin.ZERO.getValue();
+            return new Btc();
 
-        return Utils.coalesce(mWallet
-                .getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE), Coin.ZERO).getValue();
+        return new Btc(Utils.coalesce(mWallet
+                .getBalance(Wallet.BalanceType.AVAILABLE_SPENDABLE), Coin.ZERO).getValue());
     }
 
     /**
@@ -1017,16 +1023,6 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
     }
 
     /**
-     * Obtiene el formateador utilizado para visualizar los montos de la transacción.
-     *
-     * @return Instancia del formateador.
-     */
-    @Override
-    public ICoinFormatter getFormatter() {
-        return value -> Coin.valueOf(value).toFriendlyString();
-    }
-
-    /**
      * Busca en la billetera la transacción especificada por el ID.
      *
      * @param id Identificador único de la transacción.
@@ -1102,6 +1098,23 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
     }
 
     /**
+     * Reconecta a los nodos de la red de Bitcoin y comienza la descarga de la blockchain.
+     */
+    public void reconnectNetwork() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+
+            try {
+                mStore.setChainHead(mStore.getChainHead().getPrev(mStore));
+            } catch (BlockStoreException e) {
+                notifyOnException(e);
+            }
+
+            disconnectNetwork();
+            connectNetwork();
+        });
+    }
+
+    /**
      * Conecta la billetera a la red.
      */
     @Override
@@ -1139,5 +1152,19 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
 
         if (AppPreference.getUseOnlyWifi(BitcoinService.get()))
             BitcoinService.get().disconnectNetwork();
+    }
+
+    /**
+     * Obtiene la fecha del ultimo bloque en la cadena.
+     *
+     * @return Fecha del bloque.
+     */
+    public Date getBlockchainDate() {
+        try {
+            return mStore.getChainHead().getHeader().getTime();
+        } catch (BlockStoreException e) {
+            notifyOnException(e);
+        }
+        return new Date();
     }
 }

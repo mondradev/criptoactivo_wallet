@@ -130,7 +130,7 @@
     <string name="restoring_wallet">Restaurando</string>
     <string name="restoring_message">Espere mientras se restaura la billetera…</string>
     <string name="insufficient_money">Saldo insuficiente, se requiere %s</string>
-    <string name="reconnect_setting">Reconectar red</string>
+    <string name="reconnect_title">Reconectar red</string>
     <string name="empty_address_text">Dirección no disponible</string>
     <string name="sending_payment">Espere mientra se envía tu pago</string>
     <string name="immediately_text">Inmediatamente</string>
@@ -146,6 +146,14 @@
     <string name="reconnect_summary">Reconecta el nodo a la red de Bitcoin</string>
     <string name="time_lock_summary">Establece el tiempo de espera para el bloqueo de la billetera</string>
     <string name="exit_indications">Presione atrás nuevamente para salir</string>
-    <string name="require_camera_permission">Requiere permisos de camara</string>
+    <string name="require_camera_permission">Requiere permisos de cámara</string>
     <string name="wrong_word">Palabras equivocadas: %s</string>
+    <string name="fiat_sample_text">$ 0.00 %s</string>
+    <string name="progress_blockchain">Sincronía: %s\ \nFecha: %s</string>
+    <string name="unknown_data">(Datos no disponibles)</string>
+    <string name="bitcoin_blockchain_status">Estado de la Blockchain de Bitcoin</string>
+    <string name="two_factor_summary">La autenticación de dos factores agrega una capa adicional de seguridad al proceso de envío de pagos</string>
+    <string name="two_factor_title">Usar 2FA</string>
+    <string name="calculate_progress">calculando progreso</string>
+    <string name="reconnect_setting_disable">Reconectar red (reconectando)</string>
 </resources>

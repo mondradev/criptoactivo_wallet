@@ -42,11 +42,25 @@
             android:summary="@string/time_lock_summary"
             android:title="@string/time_lock_text"
             app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:enabled="false"
+            android:key="use2factor"
+            android:summary="@string/two_factor_summary"
+            android:title="@string/two_factor_title"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory
         android:layout="@layout/preference_category_title"
         android:title="@string/network_category_title">
+
+        <Preference
+            android:key="blockchain_status"
+            android:summary="@string/progress_blockchain"
+            android:title="@string/bitcoin_blockchain_status"
+            app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
@@ -58,7 +72,7 @@
         <Preference
             android:key="reconnect"
             android:summary="@string/reconnect_summary"
-            android:title="@string/reconnect_setting"
+            android:title="@string/reconnect_title"
             app:iconSpaceReserved="false" />
 
     </PreferenceCategory>

@@ -28,6 +28,7 @@ import android.support.annotation.StringDef;
 
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.SupportedAssets;
 
 /**
  * Provee el control de las configuraciones de la aplicación.
@@ -326,9 +327,11 @@ public final class AppPreference {
      * @param context Contexto de la aplicación.
      * @return Simbolo de la divisa.
      */
-    public static String getSelectedCurrency(Context context) {
+    public static SupportedAssets getSelectedCurrency(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        return preferences.getString("selected_currency", "USD");
+        String assetStr = preferences.getString("selected_currency", "USD");
+
+        return SupportedAssets.valueOf(assetStr);
     }
 
     /**

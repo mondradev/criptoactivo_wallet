@@ -21,9 +21,9 @@ import android.content.Context;
 
 import com.android.volley.Request;
 import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
 
 import org.json.JSONObject;
 
@@ -33,7 +33,7 @@ import org.json.JSONObject;
  * @author Ing. Javier Flores
  * @version 1.0
  */
-final class BitsoBtcMxnService extends RequestPriceServiceBase {
+public final class BitsoBtcMxnService extends PairBase {
 
     /**
      * URL de la API Rest de Bitso.
@@ -46,9 +46,10 @@ final class BitsoBtcMxnService extends RequestPriceServiceBase {
      * @param context Contexto de la aplicación.
      */
     public BitsoBtcMxnService(Context context) {
-        super(context, SupportedAssets.MXN);
-
-        setSmallestUnits(100000000, 10000);
+        super(context,
+                CoinFactory.getOne(SupportedAssets.BTC),
+                CoinFactory.getOne(SupportedAssets.MXN)
+        );
     }
 
     /**
@@ -66,19 +67,14 @@ final class BitsoBtcMxnService extends RequestPriceServiceBase {
                     if (response == null)
                         return;
 
-                    Double value = response.getJSONObject("payload").getDouble("last");
+                    double value = response.getJSONObject("payload").getDouble("last");
 
-                    setSmallestValue((long) (value * getSmallestUnitBase()));
+                    setPrice(value);
 
                     done();
                 } catch (Exception ignored) {
                 }
             }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                error.printStackTrace();
-            }
-        });
+        }, Throwable::printStackTrace);
     }
 }

@@ -43,12 +43,15 @@ import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.InSufficientBalanceException;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletServiceBase;
+import com.cryptowallet.wallet.coinmarket.ExchangeService;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
+import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
+import com.cryptowallet.wallet.coinmarket.exchangeables.ExchangeableBase;
 import com.google.common.base.Strings;
 import com.squareup.okhttp.internal.NamedRunnable;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
-import org.bitcoinj.core.Coin;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 
@@ -80,12 +83,12 @@ public class SendPaymentsActivity extends ActivityBase
     /**
      * Indica la cuota que se paga por kilobyte al realizar la transacción.
      */
-    private long mFeePerKb;
+    private CoinBase mFeePerKb;
 
     /**
      * Indica el monto que se enviará.
      */
-    private long mAmount;
+    private CoinBase mAmount;
 
     /**
      * Indica la moneda a enviar.
@@ -104,6 +107,9 @@ public class SendPaymentsActivity extends ActivityBase
      * La dirección que se reconoció como perteneciente a la aplicación.
      */
     private String mAddressOnApp;
+
+    private boolean mDisableListener;
+
     /**
      * Permite actualizar los campos de mRemainingBalance y mAmount.
      */
@@ -115,9 +121,68 @@ public class SendPaymentsActivity extends ActivityBase
          */
         @Override
         public void afterTextChanged(Editable s) {
+            fillFiat(s.toString());
             updateFeeAndRemaining();
-            validateFundsAndAddress();
+            validateFundsAndAddress(s.toString());
         }
+
+        private void fillFiat(String src) {
+
+            if (mDisableListener) {
+                mDisableListener = false;
+                return;
+            }
+
+            ExchangeableBase service = ExchangeService.get().getExchange(mSelectCoin);
+
+            SupportedAssets asset =
+                    AppPreference.getSelectedCurrency(SendPaymentsActivity.this);
+
+            String value = service.convertTo(asset, CoinFactory.parse(mSelectCoin, src))
+                    .toPlainString();
+
+            mDisableListener = true;
+            ((EditText) findViewById(R.id.mAmountSendPaymentFiatEdit)).setText(value);
+        }
+    };
+
+
+    /**
+     * Permite actualizar los campos de mRemainingBalance y mAmount.
+     */
+    private final OnAfterTextChangedListenerBase mUpdateFiatContent
+            = new OnAfterTextChangedListenerBase() {
+
+        /**
+         * Este método es llamado cuando mAmount es modificado.
+         *
+         * @param s Cadena que representa la cantidad a enviar.
+         */
+        @Override
+        public void afterTextChanged(Editable s) {
+            fillCrypto(s.toString());
+        }
+
+        /**
+         * @param src
+         */
+        private void fillCrypto(String src) {
+            if (mDisableListener) {
+                mDisableListener = false;
+                return;
+            }
+
+            ExchangeableBase service = ExchangeService.get().getExchange(mSelectCoin);
+
+            SupportedAssets asset =
+                    AppPreference.getSelectedCurrency(SendPaymentsActivity.this);
+
+            String value = service.convertFrom(CoinFactory.parse(asset, src)).toPlainString();
+
+            mDisableListener = true;
+            ((EditText) findViewById(R.id.mAmountSendPaymentEdit)).setText(value);
+        }
+
     };
 
     /**
@@ -141,7 +206,7 @@ public class SendPaymentsActivity extends ActivityBase
     /**
      * Valida los fondos y la dirección especificada.
      */
-    private void validateFundsAndAddress() {
+    private void validateFundsAndAddress(String amountStr) {
         TextView mAddressRecipient = findViewById(R.id.mAddressRecipientText);
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
 
@@ -150,8 +215,6 @@ public class SendPaymentsActivity extends ActivityBase
         mSendPayment.setEnabled(false);
 
         boolean canSend = true;
-
-        String amountStr = mAmountText.getText().toString();
 
         if (!validateAddress(mAddressRecipient.getText().toString())) {
             if (!mAddressRecipient.getText().toString().isEmpty())
@@ -170,11 +233,10 @@ public class SendPaymentsActivity extends ActivityBase
         if (Strings.isNullOrEmpty(amountStr))
             amountStr = "0";
 
-        double amount = Double.parseDouble(amountStr.length() == 0
-                || amountStr.charAt(amountStr.length() - 1) == '.' ? "0" :
-                Utils.coalesce(amountStr, "0"));
+        CoinBase amount = CoinFactory.parse(mSelectCoin, amountStr);
+        CoinBase total = getBalance();
 
-        if ((getBalance() - getMaxFraction(amount) - mFeePerKb) < 0) {
+        if (total.substract(amount).substract(mFeePerKb).isNegative()) {
             mAmountText.setError(getString(R.string.no_enought_funds));
             canSend = false;
         } else
@@ -233,15 +295,22 @@ public class SendPaymentsActivity extends ActivityBase
         TextView mRemainingText = findViewById(R.id.mRemainingBalanceText);
         TextView mBalanceText = findViewById(R.id.mBalanceTextSendPayments);
 
-        mRemainingText.setText(coinToStringFriendly(getBalance() - mFeePerKb));
-        mBalanceText.setText(coinToStringFriendly(getBalance()));
+        mRemainingText.setText(getBalance().substract(mFeePerKb).toStringFriendly());
+        mBalanceText.setText(getBalance().toStringFriendly());
 
         EditText mAddressRecipient = findViewById(R.id.mAddressRecipientText);
         EditText mAmount = findViewById(R.id.mAmountSendPaymentEdit);
+        EditText mAmountFiat = findViewById(R.id.mAmountSendPaymentFiatEdit);
 
         mAddressRecipient.addTextChangedListener(mUpdateContent);
         mAmount.addTextChangedListener(mUpdateContent);
         mAmount.setFilters(new InputFilter[]{new DecimalsFilter(16, 8)});
+        mAmountFiat.addTextChangedListener(mUpdateFiatContent);
+        mAmountFiat.setFilters(new InputFilter[]{new DecimalsFilter(16, 2)});
+
+        SupportedAssets asset = AppPreference.getSelectedCurrency(this);
+
+        mAmountFiat.setHint(getString(R.string.fiat_sample_text, asset));
     }
 
     /**
@@ -249,13 +318,12 @@ public class SendPaymentsActivity extends ActivityBase
      *
      * @return El saldo actual.
      */
-    private long getBalance() {
-
+    private CoinBase getBalance() {
         switch (mSelectCoin) {
             case BTC:
                 return BitcoinService.get().getBalance();
         }
-        return 0;
+        return CoinFactory.getZero(mSelectCoin);
     }
 
     /**
@@ -268,12 +336,13 @@ public class SendPaymentsActivity extends ActivityBase
         String priority = getString(R.string.priority_fee_text);
 
         if (fee.contentEquals(regular))
-            mFeePerKb = 10000;
+            mFeePerKb = CoinFactory.valueOf(mSelectCoin, 10000);
         else if (fee.contentEquals(priority))
-            mFeePerKb = 43000;
+            mFeePerKb = CoinFactory.valueOf(mSelectCoin, 43000);
 
         updateFeeAndRemaining();
-        validateFundsAndAddress();
+        validateFundsAndAddress(
+                ((EditText) findViewById(R.id.mAmountSendPaymentEdit)).getText().toString());
     }
 
     /**
@@ -282,15 +351,12 @@ public class SendPaymentsActivity extends ActivityBase
     public void updateFeeAndRemaining() {
         TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
         CharSequence amountStr = mAmountText.getText();
-        double amount = Double.parseDouble(amountStr.length() == 0
-                || amountStr.charAt(amountStr.length() - 1) == '.' ? "0" :
-                Utils.coalesce(amountStr.toString(), "0"));
 
-        mAmount = getMaxFraction(amount);
+        mAmount = CoinFactory.parse(mSelectCoin, amountStr.toString());
 
-        String feePerKb = coinToStringFriendly(mFeePerKb + getFeeForSendOutApp());
-        String remainingBalance = coinToStringFriendly(
-                getBalance() - mAmount - mFeePerKb - getChangingConfigurations());
+        String feePerKb = getFeeForSendOutApp().add(mFeePerKb).toStringFriendly();
+        String remainingBalance =
+                getBalance().substract(mAmount).substract(mFeePerKb).toStringFriendly();
 
         TextView mRemainingBalance = findViewById(R.id.mRemainingBalanceText);
         TextView mFeePerKb = findViewById(R.id.mCurrentSelectedFeeText);
@@ -304,11 +370,11 @@ public class SendPaymentsActivity extends ActivityBase
      *
      * @return Una comisión de envío.
      */
-    private long getFeeForSendOutApp() {
+    private CoinBase getFeeForSendOutApp() {
         if (!Strings.isNullOrEmpty(mAddressOnApp)
                 && !Strings.isNullOrEmpty(mAddress)
                 && mAddress.contentEquals(mAddressOnApp))
-            return 0;
+            return CoinFactory.getZero(mSelectCoin);
 
         return WalletServiceBase.getFeeForSendOutApp(mSelectCoin);
     }
@@ -327,38 +393,6 @@ public class SendPaymentsActivity extends ActivityBase
         }
         Intent intent = new Intent(this, ScanQRActivity.class);
         startActivityForResult(intent, 0);
-    }
-
-    /**
-     * Convierte la cantidad especificada en la fracción más pequeña de la moneda o token.
-     *
-     * @param amount Cantidad actual a convertir.
-     * @return La cantidad expresada en la unidad más pequeña.
-     */
-    private long getMaxFraction(double amount) {
-        switch (mSelectCoin) {
-            case BTC:
-                return (long) (amount * BitcoinService.BTC_IN_SATOSHIS);
-        }
-
-        return 0;
-    }
-
-    /**
-     * Obtiene una cadena que representa la cantidad especificada en la fracción más pequeña de la
-     * moneda.
-     *
-     * @param amount Cantidad a representar.
-     * @return Una cadena que muestra la cantidad a representar.
-     */
-    private String coinToStringFriendly(long amount) {
-
-        switch (mSelectCoin) {
-            case BTC:
-                return Coin.valueOf(amount).toFriendlyString();
-        }
-
-        return String.format("(Moneda no disponible: %s)", amount);
     }
 
     /**
@@ -433,14 +467,14 @@ public class SendPaymentsActivity extends ActivityBase
                         intent.putExtra(
                                 ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
                         intent.putExtra(ExtrasKey.SELECTED_COIN, mSelectCoin.name());
-                        intent.putExtra(ExtrasKey.SEND_AMOUNT, mAmount);
+                        intent.putExtra(ExtrasKey.SEND_AMOUNT, mAmount.getValue());
                         setResult(Activity.RESULT_OK, intent);
 
                         finish();
                     });
                 } catch (InSufficientBalanceException ex) {
-                    String require = WalletServiceBase.get(mSelectCoin).getFormatter()
-                            .format(ex.getRequireAmount());
+                    String require = ex.getRequireAmount().toStringFriendly();
+
                     Utils.showSnackbar(findViewById(R.id.mSendPayment),
                             getString(R.string.insufficient_money, require));
                 } catch (KeyException ex) {

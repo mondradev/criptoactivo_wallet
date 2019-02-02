@@ -18,6 +18,7 @@
 package com.cryptowallet.wallet;
 
 
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 
 /**
@@ -58,7 +59,7 @@ public interface IWalletListener {
      * @param service Información de la billetera que desencadena el evento.
      * @param balance Balance nuevo en la unidad más pequeña de la moneda o token.
      */
-    void onBalanceChanged(WalletServiceBase service, long balance);
+    void onBalanceChanged(WalletServiceBase service, CoinBase balance);
 
     /**
      * Este método se ejecuta cuando la billetera está inicializada correctamente.

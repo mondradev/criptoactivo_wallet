@@ -20,7 +20,7 @@ package com.cryptowallet.wallet.widgets;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.NonNull;
 
-import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
 
 import java.util.Date;
 import java.util.List;
@@ -49,18 +49,12 @@ public abstract class GenericTransactionBase implements Comparable<GenericTransa
     private int mImage;
 
     /**
-     * Activo de la transacción.
-     */
-    private SupportedAssets mAsset;
-
-    /**
      * Crea una nueva instancia de transacción genérica.
      *
      * @param coinIcon ID del icono/logo del activo.
      */
-    public GenericTransactionBase(@DrawableRes int coinIcon, SupportedAssets asset) {
+    public GenericTransactionBase(@DrawableRes int coinIcon) {
         this.mImage = coinIcon;
-        this.mAsset = asset;
     }
 
     /**
@@ -79,14 +73,14 @@ public abstract class GenericTransactionBase implements Comparable<GenericTransa
      *
      * @return Una cadena que representa la comisión.
      */
-    public abstract long getFee();
+    public abstract CoinBase getFee();
 
     /**
      * Obtiene la cantidad movida en la transacción.
      *
      * @return La cantidad de la transacción.
      */
-    public abstract long getAmount();
+    public abstract CoinBase getAmount();
 
     /**
      * Obtiene las direcciones de las entradas simpre y cuando la salida relaccionada esté
@@ -160,22 +154,6 @@ public abstract class GenericTransactionBase implements Comparable<GenericTransa
     }
 
     /**
-     * Obtiene el activo que maneja la transacción.
-     *
-     * @return Activo de la transacción.
-     */
-    public final SupportedAssets getAsset() {
-        return mAsset;
-    }
-
-    /**
-     * Obtiene la cantidad movida en la transacción sin signo.
-     *
-     * @return Una cadena que representa la cantidad de la transacción.
-     */
-    public abstract long getUsignedAmount();
-
-    /**
      * Obtiene la profundidad en la blockchain.
      *
      * @return La cantidad de bloque por encima al cual pertenece esta transacción.
@@ -195,7 +173,7 @@ public abstract class GenericTransactionBase implements Comparable<GenericTransa
 
         if (obj instanceof GenericTransactionBase) {
             GenericTransactionBase gtb = (GenericTransactionBase) obj;
-            return gtb.getAsset() == getAsset() && gtb.getID().equals(getID());
+            return gtb.getAmount().getAsset() == getAmount().getAsset() && gtb.getID().equals(getID());
         }
 
         return false;

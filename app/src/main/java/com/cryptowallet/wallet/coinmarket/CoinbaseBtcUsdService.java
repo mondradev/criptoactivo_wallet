@@ -22,6 +22,7 @@ import android.content.Context;
 import com.android.volley.Request;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
 
 /**
  * Se encarga de obtener el precio de Bitcoin contra Dolares estadounidenses a través del API Rest
@@ -30,7 +31,7 @@ import com.cryptowallet.wallet.SupportedAssets;
  * @author Ing. Javier Flores
  * @version 1.0
  */
-final class CoinbaseBtcUsdService extends RequestPriceServiceBase {
+public final class CoinbaseBtcUsdService extends PairBase {
 
     /**
      * URL del API Rest de Coinbase.
@@ -42,10 +43,11 @@ final class CoinbaseBtcUsdService extends RequestPriceServiceBase {
      *
      * @param context Contexto de la aplicación.
      */
-    protected CoinbaseBtcUsdService(Context context) {
-        super(context, SupportedAssets.USD);
-
-        setSmallestUnits(100000000, 10000);
+    public CoinbaseBtcUsdService(Context context) {
+        super(context,
+                CoinFactory.getOne(SupportedAssets.BTC),
+                CoinFactory.getOne(SupportedAssets.USD)
+        );
     }
 
     /**
@@ -62,8 +64,7 @@ final class CoinbaseBtcUsdService extends RequestPriceServiceBase {
                     return;
 
                 Double value = response.getDouble("last_price");
-
-                setSmallestValue((long) (value * getSmallestUnitBase()));
+                setPrice(value);
 
                 done();
             } catch (Exception ignored) {

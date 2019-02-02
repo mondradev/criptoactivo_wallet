@@ -186,7 +186,7 @@ public final class TransactionHistoryAdapter
     @Override
     public void onClick(View view) {
 
-        String assetName = AppPreference.getSelectedCurrency(view.getContext());
+        String assetName = AppPreference.getSelectedCurrency(view.getContext()).name();
         SupportedAssets asset = SupportedAssets.valueOf(assetName);
 
         mDisplayedAsset = mDisplayedAsset == asset ? SupportedAssets.BTC : asset;
@@ -299,14 +299,14 @@ public final class TransactionHistoryAdapter
             TextView mTime = itemView.findViewById(R.id.mTime);
             ImageView mIcon = itemView.findViewById(R.id.mIcon);
 
-            mAmount.setText(ExchangeService.get().getExchange(mDisplayedAsset)
-                    .ToStringFriendly(mItem.getAsset(), mItem.getUsignedAmount()));
+            mAmount.setText(ExchangeService.get().getExchange(item.getAmount().getAsset())
+                    .convertTo(mDisplayedAsset, item.getAmount().getUnsigned()).toStringFriendly());
 
-            mOperKind.setText(mItem.getAmount() < 0
+            mOperKind.setText(mItem.getAmount().isNegative()
                     ? itemView.getContext().getString(R.string.sent_text)
                     : itemView.getContext().getString(R.string.received_text));
 
-            mAmount.setBackground(mItem.getAmount() < 0
+            mAmount.setBackground(mItem.getAmount().isNegative()
                     ? itemView.getResources().getDrawable(R.drawable.bg_tx_send)
                     : itemView.getResources().getDrawable(R.drawable.bg_tx_receive)
             );
@@ -378,8 +378,8 @@ public final class TransactionHistoryAdapter
         @Override
         public void onUpdate() {
             Button mAmount = itemView.findViewById(R.id.mAmount);
-            mAmount.setText(ExchangeService.get().getExchange(mDisplayedAsset)
-                    .ToStringFriendly(mItem.getAsset(), mItem.getUsignedAmount()));
+            mAmount.setText(ExchangeService.get().getExchange(mItem.getAmount().getAsset())
+                    .convertTo(mDisplayedAsset, mItem.getAmount().getUnsigned()).toStringFriendly());
         }
     }
 

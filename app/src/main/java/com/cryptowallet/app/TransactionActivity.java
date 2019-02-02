@@ -28,7 +28,6 @@ import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletServiceBase;
 import com.cryptowallet.wallet.widgets.GenericTransactionBase;
 import com.google.common.base.Joiner;
 
@@ -96,24 +95,22 @@ public class TransactionActivity extends ActivityBase
 
         TextView mFee = findViewById(R.id.mTxFee);
 
-        mKind.setText(mTransaction.getAmount() < 0
+        mKind.setText(mTransaction.getAmount().isNegative()
                 ? getString(R.string.sent_text) : getString(R.string.received_text));
 
-        if (mTransaction.getAmount() < 0) {
+        if (mTransaction.getAmount().isNegative()) {
             mFee.setVisibility(View.VISIBLE);
-            mFee.setText(WalletServiceBase.get(mTransaction.getAsset())
-                    .getFormatter().format(mTransaction.getFee()));
+            mFee.setText(mTransaction.getFee().toStringFriendly());
         } else
             mFee.setVisibility(View.GONE);
 
-        mAmount.setText(WalletServiceBase.get(mTransaction.getAsset())
-                .getFormatter().format(mTransaction.getUsignedAmount()));
+        mAmount.setText(mTransaction.getAmount().getUnsigned().toStringFriendly());
 
-        mAmount.setTextColor(mTransaction.getAmount() < 0
+        mAmount.setTextColor(mTransaction.getAmount().isNegative()
                 ? getResources().getColor(R.color.send_tx_color)
                 : getResources().getColor(R.color.receive_tx_color));
 
-        mKind.setTextColor(mTransaction.getAmount() < 0
+        mKind.setTextColor(mTransaction.getAmount().isNegative()
                 ? getResources().getColor(R.color.send_tx_color)
                 : getResources().getColor(R.color.receive_tx_color));
 
