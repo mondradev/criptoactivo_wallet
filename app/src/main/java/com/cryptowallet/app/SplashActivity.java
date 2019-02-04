@@ -52,6 +52,7 @@ public final class SplashActivity extends AppCompatActivity {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        AppPreference.loadLanguage(this);
 
         if (!mIsInitializeLogger) {
             Thread.setDefaultUncaughtExceptionHandler((t, e) -> {

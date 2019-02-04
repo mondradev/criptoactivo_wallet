@@ -17,6 +17,7 @@
 
 package com.cryptowallet.bitcoin;
 
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.widgets.IAddressBalance;
 
 import org.bitcoinj.core.Address;
@@ -92,7 +93,12 @@ public class BitcoinAddress implements IAddressBalance {
 
             // Sumamos las salidas que se interpretan como pagos recibidos a la billetera.
             for (TransactionOutput output : transaction.getOutputs()) {
-                Address address = output.getScriptPubKey().getToAddress(parameters);
+                Address address;
+
+                address = output.getAddressFromP2PKHScript(parameters);
+
+                if (Utils.isNull(address))
+                    address = output.getAddressFromP2SH(parameters);
 
                 if (!output.isMine(wallet))
                     continue;

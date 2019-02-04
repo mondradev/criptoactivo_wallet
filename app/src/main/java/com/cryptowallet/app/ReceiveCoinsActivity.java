@@ -145,6 +145,9 @@ public class ReceiveCoinsActivity extends ActivityBase {
         mAmountEdit.setFilters(new InputFilter[]{new DecimalsFilter(16, 8)});
         mAmountEdit.addTextChangedListener(mChangedAmount);
 
+        TextView caption = findViewById(R.id.mAmountToRequestCaption);
+        caption.setText(getString(R.string.amount_text, mSelectedAsset));
+
         handlerRefreshCode(null);
     }
 
@@ -167,20 +170,6 @@ public class ReceiveCoinsActivity extends ActivityBase {
 
         sendIntent.setType("text/plain");
         startActivity(Intent.createChooser(sendIntent, getString(R.string.share_title)));
-    }
-
-    /**
-     * Obtiene una cadena que representa la cantidad a solicitar.
-     *
-     * @param amount Monto a solicitar.
-     * @return Una cadena del monto.
-     */
-    private String cointToStringFriendly(long amount) {
-        switch (mSelectedAsset) {
-            case BTC:
-                return Coin.valueOf(amount).toFriendlyString();
-        }
-        return null;
     }
 
     /**

@@ -26,8 +26,10 @@ import android.util.Base64;
 
 import com.cryptowallet.app.AppPreference;
 import com.cryptowallet.utils.Utils;
+import com.subgraph.orchid.encoders.Hex;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
@@ -44,6 +46,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Esta clase gestiona la seguridad relacionada con Android.
@@ -74,6 +77,16 @@ public final class Security {
     private static Security mInstance;
 
     /**
+     *
+     */
+    private final static byte[] mIv = Hex.decode("63727970746f77616c6c65745f627463");
+
+    /**
+     *
+     */
+    private final static byte[] mKeyAes = Hex.decode("8f5ac970522852adfec5fa58ea57d630");
+
+    /**
      * Llave en binario.
      */
     private byte[] mKey;
@@ -95,6 +108,40 @@ public final class Security {
             mInstance = new Security();
 
         return mInstance;
+    }
+
+    public static String encryptAES(String src) {
+        try {
+            SecretKeySpec skeySpec = new SecretKeySpec(mKeyAes, "AES");
+            IvParameterSpec iv = new IvParameterSpec(mIv);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
+
+            byte[] encrypted = cipher.doFinal(src.getBytes(StandardCharsets.UTF_8));
+
+            return org.spongycastle.util.encoders.Hex.toHexString(encrypted);
+        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException
+                | NoSuchPaddingException | InvalidKeyException | BadPaddingException
+                | IllegalBlockSizeException ignored) {
+            return "";
+        }
+    }
+
+    public static String decryptAES(String src) {
+        try {
+            SecretKeySpec skeySpec = new SecretKeySpec(mKeyAes, "AES");
+            IvParameterSpec iv = new IvParameterSpec(mIv);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
+
+            byte[] dencrypted = cipher.doFinal(Hex.decode(src));
+
+            return new String(dencrypted, StandardCharsets.UTF_8);
+        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException
+                | NoSuchPaddingException | InvalidKeyException | BadPaddingException
+                | IllegalBlockSizeException e) {
+            return "";
+        }
     }
 
     /**

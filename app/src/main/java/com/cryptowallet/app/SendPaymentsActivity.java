@@ -37,6 +37,8 @@ import android.widget.TextView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
+import com.cryptowallet.security.Security;
+import com.cryptowallet.security.TimeBasedOneTimePassword;
 import com.cryptowallet.utils.DecimalsFilter;
 import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
@@ -55,6 +57,7 @@ import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 
+import java.security.GeneralSecurityException;
 import java.security.KeyException;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -289,14 +292,19 @@ public class SendPaymentsActivity extends ActivityBase
                 mFeeOptions
         ));
 
+        SupportedAssets asset = AppPreference.getSelectedCurrency(this);
+
         mFeeSelector.setOnItemSelectedListener(this);
         onSelectedFee(getString(R.string.regular_fee_text));
 
         TextView mRemainingText = findViewById(R.id.mRemainingBalanceText);
         TextView mBalanceText = findViewById(R.id.mBalanceTextSendPayments);
+        TextView mBalanceFiatText = findViewById(R.id.mBalanceFiatTextSendPayments);
 
         mRemainingText.setText(getBalance().substract(mFeePerKb).toStringFriendly());
         mBalanceText.setText(getBalance().toStringFriendly());
+        mBalanceFiatText.setText(ExchangeService.get().getExchange(mSelectCoin)
+                .convertTo(asset, getBalance()).toStringFriendly());
 
         EditText mAddressRecipient = findViewById(R.id.mAddressRecipientText);
         EditText mAmount = findViewById(R.id.mAmountSendPaymentEdit);
@@ -308,9 +316,18 @@ public class SendPaymentsActivity extends ActivityBase
         mAmountFiat.addTextChangedListener(mUpdateFiatContent);
         mAmountFiat.setFilters(new InputFilter[]{new DecimalsFilter(16, 2)});
 
-        SupportedAssets asset = AppPreference.getSelectedCurrency(this);
 
         mAmountFiat.setHint(getString(R.string.fiat_sample_text, asset));
+
+        ((TextView) findViewById(R.id.mAmountFiatCaptionText))
+                .setText(getString(R.string.amount_text, asset));
+        ((TextView) findViewById(R.id.mAmountCaptionText))
+                .setText(getString(R.string.amount_text, mSelectCoin));
+
+        if (Strings.isNullOrEmpty(AppPreference.getSecretPhrase(this))) {
+            findViewById(R.id.mSend2faCodeCaption).setVisibility(View.GONE);
+            findViewById(R.id.mSend2faCode).setVisibility(View.GONE);
+        }
     }
 
     /**
@@ -432,6 +449,37 @@ public class SendPaymentsActivity extends ActivityBase
      * Efectua el pago a realizar y finaliza la actividad.
      */
     private void doPay() {
+        EditText code2Fa = findViewById(R.id.mSend2faCode);
+
+        if (code2Fa.getVisibility() == View.VISIBLE) {
+            String codeStr = code2Fa.getText().toString();
+
+            if (Strings.isNullOrEmpty(codeStr)) {
+                code2Fa.setError(getString(R.string.error_2fa_code));
+                return;
+            }
+
+            int code = Integer.parseInt(codeStr);
+
+            try {
+                String secret = AppPreference.getSecretPhrase(this);
+                secret = Security.decryptAES(secret);
+
+                boolean valid = TimeBasedOneTimePassword.validateCurrentNumber(
+                        secret,
+                        code,
+                        0
+                );
+
+                if (!valid) {
+                    code2Fa.setError(getString(R.string.error_2fa_code));
+                    return;
+                }
+
+            } catch (GeneralSecurityException ignored) {
+            }
+        }
+
         final AuthenticateDialog dialog = new AuthenticateDialog()
                 .setMode(AuthenticateDialog.AUTH)
                 .setWallet(BitcoinService.get());

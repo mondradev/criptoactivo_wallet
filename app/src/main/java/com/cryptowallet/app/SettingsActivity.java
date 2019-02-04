@@ -17,10 +17,12 @@
 
 package com.cryptowallet.app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 
 import com.cryptowallet.R;
+import com.cryptowallet.utils.Utils;
 
 /**
  * Esta actividad permite realizar configuraciones en la aplicación.
@@ -29,6 +31,8 @@ import com.cryptowallet.R;
  * @version 1.2
  */
 public class SettingsActivity extends ActivityBase {
+
+    private SettingsFragment mContent;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -40,10 +44,24 @@ public class SettingsActivity extends ActivityBase {
         super.onCreate(savedInstanceState);
         setTitle(R.string.settings);
 
-        getFragmentManager()
+        mContent = new SettingsFragment();
+
+        getSupportFragmentManager()
                 .beginTransaction()
-                .replace(android.R.id.content, new SettingsFragment())
+                .replace(android.R.id.content, mContent)
                 .commit();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (Utils.isNull(data))
+            return;
+
+        if (data.hasExtra(ExtrasKey.OP_ACTIVITY)
+                && data.getStringExtra(ExtrasKey.OP_ACTIVITY).equals(ExtrasKey.ACTIVED_2FA))
+            mContent.enable2fa();
+
+    }
 }

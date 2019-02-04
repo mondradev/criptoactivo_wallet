@@ -22,13 +22,17 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.StringDef;
+import android.util.Log;
 
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.SupportedAssets;
+
+import java.util.Locale;
 
 /**
  * Provee el control de las configuraciones de la aplicación.
@@ -334,6 +338,22 @@ public final class AppPreference {
         return SupportedAssets.valueOf(assetStr);
     }
 
+    private final static String TAG = "AppPreference";
+
+    static void loadLanguage(Context context, @Language String language) {
+        Log.d(TAG, "Cargando idioma: " + language);
+        String[] lang = language.split("_");
+        Locale locale = new Locale(lang[0], lang.length > 1 ? lang[1] : "");
+        Locale.setDefault(locale);
+        Configuration configEn = new Configuration();
+        configEn.locale = locale;
+        context.getResources().updateConfiguration(configEn, null);
+    }
+
+    static void loadLanguage(Context context) {
+        loadLanguage(context, getLanguage(context));
+    }
+
     /**
      * Elimina todas las configuraciones del usuario.
      *
@@ -366,10 +386,38 @@ public final class AppPreference {
         return preferences.getInt("LockTime", 0);
     }
 
+    static void setLanguage(Context context, @Language String language) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit().putString("selected_language", language).apply();
+    }
+
+    static String getLanguage(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getString("selected_language",
+                Locale.getDefault().getLanguage());
+    }
+
+    static void setSecretPhrase(Context context, String privatePhraseEncrypted) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit().putString("private_phrase", privatePhraseEncrypted).apply();
+    }
+
+    static String getSecretPhrase(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getString("private_phrase", "");
+    }
+
     /**
      * Define los valores asignables a un String.
      */
     @StringDef(value = {"USD", "MXN"})
     @interface CurrencyFiat {
+    }
+
+    /**
+     *
+     */
+    @StringDef(value = {"en_US", "es_MX"})
+    @interface Language {
     }
 }

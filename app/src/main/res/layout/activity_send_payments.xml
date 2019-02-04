@@ -31,6 +31,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mBalanceCaptionTextSendPayments" />
 
+
+    <TextView
+        android:id="@+id/mBalanceFiatTextSendPayments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:text="@string/balance_fiat_sample_text"
+        android:textAlignment="center"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mBalanceTextSendPayments" />
+
     <TextView
         android:id="@+id/mAddressRecipientCaptionText"
         android:layout_width="wrap_content"
@@ -39,7 +54,7 @@
         android:layout_marginTop="16dp"
         android:text="@string/to_text"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/mBalanceTextSendPayments" />
+        app:layout_constraintTop_toBottomOf="@+id/mBalanceFiatTextSendPayments" />
 
     <EditText
         android:id="@+id/mAddressRecipientText"
@@ -71,51 +86,71 @@
         app:layout_constraintTop_toBottomOf="@+id/mAddressRecipientCaptionText"
         app:srcCompat="@drawable/ic_qrcode_scan" />
 
-    <TextView
-        android:id="@+id/mAmountCaptionText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:text="@string/amount_text"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/mAddressRecipientText" />
-
     <LinearLayout
         android:id="@+id/mAmountLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/mAmountCaptionText">
+        android:baselineAligned="false"
+        app:layout_constraintTop_toBottomOf="@id/mAddressRecipientText">
 
-        <EditText
-            android:id="@+id/mAmountSendPaymentEdit"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:ems="10"
-            android:hint="@string/balance_sample_text"
-            android:importantForAutofill="no"
-            android:inputType="numberDecimal"
-            tools:targetApi="o" />
+            android:orientation="vertical">
 
+            <TextView
+                android:id="@+id/mAmountCaptionText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/amount_text" />
 
-        <EditText
-            android:id="@+id/mAmountSendPaymentFiatEdit"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            <EditText
+                android:id="@+id/mAmountSendPaymentEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="4dp"
+                android:ems="10"
+                android:hint="@string/balance_sample_text"
+                android:importantForAutofill="no"
+                android:inputType="numberDecimal"
+                tools:targetApi="o" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginStart="4dp"
             android:layout_weight="1"
-            android:ems="10"
-            android:hint="@string/balance_fiat_sample_text"
-            android:importantForAutofill="no"
-            android:inputType="numberDecimal"
-            tools:targetApi="o" />
+            android:orientation="vertical">
+
+
+            <TextView
+                android:id="@+id/mAmountFiatCaptionText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/amount_text" />
+
+            <EditText
+                android:id="@+id/mAmountSendPaymentFiatEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ems="10"
+                android:hint="@string/balance_fiat_sample_text"
+                android:importantForAutofill="no"
+                android:inputType="numberDecimal"
+                tools:targetApi="o" />
+
+        </LinearLayout>
     </LinearLayout>
 
 
@@ -139,6 +174,33 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mFeeCaptionText" />
 
+
+    <TextView
+        android:id="@+id/mSend2faCodeCaption"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:text="@string/send_2fa_caption"
+        app:layout_constraintStart_toEndOf="@id/mFeeSelector"
+        app:layout_constraintTop_toBottomOf="@+id/mAmountLayout" />
+
+
+    <EditText
+        android:id="@+id/mSend2faCode"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:ems="10"
+        android:hint="@string/code_hint"
+        android:importantForAutofill="no"
+        android:inputType="number"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/mFeeSelector"
+        app:layout_constraintTop_toBottomOf="@+id/mSend2faCodeCaption"
+        tools:targetApi="o" />
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/mDetailsLayout"

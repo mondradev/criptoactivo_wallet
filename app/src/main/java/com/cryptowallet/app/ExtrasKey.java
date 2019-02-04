@@ -44,6 +44,11 @@ public final class ExtrasKey {
      * Información del PIN.
      */
     public static final String PIN_DATA = "pin-data";
+
+    /**
+     * Indica que la activación del 2FA fue correcta.
+     */
+    public static final String ACTIVED_2FA = "actived_2fa";
     /**
      * Información leída por el lector de códigos QR.
      */

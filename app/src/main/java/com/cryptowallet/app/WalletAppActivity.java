@@ -17,7 +17,10 @@
 
 package com.cryptowallet.app;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -34,6 +37,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -43,6 +47,7 @@ import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.BlockchainStatus;
 import com.cryptowallet.wallet.IWalletListener;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletListenerBase;
 import com.cryptowallet.wallet.WalletServiceBase;
 import com.cryptowallet.wallet.coinmarket.ExchangeService;
 import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
@@ -146,9 +151,13 @@ public class WalletAppActivity extends ActivityBase {
     private boolean mAuthenticated;
 
     /**
+     * Activo seleccionado.
+     */
+    private SupportedAssets mSelectedAsset = SupportedAssets.BTC;
+    /**
      * Escucha de los eventos de la billetera de bitcoin.
      */
-    private IWalletListener mListener = new IWalletListener() {
+    private IWalletListener mListener = new WalletListenerBase() {
 
         /**
          * India si la descarga ha iniciado.
@@ -231,13 +240,24 @@ public class WalletAppActivity extends ActivityBase {
                     Log.v(TAG, "Ocultando cuadro de diálogo, ya está autenticada la billetera.");
                     mAuthenticated = false;
                     mDialogOnLoad.dismiss();
+                    showData();
                 } else {
                     Log.v(TAG, "Mostrando cuadro de diálogo para autenticar al iniciar el " +
                             "servicio.");
+
                     mDialogOnLoad
                             .setMode(AuthenticateDialog.AUTH)
                             .setWallet(service)
-                            .dismissOnAuth()
+                            .dismissOnAuth().setOnFail(() -> {
+                        WalletAppActivity.this.moveTaskToBack(true);
+                        finishAffinity();
+                        System.exit(0);
+                    })
+                            .setOnCancel(() -> {
+                                lockApp();
+                                WalletAppActivity.this.moveTaskToBack(true);
+                            })
+                            .setOnDismiss(WalletAppActivity.this::showData)
                             .showUIAuth();
                 }
         }
@@ -319,17 +339,6 @@ public class WalletAppActivity extends ActivityBase {
         }
 
         /**
-         * Este método se ejecuta cuando la propagación es completada.
-         *
-         * @param service Información de la billetera que desencadena el evento.
-         * @param tx      Transacción que ha sido propagada.
-         */
-        @Override
-        public void onPropagated(WalletServiceBase service, GenericTransactionBase tx) {
-
-        }
-
-        /**
          * Este método es llamado cuando se lanza una excepción dentro de la billetera.
          *
          * @param service   Información de la billetera que desencadena el evento.
@@ -343,14 +352,6 @@ public class WalletAppActivity extends ActivityBase {
                 System.exit(0);
         }
 
-        /**
-         * Este método es llamado cuando la billetera a iniciado.
-         *
-         * @param service Información de la billetera que desencadena el evento.
-         */
-        @Override
-        public void onConnected(WalletServiceBase service) {
-        }
     };
 
     /**
@@ -490,24 +491,32 @@ public class WalletAppActivity extends ActivityBase {
                     lockApp();
                     WalletAppActivity.this.moveTaskToBack(true);
                 })
-                .setOnDesmiss(this::showData);
+                .setOnDismiss(this::showData);
     }
 
     /**
      * Muestra la información de la billetera.
      */
     private void showData() {
-        unlockApp();
 
-        Log.v(TAG, "Visualizando la información sensible.");
+        runOnUiThread(() -> {
+            unlockApp();
 
-        mCanUpdate = true;
-        mRecentsAdapter.addAll(BitcoinService.get().getRecentTransactions(5));
+            Log.v(TAG, "Visualizando la información sensible.");
 
-        BitcoinService.notifyOnBalanceChange();
+            mCanUpdate = true;
+            mRecentsAdapter.addAll(BitcoinService.get().getRecentTransactions(5));
 
-        if (ExchangeService.isInitialized())
-            ExchangeService.get().reloadMarketPrice();
+            BitcoinService.notifyOnBalanceChange();
+
+            if (ExchangeService.isInitialized())
+                ExchangeService.get().reloadMarketPrice();
+
+            ImageView qrCode = findViewById(R.id.mReceiveQR);
+            String address = WalletServiceBase.get(mSelectedAsset).getReceiveAddress();
+
+            qrCode.setImageBitmap(Utils.generateQrCode(Uri.parse(address), 100));
+        });
     }
 
     /**
@@ -520,6 +529,11 @@ public class WalletAppActivity extends ActivityBase {
 
         ((TextView) findViewById(R.id.mBalanceText)).setText(R.string.hide_data);
         ((TextView) findViewById(R.id.mBalanceFiat)).setText(R.string.hide_data);
+
+
+        ImageView qrCode = findViewById(R.id.mReceiveQR);
+        qrCode.setImageBitmap(null);
+        qrCode.setImageDrawable(getDrawable(R.mipmap.ic_launcher_round));
     }
 
     /**
@@ -762,5 +776,16 @@ public class WalletAppActivity extends ActivityBase {
                     mCanExit = false, 3000);
         }
 
+    }
+
+    public void handlerCopyToClipboard(View view) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+
+        ClipData data = ClipData.newPlainText(getString(R.string.request_payment_text),
+                WalletServiceBase.get(mSelectedAsset).getReceiveAddress());
+
+        clipboard.setPrimaryClip(data);
+
+        Utils.showSnackbar(findViewById(R.id.mSendFab), getString(R.string.copy_to_clipboard_text));
     }
 }

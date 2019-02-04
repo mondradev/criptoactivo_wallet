@@ -28,7 +28,7 @@
     <string name="receive_text">Recibir</string>
     <string name="send_text">Enviar</string>
     <string name="placehold_recipient_address">Dirección del receptor</string>
-    <string name="amount_text">Cantidad</string>
+    <string name="amount_text">Cantidad %s</string>
     <string name="fee_per_kb_text">Comisión por KB</string>
     <string name="remaining_balance_text">Saldo restante</string>
     <string name="to_text">Para</string>
@@ -138,8 +138,6 @@
     <string name="second_caption">%d seg</string>
     <string name="select_time">Seleccionar tiempo</string>
     <string name="disable_caption">Desactivar</string>
-    <string name="theme_summary">Establece el tema que deseas visualizar</string>
-    <string name="currency_summary">Divisa que se utilizará para visualizar los precios en FIAT</string>
     <string name="pin_summary">Establece o cambia el PIN de la billetera</string>
     <string name="fingerprint_summary">Habilita si deseas utilizar la huella digital para desbloquear la billetera</string>
     <string name="onlywifi_summary">Habilita si deseas descargar la blockchain solo si la conexión wifi está activa</string>
@@ -156,4 +154,14 @@
     <string name="two_factor_title">Usar 2FA</string>
     <string name="calculate_progress">calculando progreso</string>
     <string name="reconnect_setting_disable">Reconectar red (reconectando)</string>
+    <string name="lenguage_title">Idioma</string>
+    <string name="language_dialog_title">Selector de idioma</string>
+    <string name="secret_phrase_text">" Si no puede escanear el código QR, use la siguiente frase secreta"</string>
+    <string name="no_language">Sin lenguaje</string>
+    <string name="code_generated_text">Código generado por la app</string>
+    <string name="code_hint">Código</string>
+    <string name="register_text">Registrar</string>
+    <string name="error_2fa_code">Código incorrecto</string>
+    <string name="qrcode_2fa">QR 2-Factor</string>
+    <string name="configure_2fa">Autenticación de doble factor (2FA)</string>
 </resources>

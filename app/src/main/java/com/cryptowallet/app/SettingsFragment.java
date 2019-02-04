@@ -4,18 +4,18 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.KeyguardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v14.preference.PreferenceFragment;
+import android.support.v14.preference.SwitchPreference;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.preference.ListPreference;
 import android.support.v7.preference.Preference;
+import android.support.v7.preference.PreferenceFragmentCompat;
 import android.support.v7.preference.PreferenceScreen;
-import android.support.v7.preference.SwitchPreferenceCompat;
-import android.util.Log;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
@@ -23,15 +23,15 @@ import com.cryptowallet.security.Security;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.utils.WifiManager;
 import com.cryptowallet.wallet.BlockchainStatus;
-import com.cryptowallet.wallet.IWalletListener;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletListenerBase;
 import com.cryptowallet.wallet.WalletServiceBase;
-import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
-import com.cryptowallet.wallet.widgets.GenericTransactionBase;
+import com.google.common.base.Strings;
 import com.squareup.okhttp.internal.NamedRunnable;
 
 import java.util.Date;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -44,7 +44,7 @@ import static com.cryptowallet.app.AppPreference.LIGHT_THEME;
 /**
  *
  */
-public class SettingsFragment extends PreferenceFragment implements IWalletListener {
+public class SettingsFragment extends PreferenceFragmentCompat {
 
     /**
      * Etiqueta del fragmento.
@@ -60,14 +60,72 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
     public void onCreatePreferences(Bundle bundle, String s) {
         setPreferencesFromResource(R.xml.preference, s);
 
-        BitcoinService.addEventListener(this);
+        BitcoinService.addEventListener(new WalletListenerBase() {
+            /**
+             * Este método se ejecuta cuando la blockchain de la billetera ha sido descargada
+             * completamente.
+             *
+             * @param service Información de la billetera que desencadena el evento.
+             */
+            @Override
+            public void onCompletedDownloaded(WalletServiceBase service) {
+                if (Utils.isNull(getActivity()))
+                    return;
+
+                getActivity().runOnUiThread(() ->
+                        findPreference("blockchain_status")
+                                .setSummary(getString(
+                                        R.string.progress_blockchain,
+                                        "100.00%",
+                                        Utils.getDateTime(
+                                                BitcoinService.get().getBlockchainDate(),
+                                                getString(R.string.today_text),
+                                                getString(R.string.yesterday_text)
+                                        ))));
+            }
+
+            /**
+             * Este método se ejecuta cuando se descarga un bloque nuevo.
+             *
+             * @param service Información de la billetera que desencadena el evento.
+             * @param status  Estado actual de la blockchain.
+             */
+            @Override
+            public void onBlocksDownloaded(WalletServiceBase service, BlockchainStatus status) {
+                Date time = status.getTime();
+                double blocks = status.getLeftBlocks();
+
+                if (Utils.isNull(getActivity()))
+                    return;
+
+                getActivity().runOnUiThread(() -> {
+                    String timeStr = Utils.getDateTime(
+                            time,
+                            getString(R.string.today_text),
+                            getString(R.string.yesterday_text)
+                    );
+
+                    findPreference("blockchain_status")
+                            .setSummary(getString(
+                                    R.string.progress_blockchain,
+                                    String.format(
+                                            Locale.getDefault(),
+                                            "%.2f%%",
+                                            (status.getTotalBlocks() - blocks)
+                                                    / status.getTotalBlocks() * 100.0
+                                    ),
+                                    timeStr
+                            ));
+                });
+            }
+        });
     }
 
     @Override
     public void setPreferenceScreen(PreferenceScreen preferenceScreen) {
         super.setPreferenceScreen(preferenceScreen);
 
-        Context context = getActivity().getApplicationContext();
+        Context context = Objects.requireNonNull(getActivity()).getApplicationContext();
 
         Preference version = findPreference("version_app");
 
@@ -87,6 +145,9 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
             selectedCurrency.setValue(AppPreference.getSelectedCurrency(context).name());
 
             selectedCurrency.setOnPreferenceChangeListener(this::onSelectedCurrency);
+
+            findPreference("selectedCurrency")
+                    .setSummary(AppPreference.getSelectedCurrency(context).name());
         }
 
         ListPreference selectedTheme = (ListPreference) findPreference("selectedTheme");
@@ -96,16 +157,20 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
             switch (themeName) {
                 case LIGHT_THEME:
                     selectedTheme.setValue("0");
+                    findPreference("selectedTheme").setSummary(R.string.lightMode);
                     break;
 
                 case DARK_THEME:
                     selectedTheme.setValue("1");
+                    findPreference("selectedTheme").setSummary(R.string.darkMode);
                     break;
 
                 case BLUE_THEME:
                     selectedTheme.setValue("2");
+                    findPreference("selectedTheme").setSummary(R.string.blueMode);
                     break;
             }
+
             selectedTheme.setOnPreferenceChangeListener(this::onSelectedTheme);
         }
 
@@ -113,8 +178,8 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
 
         reconnect.setOnPreferenceClickListener(this::onReconnectNode);
 
-        SwitchPreferenceCompat onlyWifi
-                = (SwitchPreferenceCompat) findPreference("onlyWifi");
+        SwitchPreference onlyWifi
+                = (SwitchPreference) findPreference("onlyWifi");
 
         if (!Utils.isNull(onlyWifi)) {
             onlyWifi.setOnPreferenceChangeListener(this::enableOnlyWifi);
@@ -141,6 +206,11 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
 
         long time = new Date().getTime() - BitcoinService.get().getBlockchainDate().getTime();
 
+        ListPreference languageList = (ListPreference) findPreference("selectedLanguage");
+
+        languageList.setSummary(getLanguageName(AppPreference.getLanguage(getActivity())));
+        languageList.setOnPreferenceChangeListener(this::handlerLanguageChange);
+        languageList.setValue(AppPreference.getLanguage(getActivity()));
 
         findPreference("blockchain_status")
                 .setSummary(getString(
@@ -154,15 +224,60 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
                         )
                 ));
 
+        findPreference("use2factor")
+                .setOnPreferenceChangeListener(this::handlerTwoFactorAuthentication);
+        ((SwitchPreference) findPreference("use2factor"))
+                .setChecked(!Strings.isNullOrEmpty(AppPreference.getSecretPhrase(getActivity())));
+
         checkCanUseFingerprint();
 
+    }
+
+    private boolean handlerTwoFactorAuthentication(Preference preference, Object value) {
+        if (Utils.isNull(getActivity()))
+            return false;
+
+        boolean enabled = Boolean.parseBoolean(value.toString());
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            new AuthenticateDialog()
+                    .dismissOnAuth()
+                    .setWallet(BitcoinService.get())
+                    .setMode(AuthenticateDialog.AUTH)
+                    .setOnDismiss(() -> {
+                        getActivity().runOnUiThread(() -> {
+                            if (!enabled) {
+                                disable2fa();
+                            } else {
+                                Intent intent = new Intent(this.getContext(),
+                                        Configure2faActivity.class);
+                                getActivity().startActivityFromFragment(
+                                        this, intent, 0);
+                            }
+                        });
+                    })
+                    .show(getActivity());
+        });
+
+        return false;
+    }
+
+    private int getLanguageName(String language) {
+        switch (language) {
+            case "en_US":
+                return R.string.english;
+            case "es_MX":
+                return R.string.spanish;
+        }
+
+        return R.string.no_language;
     }
 
     /**
      * Este método es llamado cuando se cambia el tiempo de bloqueo de la billetera.
      */
     private boolean onChangeLockTime(Preference preference, Object o) {
-        Context context = getActivity().getApplicationContext();
+        Context context = Objects.requireNonNull(getActivity()).getApplicationContext();
         AppPreference.setLockTime(context, Integer.parseInt(o.toString()));
 
         return true;
@@ -172,7 +287,7 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
      * Este método es llamado cuando se activa el uso del wifi para descargar la blockchain.
      */
     private boolean enableOnlyWifi(Preference preference, Object value) {
-        Context context = getActivity().getApplicationContext();
+        Context context = Objects.requireNonNull(getActivity()).getApplicationContext();
         boolean onlyWifi = Boolean.parseBoolean(value.toString());
 
         AppPreference.setUseOnlyWifi(context, onlyWifi);
@@ -208,17 +323,20 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
      * Este método es llamado cuando se hace clic en el botón  "Tema".
      */
     private boolean onSelectedTheme(Preference preference, Object o) {
-        Context context = getActivity().getApplicationContext();
+        Context context = Objects.requireNonNull(getActivity()).getApplicationContext();
 
         switch (Integer.parseInt(o.toString())) {
             case 0:
                 AppPreference.enableLightTheme(context);
+                findPreference("selectedTheme").setSummary(R.string.lightMode);
                 break;
             case 1:
                 AppPreference.enableDarkTheme(context);
+                findPreference("selectedTheme").setSummary(R.string.darkMode);
                 break;
             case 2:
                 AppPreference.enableBlueTheme(context);
+                findPreference("selectedTheme").setSummary(R.string.blueMode);
                 break;
         }
 
@@ -231,10 +349,14 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
      * Este método es llamado cuando se hace clic en el botón "Divisa".
      */
     private boolean onSelectedCurrency(Preference preference, Object o) {
-        Context context = getActivity().getApplicationContext();
+        Context context = Objects.requireNonNull(getActivity())
+                .getApplicationContext();
 
         AppPreference.setSelectedCurrency(
                 context, o.toString());
+
+        findPreference("selectedCurrency")
+                .setSummary(AppPreference.getSelectedCurrency(context).name());
 
         return true;
     }
@@ -270,7 +392,7 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
         if (BitcoinService.get().isUnencrypted())
             return false;
 
-        Context context = getActivity().getApplicationContext();
+        Context context = Objects.requireNonNull(getActivity());
 
         KeyguardManager keyguardManager
                 = (KeyguardManager) context.getSystemService(KEYGUARD_SERVICE);
@@ -290,7 +412,7 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
         if (!keyguardManager.isKeyguardSecure())
             return false;
 
-        SwitchPreferenceCompat useFingerprint = (SwitchPreferenceCompat) findPreference("useFingerprint");
+        SwitchPreference useFingerprint = (SwitchPreference) findPreference("useFingerprint");
 
         if (Utils.isNull(useFingerprint))
             return false;
@@ -315,17 +437,17 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
      */
     private boolean onEnableFingerprint(Preference preference, Object o) {
 
-        Boolean enableFingerprint = AppPreference.getUseFingerprint(getActivity());
+        boolean enableFingerprint = AppPreference.getUseFingerprint(getActivity());
         Preference useOrChangePin = findPreference("useOrChangePin");
-        SwitchPreferenceCompat useFingerprint
-                = (SwitchPreferenceCompat) findPreference("useFingerprint");
+        SwitchPreference useFingerprint
+                = (SwitchPreference) findPreference("useFingerprint");
 
         if (!enableFingerprint) {
             new AuthenticateDialog()
                     .dismissOnAuth()
                     .setWallet(BitcoinService.get())
                     .setMode(AuthenticateDialog.REG_FINGER)
-                    .setOnDesmiss(() ->
+                    .setOnDismiss(() ->
                             useOrChangePin.setVisible(false))
                     .setOnCancel(() -> {
                         useFingerprint.setChecked(false);
@@ -336,7 +458,7 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
                     .dismissOnAuth()
                     .setWallet(BitcoinService.get())
                     .setMode(AuthenticateDialog.AUTH)
-                    .setOnDesmiss(() -> {
+                    .setOnDismiss(() -> {
                         AppPreference.setUseFingerprint(
                                 getActivity(), false);
                         AppPreference.removeData(getActivity());
@@ -398,7 +520,7 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
                 if (regDialog.isShowing())
                     regDialog.dismiss();
 
-                getActivity().runOnUiThread(() -> {
+                Objects.requireNonNull(getActivity()).runOnUiThread(() -> {
                     useOrChangePin.setTitle(R.string.change_pin_setting);
                     checkCanUseFingerprint();
                 });
@@ -408,161 +530,26 @@ public class SettingsFragment extends PreferenceFragment implements IWalletListe
         return true;
     }
 
-    /**
-     * Este método se ejecuta cuando la billetera recibe una transacción.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param tx      Transacción recibida.
-     */
-    @Override
-    public void onReceived(WalletServiceBase service, GenericTransactionBase tx) {
+    private boolean handlerLanguageChange(Preference preference, Object o) {
+        AppPreference.loadLanguage(Objects.requireNonNull(getActivity()), o.toString());
+        AppPreference.setLanguage(this.getActivity(), o.toString());
 
+        findPreference("selectedLanguage")
+                .setSummary(getLanguageName(AppPreference.getLanguage(getActivity())));
+
+        getActivity().recreate();
+
+        return true;
     }
 
-    /**
-     * Este método se ejecuta cuando la billetera envía una transacción.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param tx      Transacción enviada.
-     */
-    @Override
-    public void onSent(WalletServiceBase service, GenericTransactionBase tx) {
-
+    public void enable2fa() {
+        ((SwitchPreference) findPreference("use2factor"))
+                .setChecked(true);
     }
 
-    /**
-     * Este método se ejecuta cuando una transacción es confirmada.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param tx      Transacción que fue confirmada.
-     */
-    @Override
-    public void onCommited(WalletServiceBase service, GenericTransactionBase tx) {
-
-    }
-
-    /**
-     * Este método se ejecuta cuando el saldo de la billetera ha cambiado.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param balance Balance nuevo en la unidad más pequeña de la moneda o token.
-     */
-    @Override
-    public void onBalanceChanged(WalletServiceBase service, CoinBase balance) {
-
-    }
-
-    /**
-     * Este método se ejecuta cuando la billetera está inicializada correctamente.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     */
-    @Override
-    public void onReady(WalletServiceBase service) {
-
-    }
-
-    /**
-     * Este método se ejecuta cuando la blockchain de la billetera ha sido descargada
-     * completamente.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     */
-    @Override
-    public void onCompletedDownloaded(WalletServiceBase service) {
-        if (Utils.isNull(getActivity()))
-            return;
-
-        getActivity().runOnUiThread(() ->
-                findPreference("blockchain_status")
-                        .setSummary(getString(
-                                R.string.progress_blockchain,
-                                "100.00%",
-                                Utils.getDateTime(
-                                        BitcoinService.get().getBlockchainDate(),
-                                        getString(R.string.today_text),
-                                        getString(R.string.yesterday_text)
-                                ))));
-    }
-
-    /**
-     * Este método se ejecuta cuando se descarga un bloque nuevo.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param status  Estado actual de la blockchain.
-     */
-    @Override
-    public void onBlocksDownloaded(WalletServiceBase service, BlockchainStatus status) {
-        Date time = status.getTime();
-        double blocks = status.getLeftBlocks();
-
-
-        Log.d(TAG, "LeftBlocks: " + blocks + ", Total: " + status.getTotalBlocks() + ", Progress: " + (status.getTotalBlocks() - blocks));
-
-        if (Utils.isNull(getActivity()))
-            return;
-
-        getActivity().runOnUiThread(() -> {
-            String timeStr = Utils.getDateTime(
-                    time,
-                    getString(R.string.today_text),
-                    getString(R.string.yesterday_text)
-            );
-
-            findPreference("blockchain_status")
-                    .setSummary(getString(
-                            R.string.progress_blockchain,
-                            String.format(
-                                    Locale.getDefault(),
-                                    "%.2f%%",
-                                    (status.getTotalBlocks() - blocks)
-                                            / status.getTotalBlocks() * 100.0
-                            ),
-                            timeStr
-                    ));
-        });
-    }
-
-    /**
-     * Este método se ejecuta al comienzo de la descarga de los bloques nuevos.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param status  Estado actual de la blockchain.
-     */
-    @Override
-    public void onStartDownload(WalletServiceBase service, BlockchainStatus status) {
-
-    }
-
-    /**
-     * Este método se ejecuta cuando la propagación es completada.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     * @param tx      Transacción que ha sido propagada.
-     */
-    @Override
-    public void onPropagated(WalletServiceBase service, GenericTransactionBase tx) {
-
-    }
-
-    /**
-     * Este método es llamado cuando se lanza una excepción dentro de la billetera.
-     *
-     * @param service   Información de la billetera que desencadena el evento.
-     * @param exception Excepción que causa el evento.
-     */
-    @Override
-    public void onException(WalletServiceBase service, Exception exception) {
-
-    }
-
-    /**
-     * Este método es llamado cuando la billetera a iniciado.
-     *
-     * @param service Información de la billetera que desencadena el evento.
-     */
-    @Override
-    public void onConnected(WalletServiceBase service) {
-
+    public void disable2fa() {
+        ((SwitchPreference) findPreference("use2factor"))
+                .setChecked(false);
+        AppPreference.setSecretPhrase(getContext(), "");
     }
 }

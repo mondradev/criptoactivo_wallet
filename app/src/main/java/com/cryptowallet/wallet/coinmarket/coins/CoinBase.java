@@ -70,15 +70,12 @@ public class CoinBase implements Cloneable {
     public String toPlainString() {
         DecimalFormat format
                 = new DecimalFormat("0." + getPattern(mMinDecimals, mMaxDecimals));
-
-        return format.format(((double) (mValue)) / Math.pow(10, mMaxDecimals
-        ));
+        return format.format(((double) (mValue)) / Math.pow(10, mMaxDecimals));
     }
 
     public String toStringFriendly() {
         DecimalFormat format = new DecimalFormat(
                 "0." + getPattern(mMinDecimals, mMaxDecimals) + " " + mAsset.name());
-
         return format.format(((double) (mValue)) / Math.pow(10, mMaxDecimals));
     }
 

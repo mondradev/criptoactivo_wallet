@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
@@ -209,5 +210,11 @@ public abstract class ActivityBase extends AppCompatActivity {
     public void startActivityForResult(Intent intent, int requestCode) {
         mCallActivity = true;
         super.startActivityForResult(intent, requestCode);
+    }
+
+    @Override
+    public void startActivityFromFragment(Fragment fragment, Intent intent, int requestCode) {
+        mCallActivity = true;
+        super.startActivityFromFragment(fragment, intent, requestCode);
     }
 }

@@ -803,7 +803,7 @@ public final class AuthenticateDialog extends DialogFragment implements View.OnC
      *
      * @param command Método a ejecutar.
      */
-    public AuthenticateDialog setOnDesmiss(final Runnable command) {
+    public AuthenticateDialog setOnDismiss(final Runnable command) {
         mOnDismiss = command;
         return this;
     }

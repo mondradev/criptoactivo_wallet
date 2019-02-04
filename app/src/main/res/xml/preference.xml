@@ -10,14 +10,19 @@
             android:entries="@array/themes_availables_entries"
             android:entryValues="@array/themes_availables_values"
             android:key="selectedTheme"
-            android:summary="@string/theme_summary"
             android:title="@string/theme_title_setting"
             app:iconSpaceReserved="false" />
         <ListPreference
             android:dialogTitle="@string/select_currency"
             android:key="selectedCurrency"
-            android:summary="@string/currency_summary"
             android:title="@string/currency_title_setting"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:dialogTitle="@string/language_dialog_title"
+            android:entries="@array/language_entries"
+            android:entryValues="@array/language_values"
+            android:key="selectedLanguage"
+            android:title="@string/lenguage_title"
             app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
@@ -29,7 +34,7 @@
             android:summary="@string/pin_summary"
             android:title="@string/change_pin_setting"
             app:iconSpaceReserved="false" />
-        <SwitchPreferenceCompat
+        <SwitchPreference
             android:key="useFingerprint"
             android:summary="@string/fingerprint_summary"
             android:title="@string/fingerprint_setting"
@@ -43,9 +48,8 @@
             android:title="@string/time_lock_text"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             android:defaultValue="false"
-            android:enabled="false"
             android:key="use2factor"
             android:summary="@string/two_factor_summary"
             android:title="@string/two_factor_title"
@@ -62,7 +66,7 @@
             android:title="@string/bitcoin_blockchain_status"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             android:defaultValue="false"
             android:key="onlyWifi"
             android:summary="@string/onlywifi_summary"
