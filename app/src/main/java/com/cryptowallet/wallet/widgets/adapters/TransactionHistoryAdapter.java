@@ -304,11 +304,15 @@ public final class TransactionHistoryAdapter
 
             mOperKind.setText(mItem.getAmount().isNegative()
                     ? itemView.getContext().getString(R.string.sent_text)
-                    : itemView.getContext().getString(R.string.received_text));
+                    : mItem.getAmount().isPositive()
+                    ? itemView.getContext().getString(R.string.received_text)
+                    : itemView.getContext().getString(R.string.transferred_text));
 
             mAmount.setBackground(mItem.getAmount().isNegative()
                     ? itemView.getResources().getDrawable(R.drawable.bg_tx_send)
-                    : itemView.getResources().getDrawable(R.drawable.bg_tx_receive)
+                    : mItem.getAmount().isPositive()
+                    ? itemView.getResources().getDrawable(R.drawable.bg_tx_receive)
+                    : itemView.getResources().getDrawable(R.drawable.bg_tx_transferred)
             );
             mAmount.setOnClickListener(TransactionHistoryAdapter.this);
 

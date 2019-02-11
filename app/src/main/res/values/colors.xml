@@ -65,5 +65,6 @@
 
     <color name="send_tx_color">#F44336</color>
     <color name="receive_tx_color">#4CAF50</color>
+    <color name="transferred_tx_color">#2196F3</color>
 
 </resources>

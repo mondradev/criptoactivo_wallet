@@ -164,4 +164,6 @@
     <string name="error_2fa_code">Código incorrecto</string>
     <string name="qrcode_2fa">QR 2-Factor</string>
     <string name="configure_2fa">Autenticación de doble factor (2FA)</string>
+    <string name="send_2fa_caption">Código 2FA</string>
+    <string name="transferred_text">Movido</string>
 </resources>

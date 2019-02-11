@@ -447,7 +447,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
         if (!isRunning(SupportedAssets.BTC))
             return;
 
-        if (new BitcoinTransaction(tx, mWallet).getAmount().isNegative()) return;
+        if (!new BitcoinTransaction(tx, mWallet).getAmount().isPositive()) return;
 
         Intent intent = new Intent(this, TransactionActivity.class);
         intent.putExtra(ExtrasKey.TX_ID, tx.getHashAsString());

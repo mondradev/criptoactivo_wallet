@@ -193,6 +193,7 @@
     <string name="configure_2fa">Two-Factor Authentication (2FA)</string>
     <string name="qrcode_2fa">Two-Factor QR</string>
     <string name="send_2fa_caption">Code 2FA</string>
+    <string name="transferred_text">Moved</string>
 
     <!-- TODO: Remove or change this placeholder text -->
 </resources>
