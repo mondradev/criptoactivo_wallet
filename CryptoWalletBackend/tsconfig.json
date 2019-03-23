@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "baseUrl": ".",
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "experimentalDecorators": true,
+        "typeRoots": [
+            "./src/types"
+        ],
+        "rootDir": ".",
+        "target": "esnext",
+        "module": "commonjs",
+        "outDir": "dist",
+        "sourceMap": true
+    }
+}

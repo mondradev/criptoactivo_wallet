@@ -1,0 +1,21 @@
+{
+  "name": "cryptowalletbackend",
+  "version": "1.0.0",
+  "description": "Servidor centralizado de servicios para la billetera CryptoWallet",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "InnSy Tech",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "bitcore-lib": "^0.16.0",
+    "bitcore-p2p": "^1.1.1",
+    "mongodb": "^3.1.13",
+    "typescript-logging": "^0.6.3"
+  },
+  "devDependencies": {
+    "@types/mongodb": "^3.1.22",
+    "@types/node": "^11.11.4"
+  }
+}

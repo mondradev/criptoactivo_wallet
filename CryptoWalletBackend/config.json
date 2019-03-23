@@ -1,0 +1,20 @@
+{
+    "Bitcoin": {
+        "Node": {
+            "Host": "localhost",
+            "Port": 18333
+        },
+        "MongoDb": {
+            "Db": "cryptoserver",
+            "Username": "uCryptoWallet",
+            "Password": "cryptopwd",
+            "Host": "localhost",
+            "Port": 27017
+        },
+        "Network": "testnet"
+    },
+    "WalletService": {
+        "Host": "localhost",
+        "Port": 80
+    }
+}
