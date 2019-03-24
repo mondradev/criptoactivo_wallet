@@ -21,6 +21,9 @@ type BulkUpdate<T> = {
     }
 };
 
+/**
+ * Servicio de billetera que permite sincronizar las billeteras almacenadas en el móvil de manera eficaz y rápida.
+ */
 export class Bitcoin implements IWalletService {
 
     public async getHistorial(address: string): Promise<[]> {
@@ -111,6 +114,11 @@ export class Bitcoin implements IWalletService {
         });
     }
 
+    /**
+     * Importa las entradas de las transacciones especificadas.
+     * 
+     * @param {Transaction[]} txs Transacciones que contiene las entradas a cargar.
+     */
     private async _inputImport(txs: Transaction[]): Promise<void> {
         let inOps: BulkUpdate<ICoin>[] = [];
 
@@ -144,9 +152,15 @@ export class Bitcoin implements IWalletService {
         }
 
         if (inOps.length > 0)
-            await Promise.all(Utils.partition(inOps, 1000).map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
+            await Promise.all(Utils.partition(inOps, Config.MongoDb.PoolSize)
+                .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
     }
 
+    /**
+     * Importa las salidas de las transacciones especificadas.
+     * 
+     * @param {Transaction[]} txs Transacciones a obtener las salidas.
+     */
     private async _outputImport(txs: Transaction[]): Promise<void> {
         let outOps: Array<BulkUpdate<ICoin>> = [];
 
@@ -209,9 +223,18 @@ export class Bitcoin implements IWalletService {
             }
         }
 
-        await Promise.all(Utils.partition(outOps, 1000).map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
+        await Promise.all(Utils.partition(outOps, Config.MongoDb.PoolSize)
+            .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
     }
 
+    /**
+     * Importa las transacciones en la base de datos.
+     * 
+     * @param {Transaction[]} txs Transacciones a cargar en la base de datos.
+     * @param {string} blockhash Hash del bloque al cual corresponden las transacciones.
+     * @param {number} blockheight Altura del bloque al cual corresponden las transacciones.
+     * @param {Date} blocktime Fecha/Hora en la que se generó el bloque.
+     */
     private async _transactionImport(txs: Transaction[], blockhash: string, blockheight: number, blocktime: Date): Promise<void> {
 
         let txsOps: Array<BulkUpdate<ITransaction>> = [];
@@ -267,9 +290,13 @@ export class Bitcoin implements IWalletService {
             txsOps.push(txOp);
         }
 
-        await TransactionStore.Collection.bulkWrite(txsOps, { ordered: false });
+        await Promise.all(Utils.partition(txsOps, Config.MongoDb.PoolSize)
+            .map(ops => TransactionStore.Collection.bulkWrite(ops, { ordered: false })));
     }
 
+    /**
+     * Sincroniza la blockchain de Bitcoin.
+     */
     private async _sync() {
         const chainInfo = ChainInfoService.getInstance();
 
@@ -390,11 +417,11 @@ export class Bitcoin implements IWalletService {
         let instance = new Bitcoin();
 
         let dbConfig = {
-            username: Config.Bitcoin.MongoDb.Username,
-            password: Config.Bitcoin.MongoDb.Password,
-            host: Config.Bitcoin.MongoDb.Host,
-            port: Config.Bitcoin.MongoDb.Port,
-            dbname: Config.Bitcoin.MongoDb.Db,
+            username: Config.MongoDb.Username,
+            password: Config.MongoDb.Password,
+            host: Config.MongoDb.Host,
+            port: Config.MongoDb.Port,
+            dbname: Config.MongoDb.Db,
             schema: 'bitcoin'
         };
 

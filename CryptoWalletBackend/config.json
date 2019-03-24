@@ -1,16 +1,14 @@
 {
+    "MongoDb": {
+        "Db": "cryptoserver",
+        "Username": "uCryptoWallet",
+        "Password": "cryptopwd",
+        "Host": "innsytech.com",
+        "Port": 27017,
+        "PoolSize": 1000
+    },
+    "LogLevel": "Trace",
     "Bitcoin": {
-        "Node": {
-            "Host": "localhost",
-            "Port": 18333
-        },
-        "MongoDb": {
-            "Db": "cryptoserver",
-            "Username": "uCryptoWallet",
-            "Password": "cryptopwd",
-            "Host": "localhost",
-            "Port": 27017
-        },
         "Network": "testnet"
     },
     "WalletService": {
