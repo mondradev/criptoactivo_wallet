@@ -319,7 +319,7 @@ export class Bitcoin implements IWalletService {
 
                 Bitcoin.Logger.info({
                     msg: `Processing ${block_sec} blocks/sec, left time: ${block_sec > 0
-                        ? TimeSpan.FromSeconds(Math.trunc(this._bestHeight / block_sec)).toString() : 'calculating'}`
+                        ? TimeSpan.FromSeconds(Math.trunc((this._bestHeight - status.height) / block_sec)).toString() : 'calculating'}`
                         + `, Blocks: ${status.height}`
                 });
 
@@ -342,61 +342,65 @@ export class Bitcoin implements IWalletService {
         };
 
         while (true) {
+            try {
 
-            while (headers.length == 0) {
-                await Utils.wait(1000);
+                while (headers.length == 0) {
+                    await Utils.wait(1000);
 
-                headers = await this._getHeaders(status.lastBlock);
+                    headers = await this._getHeaders(status.lastBlock);
+                }
+
+                ini = new Date();
+
+                for (const header of headers) {
+
+                    let block = await this._getBlock(header.hash);
+                    nBlocks++;
+
+                    let prevHash = header.prevHash.reverse().toString('hex');
+                    let height = prevHash == '000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943' ? 1
+                        : ((await BlockStore.Collection.findOne({ hash: prevHash })) || status).height + 1
+
+                    if (height > 1)
+                        await BlockStore.Collection.updateOne({ hash: prevHash }, { $set: { nextBlock: block.hash } });
+
+                    let blockObj: IBlock = {
+                        hash: block.hash,
+                        height: height,
+                        merkletRoot: header.merkleRoot.reverse().toString('hex'),
+                        nextBlock: '',
+                        prevBlock: prevHash,
+                        bits: header.bits,
+                        nonce: header.nonce,
+                        version: header.version,
+                        time: new Date(header.time * 1000),
+                        ntx: block.transactions.length,
+                        reward: block.transactions[0].outputAmount
+                    };
+
+                    let response = await BlockStore.Collection.updateOne(
+                        { hash: blockObj.hash },
+                        { $set: blockObj },
+                        { upsert: true }
+                    );
+
+                    await this._transactionImport(block.transactions, blockObj.hash, blockObj.height, blockObj.time);
+
+                    status.lastBlock = blockObj.hash;
+                    status.height = blockObj.height;
+
+                    if (response)
+                        await chainInfo.setStatus(status);
+                    else
+                        throw Error(`Can't synchronize the block ${status.lastBlock}`);
+
+                    showProgress();
+                }
+
+                headers = [];
+            } catch (reason) {
+                Bitcoin.Logger.warn({ msg: `Fail to sync: ${reason.message}` });
             }
-
-            ini = new Date();
-
-            for (const header of headers) {
-
-                let block = await this._getBlock(header.hash);
-                nBlocks++;
-
-                let prevHash = header.prevHash.reverse().toString('hex');
-                let height = prevHash == '000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943' ? 1
-                    : ((await BlockStore.Collection.findOne({ hash: prevHash })) || status).height + 1
-
-                if (height > 1)
-                    await BlockStore.Collection.updateOne({ hash: prevHash }, { $set: { nextBlock: block.hash } });
-
-                let blockObj: IBlock = {
-                    hash: block.hash,
-                    height: height,
-                    merkletRoot: header.merkleRoot.reverse().toString('hex'),
-                    nextBlock: '',
-                    prevBlock: prevHash,
-                    bits: header.bits,
-                    nonce: header.nonce,
-                    version: header.version,
-                    time: new Date(header.time * 1000),
-                    ntx: block.transactions.length,
-                    reward: block.transactions[0].outputAmount
-                };
-
-                let response = await BlockStore.Collection.updateOne(
-                    { hash: blockObj.hash },
-                    { $set: blockObj },
-                    { upsert: true }
-                );
-
-                await this._transactionImport(block.transactions, blockObj.hash, blockObj.height, blockObj.time);
-
-                status.lastBlock = blockObj.hash;
-                status.height = blockObj.height;
-
-                if (response)
-                    await chainInfo.setStatus(status);
-                else
-                    throw Error(`Can't synchronize the block ${status.lastBlock}`);
-
-                showProgress();
-            }
-
-            headers = [];
         }
     }
 
