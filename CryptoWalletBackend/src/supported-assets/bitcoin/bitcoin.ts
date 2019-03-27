@@ -4,7 +4,7 @@ import Utils from "../../utils";
 import IWalletService from "../../services/iwallet-service";
 import TimeSpan from "../../../libs/timespan";
 
-import { Networks, Block, BlockHeader, Transaction, Address, PublicKey } from "bitcore-lib";
+import { Networks, Block, BlockHeader, Transaction, Address, PublicKey, Script } from "bitcore-lib";
 import { BlockStore, IBlock } from "./blockstore";
 import { TransactionStore, ITransaction } from "./transactionstore";
 import { ChainInfoService, SupportedAssets, SupportedNetworks } from "../chainsync";
@@ -115,41 +115,117 @@ export class Bitcoin implements IWalletService {
     }
 
     /**
-     * Importa las entradas de las transacciones especificadas.
+     * Obtiene la dirección del script especificado.
      * 
-     * @param {Transaction[]} txs Transacciones que contiene las entradas a cargar.
+     * @param script Script de la salida.
      */
-    private async _inputImport(txs: Transaction[]): Promise<void> {
-        let inOps: BulkUpdate<ICoin>[] = [];
+    private _getAddressFromScript(script: Script) {
+        let address: string;
+
+        switch (script.classify().toString()) {
+            case 'Pay to public key':
+                address = new Address(new PublicKey(script.getPublicKey()), Networks.defaultNetwork).toString();
+                break;
+            case 'Pay to public key hash':
+            case 'Pay to script hash':
+                address = script.toAddress(Networks.defaultNetwork).toString();
+                break;
+            case 'Pay to multisig':
+                address = "(Multisign)";
+                break;
+            case 'Data push':
+                address = "(Data only)";
+                break;
+            default:
+                Bitcoin.Logger.debug({
+                    msg: `Can't resolve address from script ${script.classify()}`
+                });
+            case 'Unknown':
+                address = '(Nonstandard)';
+                break;
+        }
+
+        return address;
+    }
+
+    /**
+     * Procesa las salidas de la transacción especificada.
+     * 
+     * @param {Transaction} tx Transacción a procesar las salidas.
+     */
+    private async _processOutputs(tx: Transaction) {
+        const outputs = tx.outputs;
+        const txid = tx.hash.toString('hex');
+
+        type outputCoin = { amount: number, address: string, script: Buffer, multi: boolean };
+        const outOps: Array<BulkUpdate<ICoin>> = [];
+
+        for (const [index, output] of outputs.entries()) {
+            let newValue: outputCoin;
+
+            if (Utils.isNull(output.script)) {
+                newValue = { amount: output.satoshis, address: '(Nonstandard)', script: null, multi: false };
+            } else {
+                let address: string = this._getAddressFromScript(output.script);
+                let isP2SM = address === '(Multisign)';
+
+                newValue = { amount: output.satoshis, address, script: output.script.toBuffer(), multi: isP2SM };
+            }
+            outOps.push({ updateOne: { filter: { parentTx: txid, index }, upsert: true, update: { $set: newValue } } });
+        }
+
+        return outOps;
+    }
+
+    /**
+     * Procesa las entradas de la transacción especificada.
+     * 
+     * @param {Transaction} tx Transacción a procesar las entradas.
+     */
+    public async _processInputs(tx: Transaction) {
+        if (tx.isCoinbase())
+            return null;
+
+        const inputs = tx.inputs;
+        const txid = tx.hash.toString('hex');
+        const inOps: Array<BulkUpdate<ICoin>> = [];
+
+        for (const input of inputs) {
+
+            let prevTxid = input.prevTxId.toString('hex');
+
+            inOps.push({
+                updateOne: {
+                    filter: { index: input.outputIndex, parentTx: prevTxid },
+                    update: { $set: { spendTx: txid } },
+                    upsert: true
+                }
+            });
+        }
+
+        return inOps;
+    }
+
+    /**
+     * Importa las entradas y salidas de las transacciones especificadas.
+     * 
+     * @param {Array<Transaction>} txs Transacciones a obtener las entradas y salidas.
+     */
+    private async _dataImport(txs: Array<Transaction>): Promise<void> {
+        let outOps: Array<BulkUpdate<ICoin>> = [];
+        let inOps: Array<BulkUpdate<ICoin>> = [];
 
         for (const tx of txs) {
+            let outops = await this._processOutputs(tx);
+            outOps.push(...outops);
 
-            if (tx.isCoinbase())
-                continue;
-
-            const inputs = tx.inputs;
-            const txid = tx.hash.toString('hex');
-
-            for (const input of inputs) {
-
-                let prevTxid = input.prevTxId.toString('hex');
-
-                inOps.push({
-                    updateOne: {
-                        filter: {
-                            index: input.outputIndex,
-                            parentTx: prevTxid
-                        },
-                        update: {
-                            $set: {
-                                spendTx: txid
-                            }
-                        },
-                        upsert: true
-                    }
-                });
-            }
+            let inops = await this._processInputs(tx);
+            if (inops && inops.length > 0) inOps.push(...inops);
         }
+
+        if (outOps.length > 0)
+            await Promise.all(Utils.partition(outOps, Config.MongoDb.PoolSize)
+                .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
 
         if (inOps.length > 0)
             await Promise.all(Utils.partition(inOps, Config.MongoDb.PoolSize)
@@ -157,96 +233,21 @@ export class Bitcoin implements IWalletService {
     }
 
     /**
-     * Importa las salidas de las transacciones especificadas.
-     * 
-     * @param {Transaction[]} txs Transacciones a obtener las salidas.
-     */
-    private async _outputImport(txs: Transaction[]): Promise<void> {
-        let outOps: Array<BulkUpdate<ICoin>> = [];
-
-        let addOutOp = (index: number, amount: number, parentTx: string, address: string, script: Buffer, multi: boolean = false) => {
-            outOps.push({
-                updateOne: {
-                    filter: { parentTx, index },
-                    update: {
-                        $set: {
-                            address,
-                            amount,
-                            multi,
-                            script
-                        }
-                    },
-                    upsert: true
-                }
-            });
-        };
-
-        for (const tx of txs) {
-
-            const outputs = tx.outputs;
-            const txid = tx.hash.toString('hex');
-
-            for (const [index, output] of outputs.entries()) {
-                if (Utils.isNull(output.script)) {
-                    addOutOp(index, output.satoshis, txid, '(Nonstandard)', null);
-                } else {
-                    let address: string;
-                    let isP2SM = false;
-
-                    switch (output.script.classify().toString()) {
-                        case 'Pay to public key':
-                            address = new Address(new PublicKey(output.script.getPublicKey()), Networks.defaultNetwork).toString();
-                            break;
-                        case 'Pay to public key hash':
-                        case 'Pay to script hash':
-                            address = output.script.toAddress(Networks.defaultNetwork).toString();
-                            break;
-                        case 'Pay to multisig':
-                            address = "(Multisign)";
-                            isP2SM = true;
-                            break;
-                        case 'Data push':
-                            address = "(Data only)";
-                            break;
-                        default:
-                            Bitcoin.Logger.debug({
-                                msg: `Can't resolve address from script ${output.script.classify()} 
-                                                    of output ${index} of tx: ${txid}`
-                            });
-                        case 'Unknown':
-                            address = '(Nonstandard)';
-                            break;
-                    }
-
-                    addOutOp(index, output.satoshis, txid, address, output.script.toBuffer(), isP2SM);
-                }
-            }
-        }
-
-        await Promise.all(Utils.partition(outOps, Config.MongoDb.PoolSize)
-            .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
-    }
-
-    /**
      * Importa las transacciones en la base de datos.
      * 
-     * @param {Transaction[]} txs Transacciones a cargar en la base de datos.
+     * @param {Array<Transaction>} txs Transacciones a cargar en la base de datos.
      * @param {string} blockhash Hash del bloque al cual corresponden las transacciones.
      * @param {number} blockheight Altura del bloque al cual corresponden las transacciones.
      * @param {Date} blocktime Fecha/Hora en la que se generó el bloque.
      */
-    private async _transactionImport(txs: Transaction[], blockhash: string, blockheight: number, blocktime: Date): Promise<void> {
-
+    private async _transactionImport(txs: Array<Transaction>, blockhash: string, blockheight: number, blocktime: Date): Promise<void> {
         let txsOps: Array<BulkUpdate<ITransaction>> = [];
         let txid: string;
         let rawhex: Buffer;
         let txParent: ITransaction;
         let txOp: BulkUpdate<ITransaction>;
 
-
-        await this._outputImport(txs);
-        await this._inputImport(txs);
-
+        await this._dataImport(txs);
 
         for (const tx of txs) {
 
@@ -450,12 +451,16 @@ export class Bitcoin implements IWalletService {
                 })
                 .on('peerready', async (peer: Peer) => {
                     Bitcoin.Logger.info({ msg: `Peer connected, begin to download ${peer.bestHeight} blocks` });
-                    instance._bestHeight = peer.bestHeight;
+                    instance._bestHeight = peer.bestHeight > instance._bestHeight
+                        ? peer.bestHeight : instance._bestHeight;
 
                     if (!instance._isSynchronizing)
                         instance._sync().catch((reason: Error) => {
-                            Bitcoin.Logger.warn({ msg: `Fail to sync: ${reason.message}` });
+                            Bitcoin.Logger.error({ msg: `Fail to sync: ${reason.message}` });
+                            instance._pool.disconnect();
                             instance._isSynchronizing = false;
+
+                            process.exit(1);
                         });
                 });
 
