@@ -1,4 +1,4 @@
-import { Storage, IConnectionOptions } from "../../data-access/storage-service";
+import { Storage, IConnectionOptions } from "../../data-access/storage";
 import { Collection } from "mongodb";
 import Utils from "../../utils";
 import LoggerFactory from "../../services/loggin-factory";

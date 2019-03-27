@@ -1,4 +1,4 @@
-import { Storage, IConnectionOptions } from "../data-access/storage-service";
+import { Storage, IConnectionOptions } from "../data-access/storage";
 import Utils from "../utils";
 
 export interface IChainInfo {
