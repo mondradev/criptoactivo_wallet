@@ -43,10 +43,10 @@ export class Bitcoin implements IWalletService {
 
     private static Logger = LoggerFactory.getLogger('Bitcoin');
 
-    private _events: EventEmitter;
-    private _messages: any;
+    private _eventEmitter: EventEmitter;
+    private _networkMessages: any;
     private _pool: Pool;
-    private _bestHeight: number;
+    private _bestHeight: number = 0;
     public _isSynchronizing: boolean;
 
     /**
@@ -83,12 +83,12 @@ export class Bitcoin implements IWalletService {
     private _getBlock(blockhash: string): Promise<Block> {
         let received = false;
         return new Promise<Block>(async resolve => {
-            this._events.once('block', block => {
+            this._eventEmitter.once('block', block => {
                 received = true;
                 resolve(block);
             });
             while (!received) {
-                this._pool.sendMessage(this._messages.GetData.forBlock(blockhash));
+                this._pool.sendMessage(this._networkMessages.GetData.forBlock(blockhash));
                 await Utils.wait(1000);
             }
         });
@@ -103,12 +103,12 @@ export class Bitcoin implements IWalletService {
     private _getHeaders(hashblock: string): Promise<BlockHeader[]> {
         let received = false;
         return new Promise(async resolve => {
-            this._events.once('headers', headers => {
+            this._eventEmitter.once('headers', headers => {
                 received = true;
                 resolve(headers);
             });
             while (!received) {
-                this._pool.sendMessage(this._messages.GetHeaders({ starts: [hashblock] }));
+                this._pool.sendMessage(this._networkMessages.GetHeaders({ starts: [hashblock] }));
                 await Utils.wait(1000);
             }
         });
@@ -309,19 +309,19 @@ export class Bitcoin implements IWalletService {
         let nBlocks = 0;
         let ini: Date;
 
-        let showProgress = () => {
+        let showProgress = (blockTime: Date) => {
 
             let end = new Date();
             let seconds = end.getTime() - ini.getTime();
 
             if (seconds >= 1000) {
                 let block_sec = (nBlocks * 1000) / seconds;
-                block_sec = Math.trunc(block_sec);
+                block_sec = block_sec;
 
                 Bitcoin.Logger.info({
-                    msg: `Processing ${block_sec} blocks/sec, left time: ${block_sec > 0
+                    msg: `Processing ${Math.trunc(block_sec)} blocks/sec, left time: ${block_sec > 0
                         ? TimeSpan.FromSeconds(Math.trunc((this._bestHeight - status.height) / block_sec)).toString() : 'calculating'}`
-                        + `, Blocks: ${status.height}`
+                        + `, Blocks: ${status.height} of ${this._bestHeight}, Date: ${blockTime.toLocaleString()}`
                 });
 
                 ini = new Date();
@@ -395,7 +395,7 @@ export class Bitcoin implements IWalletService {
                     else
                         throw Error(`Can't synchronize the block ${status.lastBlock}`);
 
-                    showProgress();
+                    showProgress(blockObj.time);
                 }
 
                 headers = [];
@@ -411,15 +411,15 @@ export class Bitcoin implements IWalletService {
     public constructor() {
         this._enableNetwork(Config.Bitcoin.Network);
 
-        this._messages = new Messages({ network: Networks.defaultNetwork });
-        this._events = new EventEmitter();
+        this._networkMessages = new Messages({ network: Networks.defaultNetwork });
+        this._eventEmitter = new EventEmitter();
     }
 
     /**
      * Inicia el servicio de billetera de Bitcoin.
      */
     public static async start() {
-        let instance = new Bitcoin();
+        let btcService = new Bitcoin();
 
         let dbConfig = {
             username: Config.MongoDb.Username,
@@ -440,33 +440,33 @@ export class Bitcoin implements IWalletService {
 
             Bitcoin.Logger.info({ msg: 'BlockchainSync service started' });
 
-            instance._pool = new Pool({ network: Networks.defaultNetwork, maxSize: 5 });
+            btcService._pool = new Pool({ network: Networks.defaultNetwork, maxSize: 5 });
 
-            instance._pool
+            btcService._pool
                 .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
-                    instance._events.emit('headers', message.headers);
+                    btcService._eventEmitter.emit('headers', message.headers);
                 })
                 .on('peerblock', (peer: Peer, message: { block: Block }) => {
-                    instance._events.emit('block', message.block);
+                    btcService._eventEmitter.emit('block', message.block);
                 })
                 .on('peerready', async (peer: Peer) => {
                     Bitcoin.Logger.info({ msg: `Peer connected, begin to download ${peer.bestHeight} blocks` });
-                    instance._bestHeight = peer.bestHeight > instance._bestHeight
-                        ? peer.bestHeight : instance._bestHeight;
+                    btcService._bestHeight = peer.bestHeight > btcService._bestHeight
+                        ? peer.bestHeight : btcService._bestHeight;
 
-                    if (!instance._isSynchronizing)
-                        instance._sync().catch((reason: Error) => {
+                    if (!btcService._isSynchronizing)
+                        btcService._sync().catch((reason: Error) => {
                             Bitcoin.Logger.error({ msg: `Fail to sync: ${reason.message}` });
-                            instance._pool.disconnect();
-                            instance._isSynchronizing = false;
+                            btcService._pool.disconnect();
+                            btcService._isSynchronizing = false;
 
                             process.exit(1);
                         });
                 });
 
-            instance._pool.connect();
+            btcService._pool.connect();
         }
 
-        return instance;
+        return btcService;
     }
 }
