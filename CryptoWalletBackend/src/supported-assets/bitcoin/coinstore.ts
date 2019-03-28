@@ -9,7 +9,7 @@ export interface ICoin {
     amount: number;
     address: string;
     multi: boolean;
-    script: Buffer;
+    script: string;
     spendTx: string;
 }
 
