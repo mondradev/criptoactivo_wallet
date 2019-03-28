@@ -66,7 +66,7 @@ sshpass -p $PASSWORD scp -P $PORT "cryptowallet_v${VERSION}.tar.gz" $USERNAME@$H
 
 echo 'Installing...'
 
-sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "tar -xvf cryptowallet_v${VERSION}.tar.gz"
+sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "tar -xf cryptowallet_v${VERSION}.tar.gz"
 
 echo 'Executing...'
 
