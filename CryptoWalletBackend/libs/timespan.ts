@@ -254,14 +254,16 @@ export default class TimeSpan {
             this._msecs = Math.abs(this._msecs)
         }
 
-        if (this.totalDays() > 0)
-            text += Math.floor(this.totalDays()) + ":";
-        if (this.totalHours() > 0)
+        if (this.totalDays(true) > 0)
+            text += Math.floor(this.totalDays()) + ".";
+        if (this.totalHours(true) > 0)
             text += (this.totalDays() > 0 ? this.to2Digits(this.hours) : this.to2Digits(Math.floor(this.totalHours()))) + ":";
 
         text += (this.totalHours() > 0 ? this.to2Digits(this.minutes) : this.to2Digits(Math.floor(this.totalMinutes()))) + ":";
 
-        text += this.to2Digits(this.seconds);
+        text += (this.totalMinutes() > 0 ? this.to2Digits(this.seconds) : this.to2Digits(Math.floor(this.totalSeconds()))) + ".";
+
+        text += this.to3Digits(this.milliseconds);
 
         if (negative)
             this._msecs *= -1;
@@ -274,7 +276,21 @@ export default class TimeSpan {
         return n.toString();
     };
 
+    public to3Digits(n: number): string {
+        if (n < 10)
+            return "00" + n;
+        if (n < 100)
+            return "0" + n;
+
+        return n.toString();
+    };
+
     // "Static Constructors"
+
+    public static FromMiliseconds(milliseconds: number): TimeSpan {
+        return new TimeSpan(milliseconds, 0, 0, 0, 0);
+    }
+
     public static FromSeconds(seconds: number): TimeSpan {
         return new TimeSpan(0, seconds, 0, 0, 0);
     }
