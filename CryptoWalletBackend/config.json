@@ -1,7 +1,7 @@
 {
     "MongoDb": {
         "Db": "cryptoserver",
-        "Host": "innsytech.com",
+        "Host": "localhost",
         "Port": 27017,
         "PoolSize": 1000
     },
