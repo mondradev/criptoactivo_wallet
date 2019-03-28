@@ -27,10 +27,9 @@ export class TransactionStore extends Storage<ITransaction> {
     }
 
     protected async createIndexes(): Promise<void> {
-        await this.collection.createIndex({ txid: 1 });
-        await this.collection.createIndex({ blockHash: 1 });
-        await this.collection.createIndex({ processed: 1 });
-        await this.collection.createIndex({ 'outputs.address': 1 });
+        await this.collection.createIndex({ txid: 1 }, {background: true});
+        await this.collection.createIndex({ blockHash: 1 }, {background: true});
+        await this.collection.createIndex({ blockHeight: 1 }, {background: true});
     }
 
     private static _instance: TransactionStore;

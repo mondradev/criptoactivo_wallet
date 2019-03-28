@@ -22,10 +22,10 @@ export class CoinStore extends Storage<ICoin> {
     }
 
     protected async createIndexes(): Promise<void> {
-        await this.collection.createIndex({ parentTx: 1, index: 1 });
-        await this.collection.createIndex({ spendTx: 1 });
-        await this.collection.createIndex({ parentTx: 1 });
-        await this.collection.createIndex({ address: 1 });
+        await this.collection.createIndex({ parentTx: 1, index: 1 }, { background: true });
+        await this.collection.createIndex({ spendTx: 1 }, { background: true });
+        await this.collection.createIndex({ parentTx: 1 }, { background: true });
+        await this.collection.createIndex({ address: 1 }, { background: true });
     }
 
     private static _instance: CoinStore;

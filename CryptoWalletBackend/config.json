@@ -1,8 +1,6 @@
 {
     "MongoDb": {
         "Db": "cryptoserver",
-        "Username": "uCryptoWallet",
-        "Password": "cryptopwd",
         "Host": "innsytech.com",
         "Port": 27017,
         "PoolSize": 1000

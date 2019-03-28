@@ -26,10 +26,9 @@ export class BlockStore extends Storage<IBlock> {
     }
 
     protected async createIndexes(): Promise<void> {
-        await this.collection.createIndex({ hash: 1 });
-        await this.collection.createIndex({ prevBlock: 1 });
-        await this.collection.createIndex({ processed: 1 });
-        await this.collection.createIndex({ height: 1 });
+        await this.collection.createIndex({ hash: 1 }, {background: true});
+        await this.collection.createIndex({ prevBlock: 1 }, {background: true});
+        await this.collection.createIndex({ height: 1 }, {background: true});
     }
 
     private static _instance: BlockStore;

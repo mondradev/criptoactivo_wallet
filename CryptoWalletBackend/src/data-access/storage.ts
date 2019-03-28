@@ -6,8 +6,6 @@ export interface IConnectionOptions {
     port?: number,
     dbname: string,
     schema: string,
-    username?: string,
-    password?: string,
     poolSize?: number
 };
 
@@ -28,10 +26,7 @@ export abstract class Storage<TModel> {
 
     public async connect() {
         try {
-            let auth = Utils.isNull(this._connectionProperties.username, this._connectionProperties.password)
-                ? ''
-                : `${this._connectionProperties.username}:${this._connectionProperties.password}@`;
-            let uri = `mongodb://${auth}${this._connectionProperties.host}:${this._connectionProperties.port}/${this._connectionProperties.dbname}`;
+            let uri = `mongodb://${this._connectionProperties.host}:${this._connectionProperties.port}/${this._connectionProperties.dbname}`;
 
             let client = await MongoClient.connect(uri, { useNewUrlParser: true, poolSize: this._connectionProperties.poolSize });
             let db = await client.db(this._connectionProperties.dbname);
