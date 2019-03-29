@@ -5,12 +5,14 @@ import LoggerFactory from "../../services/loggin-factory";
 
 export interface ICoin {
     parentTx: string;
+    height: number;
     index: number;
     amount: number;
     address: string;
     multi: boolean;
     script: string;
-    spendTx: string;
+    spentTx: string;
+    spentHeight: number;
 }
 
 export class CoinStore extends Storage<ICoin> {
@@ -23,9 +25,11 @@ export class CoinStore extends Storage<ICoin> {
 
     protected async createIndexes(): Promise<void> {
         await this.collection.createIndex({ parentTx: 1, index: 1 }, { background: true });
-        await this.collection.createIndex({ spendTx: 1 }, { background: true });
+        await this.collection.createIndex({ spentTx: 1 }, { background: true });
         await this.collection.createIndex({ parentTx: 1 }, { background: true });
         await this.collection.createIndex({ address: 1 }, { background: true });
+        await this.collection.createIndex({ spentHeight: 1 }, { background: true });
+        await this.collection.createIndex({ height: 1 }, { background: true });
     }
 
     private static _instance: CoinStore;

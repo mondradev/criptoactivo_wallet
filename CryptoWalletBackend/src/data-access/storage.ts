@@ -1,5 +1,5 @@
 import Utils from "../utils";
-import { MongoClient, Collection } from "mongodb";
+import { MongoClient, Collection, Db } from "mongodb";
 
 export interface IConnectionOptions {
     host?: string,
@@ -11,8 +11,8 @@ export interface IConnectionOptions {
 
 export abstract class Storage<TModel> {
 
-    protected collection: Collection<TModel>;
-    protected connected: boolean;
+    private collectionInternal: Collection<TModel>;
+    protected client: MongoClient;
 
     protected constructor(
         private _collectionName: string,
@@ -24,18 +24,28 @@ export abstract class Storage<TModel> {
 
     }
 
+    protected get collection() {
+        if (!this.connected)
+            this.connect();
+
+        return this.collectionInternal;
+    }
+
+    protected get connected() {
+        return this.client.isConnected();
+    }
+
+
     public async connect() {
         try {
-            let uri = `mongodb://${this._connectionProperties.host}:${this._connectionProperties.port}/${this._connectionProperties.dbname}`;
+            let uri = `mongodb://${this._connectionProperties.host}:${this._connectionProperties.port}/${this._connectionProperties.dbname}?socketTimeoutMS=3600000&noDelay=true`;
 
-            let client = await MongoClient.connect(uri, { useNewUrlParser: true, poolSize: this._connectionProperties.poolSize });
-            let db = await client.db(this._connectionProperties.dbname);
+            this.client = await MongoClient.connect(uri, { useNewUrlParser: true, poolSize: this._connectionProperties.poolSize });
+            let db = await this.client.db(this._connectionProperties.dbname);
 
-            this.collection = await db.collection(this._connectionProperties.schema + '.' + this._collectionName);
+            this.collectionInternal = await db.collection(this._connectionProperties.schema + '.' + this._collectionName);
 
             await this.createIndexes();
-
-            this.connected = true;
 
             return this;
         } catch (ex) {
