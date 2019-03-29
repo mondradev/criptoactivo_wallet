@@ -8,7 +8,6 @@ import { Networks, Block, BlockHeader, Transaction, Address, PublicKey, Script }
 import { BlockStore, IBlock } from "./blockstore";
 import { TransactionStore, ITransaction } from "./transactionstore";
 import { ChainInfoService, SupportedAssets, SupportedNetworks } from "../chainsync";
-import { UpdateQuery } from "mongodb";
 import { Peer, Messages, Pool } from "bitcore-p2p";
 import { EventEmitter } from "events";
 import { ICoin, CoinStore } from "./coinstore";
@@ -153,24 +152,28 @@ export class Bitcoin implements IWalletService {
      * 
      * @param {Transaction} tx Transacción a procesar las salidas.
      */
-    private async _processOutputs(tx: Transaction) {
+    private async _processOutputs(tx: Transaction, blockHeight: number) {
         const outputs = tx.outputs;
         const txid = tx.hash.toString('hex');
 
-        type outputCoin = { amount: number, address: string, script: Buffer, multi: boolean };
+        type outputCoin = { amount: number, address: string, script: string, multi: boolean, height: number };
         const outOps: Array<BulkUpdate<ICoin>> = [];
 
         for (const [index, output] of outputs.entries()) {
-            let newValue: outputCoin;
+            let newValue: Partial<outputCoin>;
 
             if (Utils.isNull(output.script)) {
-                newValue = { amount: output.satoshis, address: '(Nonstandard)', script: null, multi: false };
+                newValue = { address: '(Nonstandard)', script: null, multi: false };
             } else {
                 let address: string = this._getAddressFromScript(output.script);
                 let isP2SM = address === '(Multisign)';
 
-                newValue = { amount: output.satoshis, address, script: output.script.toBuffer(), multi: isP2SM };
+                newValue = { address, script: output.script.toHex(), multi: isP2SM };
             }
+
+            newValue.amount = output.satoshis;
+            newValue.height = blockHeight;
+
             outOps.push({ updateOne: { filter: { parentTx: txid, index }, upsert: true, update: { $set: newValue } } });
         }
 
@@ -182,28 +185,23 @@ export class Bitcoin implements IWalletService {
      * 
      * @param {Transaction} tx Transacción a procesar las entradas.
      */
-    public async _processInputs(tx: Transaction) {
+    public async _processInputs(tx: Transaction, blockHeight: number) {
         if (tx.isCoinbase())
             return null;
 
         const inputs = tx.inputs;
         const txid = tx.hash.toString('hex');
-        const inOps: Array<BulkUpdate<ICoin>> = [];
 
-        for (const input of inputs) {
-
-            let prevTxid = input.prevTxId.toString('hex');
-
-            inOps.push({
+        return inputs.map(i => {
+            let prevTxid = i.prevTxId.toString('hex');
+            return {
                 updateOne: {
-                    filter: { index: input.outputIndex, parentTx: prevTxid },
-                    update: { $set: { spendTx: txid } },
+                    filter: { index: i.outputIndex, parentTx: prevTxid },
+                    update: { $set: { spentTx: txid, spentHeight: blockHeight } },
                     upsert: true
                 }
-            });
-        }
-
-        return inOps;
+            } as BulkUpdate<ICoin>
+        });
     }
 
     /**
@@ -211,15 +209,15 @@ export class Bitcoin implements IWalletService {
      * 
      * @param {Array<Transaction>} txs Transacciones a obtener las entradas y salidas.
      */
-    private async _dataImport(txs: Array<Transaction>): Promise<void> {
+    private async _dataImport(txs: Array<Transaction>, blockheight: number): Promise<void> {
         let outOps: Array<BulkUpdate<ICoin>> = [];
         let inOps: Array<BulkUpdate<ICoin>> = [];
 
         for (const tx of txs) {
-            let outops = await this._processOutputs(tx);
+            let outops = await this._processOutputs(tx, blockheight);
             outOps.push(...outops);
 
-            let inops = await this._processInputs(tx);
+            let inops = await this._processInputs(tx, blockheight);
             if (inops && inops.length > 0) inOps.push(...inops);
         }
 
@@ -232,20 +230,22 @@ export class Bitcoin implements IWalletService {
             let outOps = mapOutOps[inops.updateOne.filter.parentTx + '_' + inops.updateOne.filter.index];
 
             if (outOps) {
-                outOps.spendTx = inops.updateOne.update.$set.spendTx;
+                outOps.spendTx = inops.updateOne.update.$set.spentTx;
                 delete inOps[index];
             }
         }
 
-        if (outOps.length > 0)
-            await Promise.all(Utils.partition(outOps, Config.MongoDb.PoolSize)
-                .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
-
         inOps = inOps.filter(i => i);
 
         if (inOps.length > 0)
-            await Promise.all(Utils.partition(inOps, Config.MongoDb.PoolSize)
+            outOps.push(...inOps)
+
+        // 3296 txs procesadas en 1seg
+
+        if (outOps.length > 0)
+            await Promise.all(Utils.partition(outOps, outOps.length / Config.MongoDb.PoolSize)
                 .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
+
     }
 
     /**
@@ -261,7 +261,7 @@ export class Bitcoin implements IWalletService {
         let rawhex: Buffer;
         let txParent: ITransaction;
 
-        await this._dataImport(txs);
+        await this._dataImport(txs, blockheight);
 
         let txsOps: Array<BulkUpdate<ITransaction>> = txs.map(tx => {
             txid = tx.hash.toString('hex');
@@ -276,7 +276,7 @@ export class Bitcoin implements IWalletService {
                 txid,
                 value: tx.outputAmount,
                 size: rawhex.length,
-                fee: -1,
+                fee: 0,
                 hex: rawhex,
                 outputsCount: tx.outputs.length,
                 inputsCount: tx.inputs.length
@@ -295,19 +295,20 @@ export class Bitcoin implements IWalletService {
             .map(tx => tx.updateOne.update.$set.txid);
 
         let spends = await CoinStore.Collection.aggregate<{ _id: string, amount: number }>([
-            { $match: { spendTx: { $in: txids } } },
-            { $group: { _id: "$spendTx", amount: { $sum: "$amount" } } }
+            { $match: { spentTx: { $in: txids } } },
+            { $group: { _id: "$spentTx", amount: { $sum: "$amount" } } }
         ]).toArray();
 
-        let mapping = txsOps.reduce((map, value) => {
-            map[value.updateOne.update.$set.txid] = value.updateOne.update.$set;
-            return map;
-        }, []);
+        let mapping = txsOps.filter(tx => !tx.updateOne.update.$set.coinbase)
+            .reduce((map, value) => {
+                map[value.updateOne.update.$set.txid] = value.updateOne.update.$set;
+                return map;
+            }, []);
 
         for (const spend of spends)
             mapping[spend._id].fee = spend.amount - mapping[spend._id].value;
 
-        await Promise.all(Utils.partition(txsOps, Config.MongoDb.PoolSize)
+        await Promise.all(Utils.partition(txsOps, txsOps.length / Config.MongoDb.PoolSize)
             .map(ops => TransactionStore.Collection.bulkWrite(ops, { ordered: false })));
     }
 
@@ -371,15 +372,14 @@ export class Bitcoin implements IWalletService {
 
                 for (const header of headers) {
 
+                    let iniTime = new Date().getTime();
+
                     let block = await this._getBlock(header.hash);
                     nBlocks++;
 
                     let prevHash = header.prevHash.reverse().toString('hex');
                     let height = prevHash == '000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943' ? 1
                         : ((await BlockStore.Collection.findOne({ hash: prevHash })) || status).height + 1
-
-                    if (height > 1)
-                        await BlockStore.Collection.updateOne({ hash: prevHash }, { $set: { nextBlock: block.hash } });
 
                     let blockObj: IBlock = {
                         hash: block.hash,
@@ -395,11 +395,25 @@ export class Bitcoin implements IWalletService {
                         reward: block.transactions[0].outputAmount
                     };
 
-                    let response = await BlockStore.Collection.updateOne(
-                        { hash: blockObj.hash },
-                        { $set: blockObj },
-                        { upsert: true }
-                    );
+                    let response = await BlockStore.Collection.bulkWrite([
+                        {
+                            updateOne: {
+                                filter: { hash: blockObj.hash },
+                                update: { $set: blockObj },
+                                upsert: true
+                            }
+                        },
+                        {
+                            updateOne: {
+                                filter: {
+                                    hash: prevHash
+                                },
+                                update: {
+                                    $set: { nextBlock: block.hash }
+                                }
+                            }
+                        }
+                    ] as BulkUpdate<IBlock>[], { ordered: false });
 
                     await this._transactionImport(block.transactions, blockObj.hash, blockObj.height, blockObj.time);
 
@@ -411,12 +425,18 @@ export class Bitcoin implements IWalletService {
                     else
                         throw Error(`Can't synchronize the block ${status.lastBlock}`);
 
+                    let endTime = new Date().getTime();
+
+                    Bitcoin.Logger.info({
+                        msg: `Block processed in ${TimeSpan.FromMiliseconds(endTime - iniTime)}, nTxs: ${blockObj.ntx}`
+                    });
+
                     showProgress(blockObj.time, blockObj.ntx);
                 }
 
                 headers = [];
             } catch (reason) {
-                Bitcoin.Logger.warn({ msg: `Fail to sync: ${reason.message}` });
+                Bitcoin.Logger.warn({ msg: reason.message });
             }
         }
     }
