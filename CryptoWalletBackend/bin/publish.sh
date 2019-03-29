@@ -6,11 +6,11 @@ VERSION=$(cat cwb_version)
 case $BUILD_TYPE in
     minor) 
         minor="$(echo $VERSION | grep -o -E '\w+' | head -n 2 | tail -n 1)"
-        VERSION="$(echo $VERSION | grep -o -E '^\w+').$((minor+1)).$(echo $VERSION | grep -o -E '\w+$')"
+        VERSION="$(echo $VERSION | grep -o -E '^\w+').$((minor+1)).0"
     ;;
     major)
         major="$(echo $VERSION | grep -o -E '^\w+')"
-        VERSION="$((major+1)).$(echo $VERSION | grep -o -E '\w+\.\w+$')"
+        VERSION="$((major+1)).0.0"
     ;;
     build)
         build="$(echo $VERSION | grep -o -E '\w+$')"
