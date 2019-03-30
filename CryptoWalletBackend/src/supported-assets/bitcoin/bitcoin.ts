@@ -155,12 +155,10 @@ export class Bitcoin implements IWalletService {
     private async _processOutputs(tx: Transaction, blockHeight: number) {
         const outputs = tx.outputs;
         const txid = tx.hash.toString('hex');
-
-        type outputCoin = { amount: number, address: string, script: string, multi: boolean, height: number };
         const outOps: Array<BulkUpdate<ICoin>> = [];
 
         for (const [index, output] of outputs.entries()) {
-            let newValue: Partial<outputCoin>;
+            let newValue: Partial<ICoin>;
 
             if (Utils.isNull(output.script)) {
                 newValue = { address: '(Nonstandard)', script: null, multi: false };
@@ -173,6 +171,8 @@ export class Bitcoin implements IWalletService {
 
             newValue.amount = output.satoshis;
             newValue.height = blockHeight;
+            newValue.spentHeight = -1;
+            newValue.spentTx = '';
 
             outOps.push({ updateOne: { filter: { parentTx: txid, index }, upsert: true, update: { $set: newValue } } });
         }
