@@ -72,9 +72,11 @@ export default class Utils {
     }
 
     public static partition<T>(array: T[], n: number): T[][] {
+        n = n > 0 ? Math.ceil(n) : 1;
+
         if (array.length <= n)
             return [array];
-        n = n > 0 ? Math.ceil(n) : 1;
+
         return array.length ? [array.slice(0, n)].concat(Utils.partition(array.slice(n), n)) : [];
     }
 
