@@ -1,5 +1,5 @@
 import { Storage, IConnectionOptions } from "../data-access/storage";
-import Utils from "../utils";
+import Utils from "../utils/utils";
 
 export interface IChainInfo {
     chain: string;

@@ -1,4 +1,4 @@
-import Utils from "../utils";
+import Utils from "../utils/utils";
 import { MongoClient, Collection, Db } from "mongodb";
 
 export interface IConnectionOptions {

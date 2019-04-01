@@ -1,5 +1,5 @@
 import { Storage, IConnectionOptions } from "../../data-access/storage";
-import Utils from "../../utils";
+import Utils from "../../utils/utils";
 import { Collection } from "mongodb";
 import FactoryLogger from '../../services/loggin-factory';
 

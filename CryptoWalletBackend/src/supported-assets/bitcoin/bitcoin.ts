@@ -1,6 +1,6 @@
 import LoggerFactory from "../../services/loggin-factory";
 import Config from '../../config';
-import Utils from "../../utils";
+import Utils from "../../utils/utils";
 import IWalletService from "../../services/iwallet-service";
 import TimeSpan from "../../../libs/timespan";
 
