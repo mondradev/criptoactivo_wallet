@@ -13,10 +13,12 @@ export default class CountTime {
         return time;
     }
 
-    private startTime: number;
-    private endTime: number;
+    private startTime: number = 0;
+    private endTime: number = 0;
 
     public get milliseconds() {
+        if (this.startTime == 0)
+            return 0;
         return (this.endTime - this.startTime) / MS_BY_SECOND;
     }
 
@@ -45,12 +47,10 @@ export default class CountTime {
 
     public nextLap() {
         this.stop();
-
-        const time = toString();
-
+        let time = this.milliseconds;
         this.start();
 
-        return this.milliseconds;
+        return time;
     }
 
     private to2Digits(n: number): string {
