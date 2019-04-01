@@ -6,6 +6,13 @@ const MS_BY_SECOND = 1000;
 
 export default class CountTime {
 
+    public static begin() {
+        let time = new CountTime();
+        time.start();
+
+        return time;
+    }
+
     private startTime: number;
     private endTime: number;
 
