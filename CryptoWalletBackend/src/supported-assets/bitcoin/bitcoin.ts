@@ -11,11 +11,20 @@ import { ChainInfoService, SupportedAssets, SupportedNetworks } from "../chainsy
 import { Peer, Messages, Pool } from "bitcore-p2p";
 import { EventEmitter } from "events";
 import { ICoin, CoinStore } from "./coinstore";
+import CountTime from "../../utils/counttime";
 
 type BulkUpdate<T> = {
     updateOne: {
         filter: Partial<T>,
         update: { $set: Partial<T> },
+        upsert: boolean
+    }
+};
+
+type BulkReplace<T> = {
+    replaceOne: {
+        filter: Partial<T>,
+        replacement: Partial<T>,
         upsert: boolean
     }
 };
@@ -174,7 +183,13 @@ export class Bitcoin implements IWalletService {
             newValue.spentHeight = -1;
             newValue.spentTx = '';
 
-            outOps.push({ updateOne: { filter: { parentTx: txid, index }, upsert: true, update: { $set: newValue } } });
+            outOps.push({
+                updateOne: {
+                    filter: { parentTx: txid, index },
+                    update: { $set: newValue },
+                    upsert: true
+                }
+            });
         }
 
         return outOps;
@@ -209,7 +224,7 @@ export class Bitcoin implements IWalletService {
      * 
      * @param {Array<Transaction>} txs Transacciones a obtener las entradas y salidas.
      */
-    private async _dataImport(txs: Array<Transaction>, blockheight: number): Promise<void> {
+    private async _dataImport(txs: Array<Transaction>, blockheight: number): Promise<Array<BulkUpdate<ICoin>>> {
         let outOps: Array<BulkUpdate<ICoin>> = [];
         let inOps: Array<BulkUpdate<ICoin>> = [];
 
@@ -237,20 +252,7 @@ export class Bitcoin implements IWalletService {
 
         inOps = inOps.filter(i => i);
 
-        if (inOps.length > 0)
-            outOps.push(...inOps)
-
-        // 3296 txs procesadas en 1seg
-
-        if (outOps.length > 0) {
-            let iniMongoOp = new Date().getTime();
-
-            await Promise.all(Utils.partition(outOps, outOps.length / Config.MongoDb.PoolSize)
-                .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
-
-            let endMongoOp = new Date().getTime();
-            Bitcoin.Logger.trace({ msg: `MongoDb operation in ${TimeSpan.FromMiliseconds(endMongoOp - iniMongoOp)} [Write Inputs/Outputs] Length: ${outOps.length}` });
-        }
+        return [...outOps, ...inOps];
 
     }
 
@@ -267,7 +269,7 @@ export class Bitcoin implements IWalletService {
         let rawhex: Buffer;
         let txParent: ITransaction;
 
-        await this._dataImport(txs, blockheight);
+        let dataOps = await this._dataImport(txs, blockheight);
 
         let txsOps: Array<BulkUpdate<ITransaction>> = txs.map(tx => {
             txid = tx.hash.toString('hex');
@@ -297,11 +299,21 @@ export class Bitcoin implements IWalletService {
             };
         });
 
+        if (dataOps.length > 0) {
+            const processTime = CountTime.begin();
+
+            await Promise.all(Utils.partition(dataOps, dataOps.length / Config.MongoDb.PoolSize)
+                .map(ops => CoinStore.Collection.bulkWrite(ops, { ordered: false })));
+
+            processTime.stop();
+            Bitcoin.Logger.trace({ msg: `[MongoDb] ${processTime} [Write Inputs/Outputs] Ops: ${dataOps.length}` });
+        }
+
         let txids = txsOps.filter(tx => !tx.updateOne.update.$set.coinbase)
             .map(tx => tx.updateOne.update.$set.txid);
 
         if (txids.length > 0) {
-            let iniMongoOp = new Date().getTime();
+            let processTime = CountTime.begin();
             let spends = await CoinStore.Collection.aggregate<{ _id: string, amount: number }>([
                 { $match: { spentTx: { $in: txids } } },
                 { $group: { _id: "$spentTx", amount: { $sum: "$amount" } } }
@@ -317,20 +329,20 @@ export class Bitcoin implements IWalletService {
                 for (const spend of spends)
                     mapping[spend._id].fee = spend.amount - mapping[spend._id].value;
 
-            let endMongoOp = new Date().getTime();
-            Bitcoin.Logger.trace({ msg: `MongoDb operation in ${TimeSpan.FromMiliseconds(endMongoOp - iniMongoOp)} [Fee calculation]` });
+            processTime.stop();
+            Bitcoin.Logger.trace({ msg: `[MongoDb] ${processTime} [Fee calculation]` });
         }
 
         if (txsOps.length == 0)
             Bitcoin.Logger.trace({ msg: `Without transactions than save` });
         else {
-            let iniMongoOp = new Date().getTime();
+            let processTime = CountTime.begin();
 
             await Promise.all(Utils.partition(txsOps, txsOps.length / Config.MongoDb.PoolSize)
                 .map(ops => TransactionStore.Collection.bulkWrite(ops, { ordered: false })));
 
-            let endMongoOp = new Date().getTime();
-            Bitcoin.Logger.trace({ msg: `MongoDb operation in ${TimeSpan.FromMiliseconds(endMongoOp - iniMongoOp)} [Write Txs] Length: ${txsOps.length}` });
+            processTime.stop();
+            Bitcoin.Logger.trace({ msg: `[MongoDb] ${processTime} [Write Txs] Ops: ${txsOps.length}` });
         }
     }
 
@@ -347,6 +359,8 @@ export class Bitcoin implements IWalletService {
         let progress = 0;
         let nBlocks = 0;
         let iniBlocksBySeconds: Date;
+        const processTime = new CountTime();
+        const blockProcessTime = new CountTime();
 
         let showProgress = async (blockTime: Date, ntx: number) => {
 
@@ -394,7 +408,7 @@ export class Bitcoin implements IWalletService {
 
                 for (const header of headers) {
 
-                    let iniProcessBlock = new Date().getTime();
+                    blockProcessTime.start();
 
                     let block = await this._getBlock(header.hash);
                     nBlocks++;
@@ -417,8 +431,7 @@ export class Bitcoin implements IWalletService {
                         reward: block.transactions[0].outputAmount
                     };
 
-
-                    let iniMongoOp = new Date().getTime();
+                    processTime.start();
 
                     let response = await BlockStore.Collection.bulkWrite([
                         {
@@ -440,8 +453,8 @@ export class Bitcoin implements IWalletService {
                         }
                     ] as BulkUpdate<IBlock>[], { ordered: false });
 
-                    let endMOngoOp = new Date().getTime();
-                    Bitcoin.Logger.trace({ msg: `MongoDb operation in ${TimeSpan.FromMiliseconds(endMOngoOp - iniMongoOp)} [Write Block] Length: 2` });
+                    processTime.stop()
+                    Bitcoin.Logger.trace({ msg: `[Mongodb] ${processTime} [Write Block] Length: 2` });
 
                     await this._transactionImport(block.transactions, blockObj.hash, blockObj.height, blockObj.time);
 
@@ -453,10 +466,10 @@ export class Bitcoin implements IWalletService {
                     else
                         throw Error(`Can't synchronize the block ${status.lastBlock}`);
 
-                    let endProcessBlock = new Date().getTime();
+                    blockProcessTime.stop();
 
                     Bitcoin.Logger.debug({
-                        msg: `Block processed in ${TimeSpan.FromMiliseconds(endProcessBlock - iniProcessBlock)}, nTxs: ${blockObj.ntx}`
+                        msg: `Block processed in ${blockProcessTime}, nTxs: ${blockObj.ntx}`
                     });
 
                     showProgress(blockObj.time, blockObj.ntx);
