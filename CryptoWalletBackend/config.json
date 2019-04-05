@@ -1,16 +1,16 @@
 {
-    "MongoDb": {
-        "Db": "cryptoserver",
-        "Host": "localhost",
-        "Port": 27017,
-        "PoolSize": 50
+    "logLevel": "Trace",
+    "mongoDb": {
+        "dbName": "cryptoserver",
+        "host": "localhost",
+        "port": 27017,
+        "poolSize": 50
     },
-    "LogLevel": "Trace",
-    "Bitcoin": {
-        "Network": "testnet"
+    "walletService": {
+        "host": "localhost",
+        "port": 80
     },
-    "WalletService": {
-        "Host": "localhost",
-        "Port": 80
+    "networks": {
+        "bitcoin": "testnet"
     }
 }

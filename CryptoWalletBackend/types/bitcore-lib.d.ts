@@ -207,7 +207,7 @@ export class PublicKey {
 }
 
 export class Script {
-    
+
     public toBuffer(): Buffer;
 
     /**
@@ -373,6 +373,8 @@ export class Script {
 }
 
 export class BlockHeader {
+
+    public toObject(): any;
 
     /**  The big endian hash buffer */
     public id: string;

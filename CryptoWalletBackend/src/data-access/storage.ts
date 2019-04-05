@@ -1,12 +1,27 @@
 import Utils from "../utils/utils";
-import { MongoClient, Collection, Db } from "mongodb";
+import { MongoClient, Collection } from "mongodb";
 
 export interface IConnectionOptions {
     host?: string,
     port?: number,
-    dbname: string,
-    schema: string,
+    dbName: string,
     poolSize?: number
+};
+
+export type BulkUpdate<T> = {
+    updateOne: {
+        filter: Partial<T>,
+        update: { $set: Partial<T> },
+        upsert: boolean
+    }
+};
+
+export type BulkReplace<T> = {
+    replaceOne: {
+        filter: Partial<T>,
+        replacement: Partial<T>,
+        upsert: boolean
+    }
 };
 
 export abstract class Storage<TModel> {
@@ -15,41 +30,41 @@ export abstract class Storage<TModel> {
     protected client: MongoClient;
 
     protected constructor(
-        private _collectionName: string,
-        private _connectionProperties: IConnectionOptions) {
-        Utils.requireNotNull("[_connectionProperties] can't be null", _connectionProperties);
+        private collectionName: string,
+        private connectionProperties: IConnectionOptions) {
+        Utils.requireNotNull("[_connectionProperties] can't be null", connectionProperties);
 
-        _connectionProperties.host = Utils.coalesce(_connectionProperties.host, 'localhost');
-        _connectionProperties.port = Utils.coalesce(_connectionProperties.port, 27017);
+        connectionProperties.host = Utils.coalesce(connectionProperties.host, 'localhost');
+        connectionProperties.port = Utils.coalesce(connectionProperties.port, 27017);
 
     }
 
-    protected get collection() {
+    public get collection() {
         if (!this.connected)
             this.connect();
 
         return this.collectionInternal;
     }
 
-    protected get connected() {
+    public get connected() {
         return this.client.isConnected();
     }
 
 
     public async connect() {
         try {
-            let uri = `mongodb://${this._connectionProperties.host}:${this._connectionProperties.port}/${this._connectionProperties.dbname}?socketTimeoutMS=3600000&noDelay=true`;
+            let uri = `mongodb://${this.connectionProperties.host}:${this.connectionProperties.port}/${this.connectionProperties.dbName}?socketTimeoutMS=3600000&noDelay=true`;
 
-            this.client = await MongoClient.connect(uri, { useNewUrlParser: true, poolSize: this._connectionProperties.poolSize });
-            let db = await this.client.db(this._connectionProperties.dbname);
+            this.client = await MongoClient.connect(uri, { useNewUrlParser: true, poolSize: this.connectionProperties.poolSize });
+            let db = await this.client.db(this.connectionProperties.dbName);
 
-            this.collectionInternal = await db.collection(this._connectionProperties.schema + '.' + this._collectionName);
+            this.collectionInternal = await db.collection(this.collectionName);
 
             await this.createIndexes();
 
             return this;
         } catch (ex) {
-            throw new Error(`Verify the options used to connect to ${this._connectionProperties.host}:${this._connectionProperties.port}/${this._connectionProperties.dbname} => ${ex}`);
+            throw new Error(`Verify the options used to connect to ${this.connectionProperties.host}:${this.connectionProperties.port}/${this.connectionProperties.dbName} => ${ex}`);
         }
     }
 

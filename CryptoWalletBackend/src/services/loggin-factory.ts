@@ -1,8 +1,8 @@
 import { LoggerFactoryOptions, LogGroupRule, LogLevel, LFService } from "typescript-logging";
-import Config from "../config";
+import ConfigService from "../config";
 
 const options = new LoggerFactoryOptions();
-options.addLogGroupRule(new LogGroupRule(new RegExp(".*"), LogLevel.fromString(Config.LogLevel)));
+options.addLogGroupRule(new LogGroupRule(new RegExp(".*"), LogLevel.fromString(ConfigService.logLevel)));
 
 const LoggerFactory = LFService.createNamedLoggerFactory("LoggerFactory", options);
 export default LoggerFactory;

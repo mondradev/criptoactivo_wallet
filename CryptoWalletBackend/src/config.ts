@@ -1,2 +1,2 @@
-import Config from '../config.json';
-export default Config;
+import ConfigService from '../config.json';
+export default ConfigService;

@@ -22,13 +22,13 @@ export default interface IWalletService {
      * 
      * @param txid Hash de la transacción a obtener.
      */
-    getTransaction(txid: string): Promise<any>;
+    getTransaction(txid: string): Promise<string>;
 
     /**
      * Propaga por la red una transacción firmada.
      * 
-     * @param transaction Transacción a propagar.
+     * @param transaction Transacción a propagar en formado RAW.
      */
-    broadcastTrx(transaction: any): Promise<boolean>;
+    broadcastTrx(transaction: string): Promise<boolean>;
 
 }

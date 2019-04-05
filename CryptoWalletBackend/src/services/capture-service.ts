@@ -1,4 +1,4 @@
-import { Bitcoin } from "../supported-assets/bitcoin/bitcoin";
+import { BtcWallet } from "../basedbitcoin-assets/bitcoin/btc-wallet-service";
 
 
-Bitcoin.start();
+BtcWallet.sync();
