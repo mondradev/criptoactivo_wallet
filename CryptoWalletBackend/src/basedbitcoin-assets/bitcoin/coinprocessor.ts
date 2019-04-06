@@ -1,9 +1,9 @@
 import { Script, PublicKey, Address, Networks, Transaction } from "bitcore-lib";
-import LoggerFactory from "src/services/loggin-factory";
-import { BulkUpdate } from "src/data-access/storage";
+import LoggerFactory from "../../services/loggin-factory";
+import { BulkUpdate } from "../../data-access/storage";
 import { ICoin } from "../coin-store";
 import { SupportedAssets, SupportedNetworks } from "../chaininfo-store";
-import Utils from "src/utils/utils";
+import Utils from "../../utils/utils";
 
 class Processor {
 

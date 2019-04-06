@@ -1,11 +1,11 @@
 import { Transaction } from "bitcore-lib";
 import { SupportedAssets, SupportedNetworks } from "../chaininfo-store";
-import LoggerFactory from "src/services/loggin-factory";
+import LoggerFactory from "../../services/loggin-factory";
 import { BtcCoinProcessor } from "./coinprocessor";
-import { BulkUpdate } from "src/data-access/storage";
+import { BulkUpdate } from "../../data-access/storage";
 import { ITransaction, BasedBtcTxStore } from "../tx-store";
-import Utils from "src/utils/utils";
-import ConfigService from "src/config";
+import Utils from "../../utils/utils";
+import ConfigService from "../../config";
 import { BasedBtcCoinStore } from "../coin-store";
 
 
