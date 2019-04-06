@@ -25,12 +25,15 @@ class ChainInfoStore {
     } = {};
 
     public async getTip(chain: SupportedAssets, network: SupportedNetworks) {
-        if (this.cacheTip[chain][network])
+        if (this.cacheTip[chain] && this.cacheTip[chain][network])
             return this.cacheTip[chain][network];
-        return await BasedBtcBlockStore.collection.find({ chain, network }).sort({ height: -1 }).limit(1);
+        return (await BasedBtcBlockStore.collection.find({ chain, network }).sort({ height: -1 }).limit(1).toArray()).shift()
     }
 
     public updateCacheTip(block: IBlock) {
+        if (!this.cacheTip[block.chain])
+            this.cacheTip[block.chain] = {};
+            
         this.cacheTip[block.chain][block.network] = block;
     }
 
