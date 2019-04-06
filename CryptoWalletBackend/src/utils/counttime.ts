@@ -30,7 +30,7 @@ export default class CountTime {
         this.endTime = new Date().getTime();
     }
 
-    public toString() {
+    public toLocalTimeString() {
         const totalTime = this.endTime - this.startTime;
 
         if (totalTime >= MS_BY_DAY)
@@ -42,7 +42,10 @@ export default class CountTime {
         if (totalTime >= MS_BY_MINUTE)
             return `${this.to2Digits(totalTime / MS_BY_MINUTE)} mins`
 
-        return `${this.to2Digits(totalTime / MS_BY_SECOND)}.${this.to3Digits(totalTime % MS_BY_SECOND)} secs`;
+        if (totalTime >= MS_BY_SECOND)
+            return `${this.to2Digits(totalTime / MS_BY_SECOND)}.${this.to3Digits(totalTime % MS_BY_SECOND)} secs`;
+
+        return `${totalTime} msecs`;
     }
 
     public nextLap() {

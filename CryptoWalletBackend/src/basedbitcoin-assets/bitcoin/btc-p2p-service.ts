@@ -13,21 +13,7 @@ class P2pService {
     private availableMessages: any;
 
     constructor() {
-        this.pool = new Pool({ network: Networks.defaultNetwork });
         this.event = new EventEmitter();
-        this.availableMessages = new Messages({ network: Networks.defaultNetwork });
-
-        this.pool
-            .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
-                this.event.emit('headers', message.headers.map((h: BlockHeader) => h.toObject()));
-            })
-            .on('peerblock', (peer: Peer, message: { block: Block }) => {
-                this.event.emit('block', message.block);
-            })
-            .on('peerready', async (peer: Peer) => {
-                P2pService.Logger.debug(`Peer connected ${peer.bestHeight} blocks`);
-                this.event.emit('ready');
-            });
     }
 
 
@@ -40,7 +26,7 @@ class P2pService {
     public async getBlock(blockhash: string): Promise<Block> {
         let receivedBlock: Block;
         let received = false;
-        this.event.once('block', block => {
+        this.event.once(blockhash, (block: Block) => {
             received = true;
             receivedBlock = block;
         });
@@ -69,7 +55,7 @@ class P2pService {
         let received = false;
         let receivedHeaders: BlockHeaderObj[];
 
-        this.event.once('headers', headers => {
+        this.event.once('headers', (headers: BlockHeaderObj[]) => {
             received = true;
             receivedHeaders = headers;
         });
@@ -95,11 +81,28 @@ class P2pService {
     }
 
     public async connect(): Promise<void> {
+        this._preparePool();
         this.pool.connect();
 
         return new Promise(resolve => {
             this.event.once('ready', () => resolve());
         });
+    }
+
+    private _preparePool() {
+        this.availableMessages = new Messages({ network: Networks.defaultNetwork });
+        this.pool = new Pool({ network: Networks.defaultNetwork });
+        this.pool
+            .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
+                this.event.emit('headers', message.headers.map((h: BlockHeader) => h.toObject()));
+            })
+            .on('peerblock', (peer: Peer, message: { block: Block }) => {
+                this.event.emit(message.block.hash, message.block);
+            })
+            .on('peerready', async (peer: Peer) => {
+                P2pService.Logger.debug(`Peer connected ${peer.bestHeight} blocks`);
+                this.event.emit('ready');
+            });
     }
 
     public disconnect() {
