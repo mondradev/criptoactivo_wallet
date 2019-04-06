@@ -1,17 +1,23 @@
 import { Networks } from "bitcore-lib";
 import LoggerFactory from "../../services/loggin-factory";
 import IWalletService from "../wallet-service";
-import ConfigService from "src/config";
+import ConfigService from "../../config";
 import { SupportedAssets, SupportedNetworks, ChainInfoService } from "../chaininfo-store";
 import { BtcP2pService } from "./btc-p2p-service";
-import Utils from "src/utils/utils";
+import Utils from "../../utils/utils";
 import { BtcBlockProcessor } from "./blockprocessor";
 import { BlockHeaderObj } from "./btc-types";
+import CountTime from "../../utils/counttime";
 
 class Wallet implements IWalletService {
 
 
     private static Logger = LoggerFactory.getLogger('Bitcoin');
+
+    constructor() {
+        const network = ConfigService.networks[SupportedAssets.Bitcoin] as SupportedNetworks;
+        this._enableNetwork(network);
+    }
 
     getHistorial(address: string): Promise<[]> {
         throw new Error("Method not implemented.");
@@ -55,9 +61,11 @@ class Wallet implements IWalletService {
     }
 
     public async sync() {
-        const network = ConfigService.networks[SupportedAssets.Bitcoin] as SupportedNetworks;
-
-        this._enableNetwork(network);
+        let lastProgressLog = 0;
+        let timeElapsed = 0;
+        let blockleft = 0;
+        let tip = (await ChainInfoService.getTip(SupportedAssets.Bitcoin,
+            ConfigService.networks.bitcoin as SupportedNetworks)).height;
 
         await BtcP2pService.connect();
 
@@ -78,11 +86,29 @@ class Wallet implements IWalletService {
                     else if (headers)
                         break;
                 }
+                const timer = CountTime.begin();
 
                 for (const header of headers) {
+                    Wallet.Logger.trace(`Received block [Hash: ${header.hash}, Prev: ${header.prevHash}]`);
                     const block = await BtcP2pService.getBlock(header.hash);
                     await BtcBlockProcessor.process(block);
+
+                    timeElapsed = Date.now() - lastProgressLog;
+
+                    if (timeElapsed > 1000) {
+                        let lastBlock = tip;
+                        tip = (await ChainInfoService.getTip(SupportedAssets.Bitcoin, SupportedNetworks.testnet)).height;
+                        const blockRate = tip - lastBlock;
+                        blockleft = BtcP2pService.bestHeight - tip;
+                        lastProgressLog = Date.now();
+
+                        Wallet.Logger.info(`BlockRate ${blockRate} blk/s, ${blockleft} block left`);
+                    }
                 }
+
+                timer.stop();
+
+                Wallet.Logger.debug(`Processed 2000 blocks in ${timer.toLocalTimeString()}`)
 
             }
 
