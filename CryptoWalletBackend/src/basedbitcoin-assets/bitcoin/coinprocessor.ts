@@ -37,7 +37,7 @@ class Processor {
 
                 coinOps.push({
                     updateOne: {
-                        filter: { parentTx: txid, index },
+                        filter: { parentTx: txid, index, chain, network },
                         update: { $set: coin },
                         upsert: true
                     }
