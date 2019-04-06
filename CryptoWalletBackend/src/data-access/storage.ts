@@ -40,14 +40,11 @@ export abstract class Storage<TModel> {
     }
 
     public get collection() {
-        if (!this.connected)
-            this.connect();
-
         return this.collectionInternal;
     }
 
     public get connected() {
-        return this.client.isConnected();
+        return this.client && this.client.isConnected();
     }
 
 
