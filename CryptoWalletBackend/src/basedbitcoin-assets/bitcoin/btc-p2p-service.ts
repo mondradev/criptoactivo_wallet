@@ -4,6 +4,8 @@ import { EventEmitter } from "events";
 import LoggerFactory from "../../services/loggin-factory";
 import Utils from "../../utils/utils";
 import { BlockHeaderObj } from "./btc-types";
+import BlocksPromise from "../blocks-promise";
+import CountTime from "../../utils/counttime";
 
 class P2pService {
     private static Logger = LoggerFactory.getLogger('Bitcoin-P2P');
@@ -43,6 +45,30 @@ class P2pService {
         }
 
         return receivedBlock;
+    }
+
+
+    /**
+     * Obtiene un grupo de bloques de manera asincrona.
+     * @param {Array<string>} hashes Hashes de los bloques a obtener.
+     */
+    public getBlocks(hashes: Array<string>) {
+        return new BlocksPromise<Block>(hashes, async (push) => {
+            let timer = CountTime.begin();
+
+            for (const blockhash of hashes) {
+                this.event.once(blockhash, (block: Block) => {
+                    push(block);
+
+                    if (hashes[hashes.length - 1] === blockhash) {
+                        timer.stop();
+                        P2pService.Logger.debug(`Download 2000 blocks in ${timer.toLocalTimeString()}`);
+                    }
+                });
+
+                this.pool.sendMessage(this.availableMessages.GetData.forBlock(blockhash));
+            }
+        });
     }
 
     /**
@@ -99,7 +125,7 @@ class P2pService {
             .on('peerblock', (peer: Peer, message: { block: Block }) => {
                 this.event.emit(message.block.hash, message.block);
             })
-            .on('peerready', async (peer: Peer) => {
+            .on('peerready', (peer: Peer) => {
                 P2pService.Logger.debug(`Peer connected ${peer.bestHeight} blocks`);
                 this.event.emit('ready');
             });

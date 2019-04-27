@@ -82,15 +82,24 @@ class Wallet implements IWalletService {
                     headers = await BtcP2pService.getHeaders(hashes);
 
                     if (headers && headers.length == 0)
-                        await Utils.wait(1000);
+                        await Utils.wait(100);
                     else if (headers)
                         break;
                 }
                 const timer = CountTime.begin();
+                const blocksEnumerable = BtcP2pService.getBlocks(headers.map(h => h.hash));
 
-                for (const header of headers) {
-                    Wallet.Logger.trace(`Received block [Hash: ${header.hash}, Prev: ${header.prevHash}]`);
-                    const block = await BtcP2pService.getBlock(header.hash);
+                let block = null;
+
+                do {
+                    block = await blocksEnumerable.next();
+
+                    if (block == null)
+                        break;
+
+                    const prevHash = new Buffer(block.header.prevHash);
+
+                    Wallet.Logger.trace(`Received block [Hash: ${block.hash}, Prev: ${prevHash.reverse().toString('hex')}]`);
                     await BtcBlockProcessor.process(block);
 
                     timeElapsed = Date.now() - lastProgressLog;
@@ -104,7 +113,7 @@ class Wallet implements IWalletService {
 
                         Wallet.Logger.info(`BlockRate ${blockRate} blk/s, ${blockleft} block left`);
                     }
-                }
+                } while (block != null);
 
                 timer.stop();
 
@@ -114,6 +123,7 @@ class Wallet implements IWalletService {
 
         } catch (ex) {
             BtcP2pService.disconnect();
+            Wallet.Logger.warn(`Fail to download blockchain: ${ex}`);
             return this.sync();
         }
     }
