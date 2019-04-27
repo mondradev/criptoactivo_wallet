@@ -23,11 +23,11 @@ export interface ITransaction {
 class TransactionStore extends Storage<ITransaction> {
 
     public constructor(args: IConnectionOptions) {
-        super('transactions', args);
+        super('txs', args);
     }
 
     protected async createIndexes(): Promise<void> {
-        await this.collection.createIndex({ txid: 1, chain: 1, network: 1 }, { background: true });
+        await this.collection.createIndex({ txid: 1, chain: 1, network: 1 }, { background: true, unique: true });
         await this.collection.createIndex({ blockHash: 1, chain: 1, network: 1 }, { background: true });
         await this.collection.createIndex({ blockHeight: 1, chain: 1, network: 1 }, { background: true });
     }

@@ -27,9 +27,9 @@ class BlockStore extends Storage<IBlock> {
     }
 
     protected async createIndexes(): Promise<void> {
-        await this.collection.createIndex({ hash: 1, chain: 1, network: 1 }, { background: true });
+        await this.collection.createIndex({ hash: 1, chain: 1, network: 1 }, { background: true, unique: true });
         await this.collection.createIndex({ prevBlock: 1, chain: 1, network: 1 }, { background: true });
-        await this.collection.createIndex({ height: 1, chain: 1, network: 1 }, { background: true });
+        await this.collection.createIndex({ height: 1, chain: 1, network: 1 }, { background: true, unique: true });
         await this.collection.createIndex({ processed: 1, chain: 1, network: 1 }, { background: true });
     }
 }

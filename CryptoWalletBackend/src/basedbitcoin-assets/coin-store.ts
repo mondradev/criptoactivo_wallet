@@ -24,7 +24,8 @@ class CoinStore extends Storage<ICoin> {
     }
 
     protected async createIndexes(): Promise<void> {
-        await this.collection.createIndex({ parentTx: 1, index: 1, chain: 1, network: 1 }, { background: true });
+        await this.collection.createIndex({ parentTx: 1, index: 1, chain: 1, network: 1 }, { background: true, unique: true });
+        await this.collection.createIndex({ parentTx: 1, index: 1, chain: 1, network: 1, spentHeight: 1 }, { background: true, unique: true, partialFilterExpression: { spentHeight: { $exists: true, $eq: -1 } } });
         await this.collection.createIndex({ parentTx: 1, chain: 1, network: 1 }, { background: true });
         await this.collection.createIndex({ address: 1, chain: 1, network: 1 }, { background: true });
         await this.collection.createIndex({ spentTx: 1, chain: 1, network: 1 }, { background: true, partialFilterExpression: { spentTx: { $exists: true } } });
