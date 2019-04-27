@@ -49,6 +49,7 @@ mkdir $CRYPTOWALLET_PATH &> /dev/null
 
 echo 'Copying data...'
 cp -r dist/* $CRYPTOWALLET_PATH/
+cp jjflores.pem ca-innsytech-cert.pem $CRYPTOWALLET_PATH/
 
 cd $CURRENT_PATH
 
