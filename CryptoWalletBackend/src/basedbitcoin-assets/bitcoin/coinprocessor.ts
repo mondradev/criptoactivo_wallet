@@ -34,6 +34,7 @@ class Processor {
                 coin._id = `${txid}_${index}`;
                 coin.chain = chain;
                 coin.network = network;
+                coin.spentHeight = -1;
 
                 coinOps.push({
                     updateOne: {
@@ -43,8 +44,9 @@ class Processor {
                     }
                 });
             }
-            return coinOps;
         }
+        
+        return coinOps;
     }
 
     public processSpendCoins(txs: Transaction[], params: {
@@ -72,6 +74,7 @@ class Processor {
                         filter: {
                             index: input.outputIndex,
                             parentTx: prevTxid,
+                            spentHeight: -1,
                             chain,
                             network
                         },

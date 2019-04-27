@@ -35,7 +35,7 @@ class Processor {
                 txid,
                 value: tx.outputAmount,
                 size: rawhex.length,
-                fee: 0,
+                fee: -1,
                 hex: rawhex,
                 outputsCount: tx.outputs.length,
                 inputsCount: tx.inputs.length
@@ -56,15 +56,16 @@ class Processor {
             if (spendsOps.length > 0) {
                 await Promise.all(Utils.partition(spendsOps, spendsOps.length / ConfigService.mongoDb.poolSize)
                     .map(ops => BasedBtcCoinStore.collection.bulkWrite(ops, { ordered: false })));
-                Processor.Logger.debug(`Saved spends lenght: ${spendsOps.length}`);
+                Processor.Logger.trace(`Saved spends lenght: ${spendsOps.length}`);
             }
 
             if (coinsOps.length > 0) {
                 await Promise.all(Utils.partition(coinsOps, coinsOps.length / ConfigService.mongoDb.poolSize)
                     .map(ops => BasedBtcCoinStore.collection.bulkWrite(ops, { ordered: false })));
-                Processor.Logger.debug(`Saved coins lenght: ${coinsOps.length}`);
+                Processor.Logger.trace(`Saved coins lenght: ${coinsOps.length}`);
             }
 
+            /*
             let spends = await BasedBtcCoinStore.collection.aggregate<{ _id: string, amount: number }>([
                 { $match: { spentTx: { $in: txs.map(t => t.hash.toString('hex')) }, chain, network } },
                 { $group: { _id: "$spentTx", amount: { $sum: "$amount" } } }
@@ -80,12 +81,13 @@ class Processor {
                 for (const spend of spends)
                     mapping[spend._id].fee = spend.amount - mapping[spend._id].value;
 
-            Processor.Logger.debug(`Fee calculated`);
+            Processor.Logger.trace(`Fee calculated`);
+            */
 
             if (txOps.length > 0) {
                 await Promise.all(Utils.partition(txOps, txOps.length / ConfigService.mongoDb.poolSize)
                     .map(ops => BasedBtcTxStore.collection.bulkWrite(ops, { ordered: false })));
-                Processor.Logger.debug(`Saved transactions lenght: ${txOps.length}`);
+                Processor.Logger.trace(`Saved transactions lenght: ${txOps.length}`);
             }
 
         } catch (ex) {

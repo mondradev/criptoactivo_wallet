@@ -21,7 +21,7 @@ class Processor {
 
         if (prevBlock) {
             await BasedBtcBlockStore.collection.updateOne({ hash: prevBlock.hash }, { $set: { nextBlock: header.hash } });
-            Processor.Logger.debug(`Next Blockhash setted [hash: ${prevBlock.hash}, next: ${header.hash}]`);
+            Processor.Logger.trace(`Next Blockhash setted [hash: ${prevBlock.hash}, next: ${header.hash}]`);
         }
 
         return {
@@ -53,7 +53,7 @@ class Processor {
         // TODO: Check Reorg
 
         const writeRes = await BasedBtcBlockStore.collection.bulkWrite([ops]);
-        Processor.Logger.debug(`Block [hash: ${ops.updateOne.filter.hash}] saved`);
+        Processor.Logger.trace(`Block [hash: ${ops.updateOne.filter.hash}] saved`);
 
         if (writeRes.upsertedCount == 0 && writeRes.modifiedCount == 0) {
             Promise.reject('Fail to save received block');
