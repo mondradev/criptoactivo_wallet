@@ -4,7 +4,7 @@
         "dbName": "cryptoserver",
         "host": "mongo.innsytech.com",
         "port": 27017,
-        "poolSize": 50,
+        "poolSize": 30,
         "user": "cryptouser",
         "pwd" : "cryptopwd",
         "ssl" : {
