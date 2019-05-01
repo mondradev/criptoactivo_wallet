@@ -4,8 +4,11 @@ import { BulkUpdate } from "../../data-access/storage";
 import { ICoin } from "../coin-store";
 import { SupportedAssets, SupportedNetworks } from "../chaininfo-store";
 import Utils from "../../utils/utils";
+import { ITransaction, BasedBtcTxStore } from "../tx-store";
 
 class Processor {
+
+   
 
     public processCoins(txs: Transaction[], params: {
         chain: SupportedAssets; network: SupportedNetworks; blockHash: string; blockHeight: number; blockTime: Date;
@@ -15,19 +18,12 @@ class Processor {
 
         for (const tx of txs) {
             const outputs = tx.outputs;
-            const txid = tx.hash.toString('hex');
+            const txid = tx.hash;
 
             for (const [index, output] of outputs.entries()) {
                 let coin: Partial<ICoin>;
 
-                if (Utils.isNull(output.script))
-                    coin = { address: '(Nonstandard)', script: null, multi: false };
-                else {
-                    let address: string = this._getAddressFromScript(output.script);
-                    let isP2SM = address === '(Multisign)';
 
-                    coin = { address, script: output.script.toHex(), multi: isP2SM };
-                }
 
                 coin.amount = output.satoshis;
                 coin.height = blockHeight;
@@ -45,7 +41,7 @@ class Processor {
                 });
             }
         }
-        
+
         return coinOps;
     }
 
@@ -64,7 +60,7 @@ class Processor {
                 continue;
 
             const inputs = tx.inputs;
-            const txid = tx.hash.toString('hex');
+            const txid = tx.hash;
 
             for (const input of inputs) {
                 let prevTxid = input.prevTxId.toString('hex');
@@ -106,39 +102,6 @@ class Processor {
 
 
     private static Logger = LoggerFactory.getLogger('BtcCoinProcessor');
-
-    /**
-     * Obtiene la dirección del script especificado.
-     * 
-     * @param script Script de la salida.
-     */
-    private _getAddressFromScript(script: Script) {
-        let address: string;
-
-        switch (script.classify().toString()) {
-            case 'Pay to public key':
-                address = new Address(new PublicKey(script.getPublicKey()), Networks.defaultNetwork).toString();
-                break;
-            case 'Pay to public key hash':
-            case 'Pay to script hash':
-                address = script.toAddress(Networks.defaultNetwork).toString();
-                break;
-            case 'Pay to multisig':
-                address = "(Multisign)";
-                break;
-            case 'Data push':
-                address = "(Data only)";
-                break;
-            default:
-                Processor.Logger.debug(`Can't resolve address from script ${script.classify()}`);
-            case 'Unknown':
-                address = '(Nonstandard)';
-                break;
-        }
-
-        return address;
-    }
-
 
 }
 

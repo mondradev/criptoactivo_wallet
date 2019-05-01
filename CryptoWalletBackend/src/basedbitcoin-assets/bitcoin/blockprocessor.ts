@@ -47,7 +47,7 @@ class Processor {
         };
     }
 
-    public async process(block: Block) {
+    public async process(block: Block) {    
         const ops = await this._getOps(block);
 
         // TODO: Check Reorg
@@ -55,10 +55,8 @@ class Processor {
         const writeRes = await BasedBtcBlockStore.collection.bulkWrite([ops]);
         Processor.Logger.trace(`Block [hash: ${ops.updateOne.filter.hash}] saved`);
 
-        if (writeRes.upsertedCount == 0 && writeRes.modifiedCount == 0) {
-            Promise.reject('Fail to save received block');
-            return;
-        }
+        if (writeRes.result.ok == 0)
+            throw new Error(`Fail to save received block [${ops.updateOne.filter.hash}]`);
 
         const processedBlock = { ...ops.updateOne.filter, ...ops.updateOne.update.$set };
 

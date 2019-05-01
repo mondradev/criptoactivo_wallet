@@ -1,4 +1,5 @@
 import { IBlock, BasedBtcBlockStore } from "./block-store";
+import LoggerFactory from "../services/loggin-factory";
 
 export interface IChainInfo {
     chain: string;
@@ -18,6 +19,8 @@ export enum SupportedNetworks {
 
 class ChainInfoStore {
 
+    private static Logger = LoggerFactory.getLogger('ChainInfoService');
+
     private cacheTip: {
         [chain: string]: {
             [network: string]: IBlock
@@ -35,6 +38,8 @@ class ChainInfoStore {
             this.cacheTip[block.chain] = {};
 
         this.cacheTip[block.chain][block.network] = block;
+
+        ChainInfoStore.Logger.info(`Updated Chain\tHeight: ${block.height}\tTip: ${block.hash}\tTxs: ${block.ntx}\tChain: ${block.chain}\tNetwork: ${block.network}\tVersión: ${block.version}`);
     }
 
     public async getHashes(chain: SupportedAssets, network: SupportedNetworks) {

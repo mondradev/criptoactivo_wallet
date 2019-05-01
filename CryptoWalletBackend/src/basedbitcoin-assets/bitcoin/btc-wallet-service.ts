@@ -86,6 +86,7 @@ class Wallet implements IWalletService {
                     else if (headers)
                         break;
                 }
+
                 const timer = CountTime.begin();
                 const blocksEnumerable = BtcP2pService.getBlocks(headers.map(h => h.hash));
 
@@ -113,6 +114,7 @@ class Wallet implements IWalletService {
 
                         Wallet.Logger.info(`BlockRate ${blockRate} blk/s, ${blockleft} block left`);
                     }
+                    
                 } while (block != null);
 
                 timer.stop();

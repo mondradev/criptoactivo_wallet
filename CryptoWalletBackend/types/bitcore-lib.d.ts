@@ -460,7 +460,7 @@ export class Transaction {
     public witnessHash: Buffer;
 
     /** Retrieve the little endian hash of the transaction (used for serialization) */
-    public hash: Buffer;
+    public hash: string;
 
     public nLockTime: number;
 
