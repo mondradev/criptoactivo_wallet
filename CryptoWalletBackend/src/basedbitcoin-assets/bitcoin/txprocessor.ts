@@ -11,21 +11,58 @@ import CountTime from "../../utils/counttime";
 class Processor {
 
     private static Logger = LoggerFactory.getLogger('BtcTxProcessor');
-    private static MAX_CACHE_TX_SIZE = 200000;
+    private static MAX_CACHE_TX_SIZE = 100000;
+    private static CACHE_INITIAL_SIZE = 30000;
 
-    private cacheTx = new Array<Partial<ITransaction>>();
-    private loadedCache = false;
+    private static _scriptFnAddress = {
+        'Pay to public key': (script: Script) => new Address(new PublicKey(script.getPublicKey()), Networks.defaultNetwork).toString(),
+        'Pay to public key hash': (script: Script) => script.toAddress(Networks.defaultNetwork).toString(),
+        'Pay to script hash': (script: Script) => script.toAddress(Networks.defaultNetwork).toString()
+    };
 
-    private async findTxs(txids: string[], txs: Transaction[], chain: SupportedAssets, network: SupportedNetworks): Promise<Array<Partial<ITransaction>>> {
+    private _cacheTx = {};
+    private _loadedCache = false;
+    private _requestExit: boolean = false;
+    private _cacheTxSize = 0;
+
+    constructor() {
+        process.on('beforeExit', () => this._requestExit = true);
+
+        (async () => {
+            while (!this._requestExit) {
+                if (Object.keys(this._cacheTx).length > Processor.MAX_CACHE_TX_SIZE)
+                    Object.keys(this._cacheTx).slice(0, Processor.MAX_CACHE_TX_SIZE / 2).forEach(k => delete this._cacheTx[k]);
+
+                this._cacheTxSize = Object.keys(this._cacheTx).length;
+                await Utils.wait(60000);
+            }
+        })();
+    }
+
+    /**
+     * Busca las transacciones especificadas por su hash. La busqueda se realiza en cache, mismo bloque y base de datos.
+     * 
+     * @param txids Hashes de las transacciones a buscar.
+     * @param txs Transacciones del bloque actual.
+     * @param network Red a la cual pertenencen las transacciones.
+     */
+    private async _findTxs(txids: string[], txs: Transaction[], network: SupportedNetworks): Promise<Array<Partial<ITransaction>>> {
         const findTimer = CountTime.begin();
 
         let foundTxs = new Array<Partial<ITransaction>>();
-        txids = [...new Set(txids)];
+        txids = [...new Set(txids)]; // Removemos duplicados
 
-        if (this.cacheTx && this.cacheTx.length > 0)
-            txids.forEach(txid => foundTxs.push(this.cacheTx[txid]));
+        if (this._cacheTxSize > 0) // Buscamos las transacciones en caché
+            txids.forEach(txid => {
+                const tx = this._cacheTx[txid];
 
-        if (foundTxs.length < txids.length) {
+                if (!tx)
+                    return;
+
+                foundTxs.push(tx);
+            });
+
+        if (foundTxs.length < txids.length) { // Buscamos las transacciones en el mismo bloque
             const foundTxIds = foundTxs.map(f => f.txid);
             const missingTxs = txids.filter(txid => !foundTxIds.includes(txid));
 
@@ -34,17 +71,17 @@ class Processor {
             foundTxs.push(...btcTxs.map(tx => ({ txid: tx.hash, hex: tx.toBuffer() })));
         }
 
-        if (foundTxs.length < txids.length) {
+        if (foundTxs.length < txids.length) { // Buscamos las transacciones en la base de datos
             const foundTxIds = foundTxs.map(f => f.txid);
             const missingTxs = txids.filter(txid => !foundTxIds.includes(txid));
 
-            const txs = await BasedBtcTxStore.collection.find({ txid: { $in: missingTxs } }).project({ txid: 1, hex: 1, _id: 0 }).toArray();
+            const txs = await BasedBtcTxStore.collection.find({ txid: { $in: missingTxs }, chain: SupportedAssets.Bitcoin, network }).project({ txid: 1, hex: 1, _id: 0 }).toArray();
 
             foundTxs.push(...txs);
         }
 
         if (foundTxs.length < txids.length)
-            throw new Error(`Transactions not found`);
+            throw new Error(`${txids.length - foundTxs.length} transactions not found`);
 
         findTimer.stop();
 
@@ -53,14 +90,22 @@ class Processor {
         return foundTxs;
     }
 
+    /**
+     * Importa un conjunto de transacciones a la base de datos.
+     * @param txs Transacciones a importar a la base de datos.
+     * @param params Parametros requeridos para importar.
+     * @param params.network Red a la cual pertenencen las transacciones.
+     * @param params.blockHash Hash del bloque padre de las transacciones.
+     * @param params.blockHeight Altura del bloque padre de las transacciones.
+     * @param params.blockTime Fecha/Hora del bloque padre de las transacciones.
+     */
     public async import(txs: Transaction[], params: {
-        chain: SupportedAssets, network: SupportedNetworks, blockHash: string, blockHeight: number, blockTime: Date
+        network: SupportedNetworks, blockHash: string, blockHeight: number, blockTime: Date
     }) {
         const importTimer = CountTime.begin();
-
         await this._loadCacheTx();
 
-        const { chain, network, blockHash, blockHeight, blockTime } = params;
+        const { network, blockHash, blockHeight, blockTime } = params;
         const txOps = new Array<BulkUpdate<ITransaction>>();
 
         for (const tx of txs) {
@@ -84,7 +129,7 @@ class Processor {
 
             const txOp = {
                 updateOne: {
-                    filter: { txid, chain, network },
+                    filter: { txid, chain: SupportedAssets.Bitcoin, network },
                     update: { $set: txData },
                     upsert: true
                 }
@@ -93,7 +138,7 @@ class Processor {
             txOps.push(txOp);
         }
 
-        await this._resolveAddressesAndFee(txOps.map(txOp => txOp.updateOne.update.$set), txs, chain, network);
+        await this._resolveAddressesAndFee(txOps.map(txOp => txOp.updateOne.update.$set), txs, network);
 
         try {
             if (txOps.length > 0) {
@@ -114,35 +159,37 @@ class Processor {
 
         importTimer.stop();
 
-        Processor.Logger.trace(`Imported ${txOps.length} tx from Block[${params.blockHash}], cacheTx: ${Object.keys(this.cacheTx).length} in ${importTimer.toLocalTimeString()}`);
+        Processor.Logger.trace(`Imported ${txOps.length} tx from Block[${params.blockHash}], cacheTx: ${this._cacheTxSize} in ${importTimer.toLocalTimeString()}`);
     }
 
-    public async _loadCacheTx() {
-        if (this.loadedCache)
+    /**
+     * Carga transacciones en cache.
+     */
+    private async _loadCacheTx() {
+        if (this._loadedCache)
             return;
 
         Processor.Logger.debug('Cache Txs is empty, loading');
 
         const timer = CountTime.begin();
 
-        const cache = (await BasedBtcTxStore.collection.find().sort({ blockHeight: -1 }).limit(10000).toArray());
+        const cache = (await BasedBtcTxStore.collection.find().sort({ blockHeight: -1 }).limit(Processor.CACHE_INITIAL_SIZE).toArray());
         cache.forEach(tx => this._addCache(tx));
 
         timer.stop();
 
-        Processor.Logger.info(`Cache Txs loaded ${Object.keys(this.cacheTx).length} in ${timer.toLocalTimeString()}`);
-        this.loadedCache = true;
-
-        (async () => {
-            while (true) {
-                if (Object.keys(this.cacheTx).length > Processor.MAX_CACHE_TX_SIZE)
-                    Object.keys(this.cacheTx).slice(0, Processor.MAX_CACHE_TX_SIZE / 2).forEach(k => delete this.cacheTx[k]);
-                await Utils.wait(60000);
-            }
-        })();
+        Processor.Logger.info(`Cache Txs loaded ${Object.keys(this._cacheTx).length} in ${timer.toLocalTimeString()}`);
+        this._loadedCache = true;
     }
 
-    private async _resolveAddressesAndFee(txsData: Array<Partial<ITransaction>>, txs: Array<Transaction>, chain: SupportedAssets, network: SupportedNetworks) {
+    /**
+     * Resuelve la direcciones públicas y la comisión gastada en las transacciones.
+     * 
+     * @param txsData Transacciones procesadas.
+     * @param txs Transacciones del bloque con entradas y salidas.
+     * @param network Red a la cual pertenencen las transacciones.
+     */
+    private async _resolveAddressesAndFee(txsData: Array<Partial<ITransaction>>, txs: Array<Transaction>, network: SupportedNetworks) {
         const inputs = txs.filter(tx => !tx.isCoinbase()).map(tx => tx.inputs).reduce((v, c) => {
             v.push(...c);
             return v;
@@ -151,7 +198,7 @@ class Processor {
         const prevTxIds = [...new Set(inputs.map(i => new Buffer(i.prevTxId).toString('hex')))];
 
         if (prevTxIds.length > 0) {
-            let prevTxs = await this.findTxs(prevTxIds, txs, chain, network);
+            let prevTxs = await this._findTxs(prevTxIds, txs, network);
 
             const mappingInputsTimer = CountTime.begin();
 
@@ -172,8 +219,7 @@ class Processor {
                     Processor.Logger.warn(`Tx not found [${prevTxId}]`);
                 else {
                     inputs[i].output = prevTx.outputs[inputs[i].outputIndex];
-
-                    this._removeCache(prevTxId, inputs[i].outputIndex);
+                    this._removeCache(prevTxId);
                 }
             }
 
@@ -196,7 +242,7 @@ class Processor {
             this._resolveAddresses(txData, tx);
             txData.fee = tx.getFee();
 
-            this._addCache(txData);
+           this._addCache(txData);
         }
 
         resolveAddressTimer.stop();
@@ -207,29 +253,35 @@ class Processor {
 
     }
 
-    private async _removeCache(txid: string, index: number) {
-        const tx = this.cacheTx[txid];
+    /**
+     * Intenta remover una transacción de cache cuando todas sus salidas fueron gastadas.
+     * 
+     * @param txid Hash de la transacción a remover.
+     */
+    private _removeCache(txid: string) {
+        delete this._cacheTx[txid];
+        this._cacheTxSize--;
+    }
 
-        if (!tx)
+    /**
+     * Añade a cache una transacción.
+     * 
+     * @param tx Transacción a agregar.
+     */
+    private _addCache(tx: Partial<ITransaction>) {
+        if (this._cacheTx[tx.txid])
             return;
 
-        tx['spends'] = tx['spends'] || [];
-
-        tx['spends'][index] = true;
-
-        const spentTx = tx['spends'].filter((s: boolean) => s).length == tx['spends'].lenght;
-
-        if (spentTx)
-            delete this.cacheTx[txid];
+        this._cacheTx[tx.txid] = { txid: tx.txid, hex: tx.hex };
+        this._cacheTxSize++;
     }
 
-    private _addCache(tx: Partial<ITransaction>) {
-        if (!this.cacheTx[tx.txid])
-            this.cacheTx[tx.txid] = { txid: tx.txid, hex: tx.hex };
-
-        tx['spends'] = [];
-    }
-
+    /**
+     * Determine las direcciones públicas de cada transacción.
+     * 
+     * @param txData Transacciones procesadas.
+     * @param tx Transacciones con entradas y salidas.
+     */
     private _resolveAddresses(txData: Partial<ITransaction>, tx: Transaction) {
         let addresses = [];
 
@@ -245,12 +297,6 @@ class Processor {
         txData.addresses.push(...new Set(addresses));
     }
 
-    private scriptClassify = {
-        'Pay to public key': (script: Script) => new Address(new PublicKey(script.getPublicKey()), Networks.defaultNetwork).toString(),
-        'Pay to public key hash': (script: Script) => script.toAddress(Networks.defaultNetwork).toString(),
-        'Pay to script hash': (script: Script) => script.toAddress(Networks.defaultNetwork).toString()
-    };
-
     /**
      * Obtiene la dirección del script especificado.
      * 
@@ -262,9 +308,13 @@ class Processor {
 
         // Obtenemos la función para resolver la dirección pública o devolvemos null.
 
-        return (this.scriptClassify[script.classify().toString()] || (() => null))(script);
+        return (Processor._scriptFnAddress[script.classify().toString()] || (() => null))(script);
     }
 
 }
 
+/**
+ * Procesador de transacciones de Bitcoin. Se encarga de importar a la base de datos cada una de 
+ * las transacciones de un bloque.
+ */
 export const BtcTxProcessor = new Processor();
