@@ -1,4 +1,4 @@
-import { Networks } from "bitcore-lib";
+import { Networks, Block } from "bitcore-lib";
 import LoggerFactory from "../../services/loggin-factory";
 import IWalletService from "../wallet-service";
 import ConfigService from "../../config";
@@ -8,31 +8,38 @@ import Utils from "../../utils/utils";
 import { BtcBlockProcessor } from "./blockprocessor";
 import { BlockHeaderObj } from "./btc-types";
 import CountTime from "../../utils/counttime";
+import { BasedBtcTxStore } from "../tx-store";
+import { EventEmitter } from "events";
 
 class Wallet implements IWalletService {
-
+    private _downloaded: boolean;
 
     private static Logger = LoggerFactory.getLogger('Bitcoin');
 
+    private _currentNetwork: SupportedNetworks;
+    private _notifier = new EventEmitter();
+
+
     constructor() {
-        const network = ConfigService.networks[SupportedAssets.Bitcoin] as SupportedNetworks;
-        this._enableNetwork(network);
+        this._currentNetwork = ConfigService.networks[SupportedAssets.Bitcoin] as SupportedNetworks;
+        this._enableNetwork(this._currentNetwork);
     }
 
-    getHistorial(address: string): Promise<[]> {
-        throw new Error("Method not implemented.");
+    public async getRawTransaction(txid: string): Promise<string> {
+        const tx = await BasedBtcTxStore.collection.findOne({ txid, chain: SupportedAssets.Bitcoin, network: this._currentNetwork });
+
+        return tx.hex.toString('hex');
     }
 
-    getBalance(address: string): Promise<number> {
-        throw new Error("Method not implemented.");
+    public async getRawTransactionsByAddress(address: string): Promise<string[]> {
+        const txs = await BasedBtcTxStore.collection.find({ addresses: address, chain: SupportedAssets.Bitcoin, network: this._currentNetwork }).toArray();
+
+        return txs.map(tx => tx.hex.toString('hex'));
     }
 
-    getTransaction(txid: string): Promise<string> {
-        throw new Error("Method not implemented.");
-    }
+    public async broadcastTrx(rawTx: string): Promise<boolean> {
 
-    broadcastTrx(transaction: string): Promise<boolean> {
-        throw new Error("Method not implemented.");
+        return false;
     }
 
     /**
@@ -61,18 +68,30 @@ class Wallet implements IWalletService {
     }
 
     public async sync() {
-        let lastProgressLog = 0;
-        let timeElapsed = 0;
-        let blockleft = 0;
+        const timer = new CountTime();
+
         let tip = (await ChainInfoService.getTip(SupportedAssets.Bitcoin,
             ConfigService.networks.bitcoin as SupportedNetworks)).height;
+
+        timer.on('second', async () => {
+            let lastBlock = tip;
+            tip = (await ChainInfoService.getTip(SupportedAssets.Bitcoin, SupportedNetworks.testnet)).height;
+            const blockRate = tip - lastBlock;
+            const blockleft = BtcP2pService.bestHeight - tip;
+
+            Wallet.Logger.info(`BlockRate ${blockRate} blk/s, ${blockleft} block left`);
+        });
 
         await BtcP2pService.connect();
 
         Wallet.Logger.info('Service started');
 
+        this._downloaded = false;
+
         try {
             while (true) {
+
+                timer.start();
 
                 let headers: BlockHeaderObj[];
                 let hashes = await ChainInfoService
@@ -82,52 +101,32 @@ class Wallet implements IWalletService {
                     headers = await BtcP2pService.getHeaders(hashes);
 
                     if (headers && headers.length == 0)
-                        await Utils.wait(100);
+                        await Utils.wait(1000);
                     else if (headers)
                         break;
                 }
 
-                const timer = CountTime.begin();
-                const blocksEnumerable = BtcP2pService.getBlocks(headers.map(h => h.hash));
-
-                let block = null;
-
-                do {
-                    block = await blocksEnumerable.next();
-
-                    if (block == null)
-                        break;
-
-                    const prevHash = new Buffer(block.header.prevHash);
-
-                    Wallet.Logger.trace(`Received block [Hash: ${block.hash}, Prev: ${prevHash.reverse().toString('hex')}]`);
-                    await BtcBlockProcessor.process(block);
-
-                    timeElapsed = Date.now() - lastProgressLog;
-
-                    if (timeElapsed > 1000) {
-                        let lastBlock = tip;
-                        tip = (await ChainInfoService.getTip(SupportedAssets.Bitcoin, SupportedNetworks.testnet)).height;
-                        const blockRate = tip - lastBlock;
-                        blockleft = BtcP2pService.bestHeight - tip;
-                        lastProgressLog = Date.now();
-
-                        Wallet.Logger.info(`BlockRate ${blockRate} blk/s, ${blockleft} block left`);
-                    }
-                    
-                } while (block != null);
+                for (const header of headers) {
+                    Wallet.Logger.trace(`Received block [Hash: ${header.hash}, Prev: ${header.prevHash}]`);
+                    const block = await BtcP2pService.getBlock(header.hash);
+                    await BtcBlockProcessor.import(block);
+                }
 
                 timer.stop();
 
-                Wallet.Logger.debug(`Processed 2000 blocks in ${timer.toLocalTimeString()}`)
+                Wallet.Logger.debug(`Processed ${headers.length} blocks in ${timer.toLocalTimeString()}`)
 
             }
 
         } catch (ex) {
             BtcP2pService.disconnect();
-            Wallet.Logger.warn(`Fail to download blockchain: ${ex}`);
+            Wallet.Logger.error(`Fail to download blockchain: ${ex}`);
             return this.sync();
         }
+    }
+
+    public onDownloaded(fnCallback: () => void) {
+        this._notifier.on('downloaded', fnCallback);
     }
 
 }
