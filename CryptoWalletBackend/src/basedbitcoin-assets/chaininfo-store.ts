@@ -39,7 +39,7 @@ class ChainInfoStore {
 
         this.cacheTip[block.chain][block.network] = block;
 
-        ChainInfoStore.Logger.info(`Updated Chain\tHeight: ${block.height}\tTip: ${block.hash}\tTxs: ${block.ntx}\tChain: ${block.chain}\tNetwork: ${block.network}\tVersión: ${block.version}`);
+        ChainInfoStore.Logger.info(`Updated Chain Height: ${block.height} Tip: ${block.hash} Txs: ${block.ntx} Chain: ${block.chain} Network: ${block.network} Versión: ${block.version}`);
     }
 
     public async getHashes(chain: SupportedAssets, network: SupportedNetworks) {
