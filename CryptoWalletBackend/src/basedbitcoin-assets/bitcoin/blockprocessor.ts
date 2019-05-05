@@ -12,15 +12,20 @@ class Processor {
 
     private static Logger = LoggerFactory.getLogger('BtcBlockProcessor');
 
+    /**
+     * Obtiene el bloque con la estructura requerida para ser almacenado en la base de datos.
+     * 
+     * @param block Bloque a procesar.
+     */
     private async _getOps(block: Block): Promise<BulkUpdate<IBlock>> {
         const chain = SupportedAssets.Bitcoin;
         const network = ConfigService.networks[chain] as SupportedNetworks;
         const header: BlockHeaderObj = block.header.toObject();
-        const prevBlock = await BasedBtcBlockStore.collection.findOne({ hash: header.prevHash })
+        const prevBlock = await BasedBtcBlockStore.collection.findOne({ hash: header.prevHash, chain, network })
         const height = prevBlock ? prevBlock.height + 1 : 1;
 
         if (prevBlock) {
-            await BasedBtcBlockStore.collection.updateOne({ hash: prevBlock.hash }, { $set: { nextBlock: header.hash } });
+            await BasedBtcBlockStore.collection.updateOne({ hash: prevBlock.hash, chain, network }, { $set: { nextBlock: header.hash } });
             Processor.Logger.trace(`Next Blockhash setted [hash: ${prevBlock.hash}, next: ${header.hash}]`);
         }
 
@@ -47,7 +52,12 @@ class Processor {
         };
     }
 
-    public async process(block: Block) {    
+    /**
+     * Importa un bloque a la base de datos.
+     * 
+     * @param block Bloque a importar a la base de datos.
+     */
+    public async import(block: Block) {
         const ops = await this._getOps(block);
 
         // TODO: Check Reorg
@@ -61,7 +71,6 @@ class Processor {
         const processedBlock = { ...ops.updateOne.filter, ...ops.updateOne.update.$set };
 
         await BtcTxProcessor.import(block.transactions, {
-            chain: processedBlock.chain,
             network: processedBlock.network,
             blockHash: processedBlock.hash,
             blockHeight: processedBlock.height,
@@ -74,4 +83,7 @@ class Processor {
 
 }
 
+/**
+ * Procesador de bloques de Bitcoin. Se encarga de importar los bloques a la base de datos.
+ */
 export const BtcBlockProcessor = new Processor();
