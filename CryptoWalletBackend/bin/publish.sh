@@ -77,4 +77,4 @@ rm -rf *.tar.gz
 
 echo $VERSION > cwb_version
 
-echo 'Completed'
+echo "Completed at $(date +"%y-%m-%d %H:%M:%S")"
