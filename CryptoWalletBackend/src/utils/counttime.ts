@@ -1,10 +1,15 @@
+import { EventEmitter } from "events";
 
 const MS_BY_DAY = 90000000;
 const MS_BY_HOUR = 3600000;
 const MS_BY_MINUTE = 60000;
 const MS_BY_SECOND = 1000;
 
-export default class CountTime {
+export default class CountTime  extends EventEmitter {
+
+    private _timerInternal: NodeJS.Timeout;
+    private _startTime: number = 0;
+    private _endTime: number = 0;
 
     public static begin() {
         let time = new CountTime();
@@ -13,25 +18,24 @@ export default class CountTime {
         return time;
     }
 
-    private startTime: number = 0;
-    private endTime: number = 0;
-
     public get milliseconds() {
-        if (this.startTime == 0)
+        if (this._startTime == 0)
             return 0;
-        return (this.endTime - this.startTime) / MS_BY_SECOND;
+        return (this._endTime - this._startTime) / MS_BY_SECOND;
     }
 
     public start() {
-        this.startTime = new Date().getTime();
+        this._startTime = new Date().getTime();
+        this._timerInternal = setInterval(() => this.emit('second'), MS_BY_SECOND);
     }
 
     public stop() {
-        this.endTime = new Date().getTime();
+        this._endTime = new Date().getTime();
+        clearInterval(this._timerInternal);
     }
 
     public toLocalTimeString() {
-        const totalTime = this.endTime - this.startTime;
+        const totalTime = this._endTime - this._startTime;
 
         if (totalTime >= MS_BY_DAY)
             return `${this.to2Digits(totalTime / MS_BY_DAY)} days`;
