@@ -2,7 +2,7 @@ import { Pool, Messages, Peer } from "bitcore-p2p";
 import { Networks, Block, BlockHeader } from "bitcore-lib";
 import { EventEmitter } from "events";
 import LoggerFactory from "../../services/loggin-factory";
-import Utils from "../../utils/utils";
+import Utils from "../../../libs/utils";
 import { BlockHeaderObj } from "./btc-types";
 
 class P2pService {

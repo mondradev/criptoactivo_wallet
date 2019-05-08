@@ -1,2 +1,6 @@
-import './src/services/capture-service';
-import './src/services/wallet-request';
+// import { BtcWallet } from './libs/basedbtc/btc/service';
+
+// BtcWallet.sync();
+
+
+import "./test/blockTest";

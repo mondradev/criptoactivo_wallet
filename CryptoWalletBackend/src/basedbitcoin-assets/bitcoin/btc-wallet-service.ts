@@ -4,7 +4,7 @@ import IWalletService from "../wallet-service";
 import ConfigService from "../../config";
 import { SupportedAssets, SupportedNetworks, ChainInfoService } from "../chaininfo-store";
 import { BtcP2pService } from "./btc-p2p-service";
-import Utils from "../../utils/utils";
+import Utils from "../../../libs/utils";
 import { BtcBlockProcessor } from "./blockprocessor";
 import { BlockHeaderObj } from "./btc-types";
 import CountTime from "../../utils/counttime";

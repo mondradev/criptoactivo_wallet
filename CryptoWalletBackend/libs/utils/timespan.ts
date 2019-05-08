@@ -2,6 +2,7 @@
 * JavaScript TimeSpan Library
 *
 * Copyright (c) 2010 Michael Stum, http://www.Stum.de/
+* Copright (c) 2019 InnSy Tech, https://innsytech.com
 * 
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -46,7 +47,7 @@ const msecPerDay = 86400000;
 /**
  * Versión de la clase.
  */
-const version = "1.2";
+const version = "1.3";
 
 /**
  * 
@@ -271,12 +272,14 @@ export default class TimeSpan {
     }
 
     public to2Digits(n: number): string {
+        n = Math.trunc(n);
         if (n < 10)
             return "0" + n;
         return n.toString();
     };
 
     public to3Digits(n: number): string {
+        n = Math.trunc(n);
         if (n < 10)
             return "00" + n;
         if (n < 100)

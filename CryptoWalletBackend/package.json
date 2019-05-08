@@ -4,13 +4,13 @@
   "description": "Servidor centralizado de servicios para la billetera CryptoWallet",
   "main": "main.js",
   "scripts": {
-    "test": "node dist/test/syncservice.js",
+    "test": "node dist/test/blockTest.js",
     "start": "node_modules/pm2/bin/pm2 start main.js --name cryptowallet",
     "log": "node_modules/pm2/bin/pm2 log",
     "status": "node_modules/pm2/bin/pm2 status cryptowallet",
-    "monit" : "node_modules/pm2/bin/pm2 monit",
+    "monit": "node_modules/pm2/bin/pm2 monit",
     "stop": "node_modules/pm2/bin/pm2 stop cryptowallet",
-    "reset" : "node_modules/pm2/bin/pm2 reset cryptowallet",
+    "reset": "node_modules/pm2/bin/pm2 reset cryptowallet",
     "restart": "node_modules/pm2/bin/pm2 restart cryptowallet"
   },
   "author": "InnSy Tech",
@@ -18,7 +18,9 @@
   "dependencies": {
     "bitcore-lib": "^0.16.0",
     "bitcore-p2p": "^1.1.1",
+    "crypto": "^1.0.1",
     "express": "^4.16.4",
+    "level": "^5.0.1",
     "mongodb": "^3.1.13",
     "typescript-logging": "^0.6.3"
   },

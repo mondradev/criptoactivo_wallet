@@ -53,6 +53,11 @@ export class Messages {
     network: any;
     add(key: any, name: any, Command: any): void;
     parseBuffer(dataBuffer: any): any;
+
+    GetData: {
+        forBlock: (hash: string) => void
+    }
+    GetHeaders: (params: { starts: Array<string> }) => void
 }
 export class Peer {
     static MAX_RECEIVE_BUFFER: number;

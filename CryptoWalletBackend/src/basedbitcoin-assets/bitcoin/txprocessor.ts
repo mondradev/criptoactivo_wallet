@@ -3,7 +3,7 @@ import { SupportedAssets, SupportedNetworks } from "../chaininfo-store";
 import LoggerFactory from "../../services/loggin-factory";
 import { BulkUpdate } from "../../data-access/storage";
 import { ITransaction, BasedBtcTxStore } from "../tx-store";
-import Utils from "../../utils/utils";
+import Utils from "../../../libs/utils";
 import ConfigService from "../../config";
 import CountTime from "../../utils/counttime";
 

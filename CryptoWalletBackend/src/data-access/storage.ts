@@ -1,4 +1,4 @@
-import Utils from "../utils/utils";
+import Utils from "../../libs/utils";
 import { MongoClient, Collection } from "mongodb";
 import fs from "fs";
 
