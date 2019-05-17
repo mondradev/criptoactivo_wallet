@@ -2,6 +2,8 @@ import { Hash256 } from "../hash"
 import Utils from "../../../libs/utils"
 
 import '../../utils/array-ext'
+import BufferEx from "../../../libs/utils/bufferex";
+import { Buffer } from "buffer";
 
 export class BlockHeader {
 
@@ -56,15 +58,15 @@ export class BlockHeader {
     }
 
     public serialize(): Buffer {
-        const data = Buffer.alloc(80)
-        data.writeInt32LE(this._version, 0)
-        data.write(this._hashPrevBlock.toBufferString(), 4, 'hex')
-        data.write(this._hashMerkleRoot.toBufferString(), 36, 'hex')
-        data.writeUInt32LE(this._time, 68)
-        data.writeUInt32LE(this._bits, 72)
-        data.writeUInt32LE(this._nonce, 76)
+        const data = new BufferEx()
+        data.appendInt32LE(this._version)
+        data.append(this._hashPrevBlock.toBuffer())
+        data.append(this._hashMerkleRoot.toBuffer())
+        data.appendUInt32LE(this._time)
+        data.appendUInt32LE(this._bits)
+        data.appendUInt32LE(this._nonce)
 
-        return data
+        return data.toBuffer()
     }
 
     public static deserialize(data: Buffer | string) {
@@ -74,15 +76,15 @@ export class BlockHeader {
         else
             raw = data as Buffer
 
-        const header = new BlockHeader()
-
-        header._version = raw.readInt32LE(0)
-        header._hashPrevBlock = Hash256.fromBuffer(raw.slice(4, 36))
-        header._hashMerkleRoot = Hash256.fromBuffer(raw.slice(36, 68))
-        header._time = raw.readUInt32LE(68)
-        header._bits = raw.readUInt32LE(72)
-        header._nonce = raw.readUInt32LE(76)
-
+        const header = BlockHeader.create({
+            version: raw.readInt32LE(0),
+            hashPrevBlock: Hash256.fromBuffer(raw.slice(4, 36)),
+            hashMerkleRoot: Hash256.fromBuffer(raw.slice(36, 68)),
+            time: raw.readUInt32LE(68),
+            bits: raw.readUInt32LE(72),
+            nonce: raw.readUInt32LE(76)
+        })
+        
         return header
     }
 }
@@ -110,12 +112,29 @@ export class Block extends BlockHeader {
     }
 
     public serialize() {
-        let data = super.serialize()
+        let data = BufferEx.fromBuffer(super.serialize())
         let txn = this._txs.length
-        
-        data.writeVarintNum(txn, data.length)
 
-        return data
+        data.appendVarintNum(txn)
+
+        return data.toBuffer()
+    }
+
+    public static deserialize(data: Buffer | string) {
+        const header = super.deserialize(data)
+        const block = new Block()
+        const buf = Utils.isString(data) ? BufferEx.fromHex(data as string) : BufferEx.fromBuffer(data as Buffer)
+
+        block._bits = header['_bits']
+        block._nonce = header['_nonce']
+        block._time = header['_time']
+        block._version = header['_version']
+        block._hashMerkleRoot = header['_hashMerkleRoot']
+        block._hashPrevBlock = header['_hashPrevBlock']
+
+        block._txs = new Array(buf.readVarintNum(80))
+
+        return block
     }
 
     public constructor() {
