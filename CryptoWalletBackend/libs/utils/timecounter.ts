@@ -5,14 +5,14 @@ const MS_BY_HOUR = 3600000;
 const MS_BY_MINUTE = 60000;
 const MS_BY_SECOND = 1000;
 
-export default class CountTime  extends EventEmitter {
+export default class TimeCounter extends EventEmitter {
 
     private _timerInternal: NodeJS.Timeout;
     private _startTime: number = 0;
     private _endTime: number = 0;
 
     public static begin() {
-        let time = new CountTime();
+        let time = new TimeCounter();
         time.start();
 
         return time;
