@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/mongodb": "^3.1.22",
-    "@types/node": "^11.11.4"
+    "@types/node": "^11.11.4",
+    "pm2": "^3.5.0"
   }
 }
