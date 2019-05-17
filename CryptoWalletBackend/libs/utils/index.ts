@@ -1,5 +1,13 @@
 export default class Utils {
-    
+
+    public static async callSyncWithNotThrow(func: any, args: any[], thisArg: any) {
+        try {
+            return await func.call(thisArg, ...args)
+        } catch (ex) {
+            return null
+        }
+    }
+
     public static isDate(value: any) {
         return value instanceof Date;
     }

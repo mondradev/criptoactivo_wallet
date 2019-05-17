@@ -46,10 +46,12 @@ class PeerToPeerController extends EventEmitter {
      * @returns {Promise<BlockHeader>} La cabecera del bloque.
      */
     public getHeaders(hashblock: string[]): Promise<string[]> {
-        let received = false;
         return new Promise<string[]>(async (resolve) => {
+            let received = false;
+
             this.once('headers', (headers: string[]) => {
                 received = true;
+                if (headers.length > 0) Logger.trace(`Received ${headers.length} blockheaders`)
                 resolve(headers);
             });
 
@@ -100,7 +102,7 @@ class PeerToPeerController extends EventEmitter {
             })
             .on('peerready', (peer: Peer) => {
                 if (bestHeight < peer.bestHeight) {
-                    Logger.debug(`Peer connected[BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`);
+                    Logger.debug(`Peer ready[BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`);
 
                     bestHeight = peer.bestHeight;
 

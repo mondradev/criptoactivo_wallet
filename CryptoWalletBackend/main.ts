@@ -1,6 +1,2 @@
-// import { BtcWallet } from './libs/basedbtc/btc/service';
-
-// BtcWallet.sync();
-
-
-import "./test/blockTest";
+// Initializing Wallet Server
+import './libs/services/wallet-request'

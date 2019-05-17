@@ -1,90 +1,113 @@
 import { Block } from "bitcore-lib"
-import { EventEmitter } from "events";
 import { Pool, Peer } from "bitcore-p2p";
 import Utils from "../../../libs/utils";
+import LoggerFactory from "../../../libs/utils/loggin-factory";
+import TimeCounter from "../../utils/timecounter";
+import { PeerToPeer } from "./p2p";
 
-const MAX_PROMISES = 10
+const Logger = LoggerFactory.getLogger('BlockRequest')
 
 export default class BlockRequest {
 
     private _hashes = new Array<{ hash: string, block: Block }>()
+    private _requested = -1
     private _position = 0
-    private _notifier = new EventEmitter();
+
+    private _internalCallback: (block: Block) => void = null
 
     public async next() {
-        return new Promise<Block>((success) => {
-            const resolve = (block: Block) => {
-                this._position++
-                success(block)
-            }
+        if (this._internalCallback != null)
+            throw new Error(`Request called`)
 
-            const current = this._hashes[this._position]
-
-            if (current && current.block == null)
-                this._notifier.once(current.hash, () => resolve(current.block))
-            else if (this._hashes.length == this._position)
+        return new Promise<Block>(async (resolve) => {
+            if (this._position >= this._hashes.length)
                 resolve(null)
-            else
-                resolve(current.block)
+            else {
+                const pos = this._position
+                const current = this._hashes[pos]
+                this._position++
 
+                if (current.block == null) {
+                    this._requested = this._position - 1
+                    this._internalCallback = (block: Block) => {
+                        this._hashes[this._requested] = null
+                        this._internalCallback = null
+                        this._requested = -1
+                        resolve(block)
+                    }
+                }
+                else {
+                    this._hashes[pos] = null
+                    resolve(current.block)
+                }
+
+            }
         })
     }
-
-    private _downloading = 0
-
-    private _requireLock = () => new Promise((resolve) => {
-        if (this._downloading >= MAX_PROMISES)
-            this._notifier.on('downloaded', () => {
-                if (this._downloading < MAX_PROMISES)
-                    resolve()
-            });
-        else
-            resolve()
-    })
 
     public constructor(hashes: string[], pool: Pool, getBlockMessage: { forBlock: (hash: string) => void }) {
         this._hashes.push(...hashes.map((hash) => { return { hash, block: null } }));
 
+        Logger.trace(`Request of ${hashes.length} blocks`);
+
         (async () => {
+            const timer = TimeCounter.begin()
+
             let downloaded = 0
             let position = 0
-            let notifier = new EventEmitter()
+            let peer = null as Peer
+            let peerPos = 0
 
-            const listener = (ignore: Peer, message: { block: Block }) => {
-                this._downloading--
-                this._notifier.emit('downloaded')
-                notifier.emit(message.block.hash, message.block)
+            const getPeer = () => {
 
-                if (downloaded >= this._hashes.length)
-                    pool.removeListener('peerblock', listener)
+                const peers = Object.entries(pool['_connectedPeers']) as []
+                const bestHeight = PeerToPeer.bestHeight
+
+                if (peer && peer.status === 'ready' && peer.bestHeight >= bestHeight)
+                    return peer
+
+                while ((peer == null || peer.status !== 'ready' || peer.bestHeight < bestHeight) && peerPos <= peers.length)
+                    peer = Utils.coalesce(peers[peerPos++], [null, null])[1]
+
+                if (peer == null)
+                    throw new Error('Fail connect to peer')
+
+                Logger.trace(`Connected to Peer [Host=${peer.host}, Height=${peer.bestHeight}]`)
+
+                const listener = (message: { block: Block }) => {
+                    const pointer = this._hashes.find(h => h && h.hash === message.block.hash)
+
+                    if (pointer == null || pointer.block != null)
+                        return
+
+                    pointer.block = message.block
+                    downloaded++
+
+                    if (downloaded >= this._hashes.length) {
+                        timer.stop()
+                        peer.removeListener('block', listener)
+                        Logger.debug(`Downloaded blocks=${downloaded} in ${timer.toLocalTimeString()}`)
+                    }
+
+                    if (this._internalCallback == null)
+                        return
+
+                    if (this._requested >= 0) {
+                        const block = this._hashes[this._requested].block
+                        block == null || this._internalCallback(block)
+                    }
+                }
+
+                peer.addListener('block', listener)
+
+                return peer
             }
-
-            pool.addListener('peerblock', listener)
 
             while (this._hashes.length > position) {
                 const item = this._hashes[position]
-                new Promise<void>(async (resolve) => {
-                    let received = false
-
-                    notifier.once(item.hash, (block: Block) => {
-                        item.block = block
-                        received = true
-                        downloaded++
-
-                        this._notifier.emit(item.hash);
-
-                        resolve()
-                    });
-
-                    while (!received) {
-                        pool.sendMessage(getBlockMessage.forBlock(item.hash))
-                        await Utils.wait(1000)
-                    }
-                });
+                getPeer().sendMessage(getBlockMessage.forBlock(item.hash))
                 position++
-                this._downloading++
-
-                await this._requireLock();
+                await Utils.wait(0.1)
             }
         })()
     }
