@@ -1,13 +1,13 @@
 import { Block } from "bitcore-lib"
-import { Pool, Peer } from "bitcore-p2p";
-import Utils from "../../../libs/utils";
-import LoggerFactory from "../../../libs/utils/loggin-factory";
-import TimeCounter from "../../utils/timecounter";
-import { PeerToPeer } from "./p2p";
+import { Pool, Peer } from "bitcore-p2p"
+import * as Extras from "../../utils/Extras"
+import * as LoggerFactory from "../../utils/LogginFactory"
+import TimeCounter from "../../utils/TimeCounter"
+import { PeerToPeerController } from "./PeerToPeerController"
 
 const Logger = LoggerFactory.getLogger('BlockRequest')
 
-export default class BlockRequest {
+export default class BlockDownloader {
 
     private _hashes = new Array<{ hash: string, block: Block }>()
     private _requested = -1
@@ -46,7 +46,7 @@ export default class BlockRequest {
     }
 
     public constructor(hashes: string[], pool: Pool, getBlockMessage: { forBlock: (hash: string) => void }) {
-        this._hashes.push(...hashes.map((hash) => { return { hash, block: null } }));
+        this._hashes.push(...hashes.map((hash) => { return { hash, block: null } }))
 
         Logger.trace(`Request of ${hashes.length} blocks`);
 
@@ -61,13 +61,13 @@ export default class BlockRequest {
             const getPeer = () => {
 
                 const peers = Object.entries(pool['_connectedPeers']) as []
-                const bestHeight = PeerToPeer.bestHeight
+                const bestHeight = PeerToPeerController.bestHeight
 
                 if (peer && peer.status === 'ready' && peer.bestHeight >= bestHeight)
                     return peer
 
                 while ((peer == null || peer.status !== 'ready' || peer.bestHeight < bestHeight) && peerPos <= peers.length)
-                    peer = Utils.coalesce(peers[peerPos++], [null, null])[1]
+                    peer = Extras.coalesce(peers[peerPos++], [null, null])[1]
 
                 if (peer == null)
                     throw new Error('Fail connect to peer')
@@ -107,7 +107,7 @@ export default class BlockRequest {
                 const item = this._hashes[position]
                 getPeer().sendMessage(getBlockMessage.forBlock(item.hash))
                 position++
-                await Utils.wait(0.1)
+                await Extras.wait(0.1)
             }
         })()
     }

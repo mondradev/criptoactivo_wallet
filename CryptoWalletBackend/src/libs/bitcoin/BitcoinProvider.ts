@@ -1,22 +1,24 @@
 import { Networks } from "bitcore-lib"
-import LoggerFactory from "../../utils/loggin-factory"
-import IWalletService from "../wallet-service"
-import ConfigService from "../../../config.json"
-import Utils from "../../../libs/utils"
-import TimeCounter from "../../utils/timecounter"
+import * as LoggerFactory from "../../utils/LogginFactory"
+import IWalletProvider from "./IWalletProvider"
+import { Config } from "../../config"
+import * as Extras from "../../utils/Extras"
+import TimeCounter from "../../utils/TimeCounter"
 import { EventEmitter } from "events"
-import { PeerToPeer } from "./p2p"
-import { BlockStore } from "../blocks"
-import TimeSpan from "../../../libs/utils/timespan"
-import { TxStore } from "../txs";
+import { PeerToPeerController } from "./PeerToPeerController"
+import { BlockStore } from "./BlockStore"
+import TimeSpan from "../../utils/TimeSpan"
+import { TxStore } from "./TxStore";
 
 const Logger = LoggerFactory.getLogger('Bitcoin Backend')
 
-class Wallet implements IWalletService {
+class WalletProvider implements IWalletProvider {
+    isSynchronized: any;
 
     getRawTransactionsByAddress(address: string): Promise<string[]> {
         throw new Error("Method not implemented.")
     }
+
     public async getRawTransaction(txid: string): Promise<string> {
         const txidRaw = Buffer.from(txid, 'hex')
         const rawTx = await TxStore.getRawTx(txidRaw)
@@ -33,7 +35,7 @@ class Wallet implements IWalletService {
     private _synchronized: boolean
 
     constructor() {
-        this._currentNetwork = ConfigService.networks['bitcoin']
+        this._currentNetwork = Config.assets.bitcoin.network
         this._enableNetwork(this._currentNetwork)
     }
 
@@ -71,18 +73,18 @@ class Wallet implements IWalletService {
 
         timer.on('second', async () => {
             const blockRate = i - last
-            const blockleft = PeerToPeer.bestHeight - i
+            const blockleft = PeerToPeerController.bestHeight - i
 
             if (blockRate > 0 && i > 0 && !this._synchronized) {
-                Logger.info(`BlockRate=${blockRate} blk/s, Remaining=${blockleft} blks, TimeLeft=${TimeSpan.FromSeconds(blockleft / blockRate)}`)
+                Logger.info(`BlockRate=${blockRate} blk/s, Remaining=${blockleft} blks, TimeLeft=${TimeSpan.fromSeconds(blockleft / blockRate)}`)
                 last = i
             }
         })
 
-        await PeerToPeer.connect()
+        await PeerToPeerController.connect()
 
         Logger.info('Initializing blockchain download')
-        
+
         try {
             while (true) {
                 let { hash, height } = await BlockStore.getLocalTip()
@@ -97,31 +99,31 @@ class Wallet implements IWalletService {
                 timer.start()
 
                 while (true) {
-                    if (PeerToPeer.bestHeight <= height) {
+                    if (PeerToPeerController.bestHeight <= height) {
                         if (!this._synchronized) {
                             this._synchronized = true
                             this._notifier.emit('downloaded')
                             Logger.info(`Download finalized [Tip=${hash}, Height=${height}]`)
                         }
 
-                        headers = await PeerToPeer.getHeaders([hash])
+                        headers = await PeerToPeerController.getHeaders([hash])
 
                         if (headers)
                             if (headers.length == 0)
-                                await Utils.wait(10000)
+                                await Extras.wait(10000)
                             else
                                 break
                     } else {
-                        headers = await PeerToPeer.getHeaders(hashes)
+                        headers = await PeerToPeerController.getHeaders(hashes)
 
                         if (headers && headers.length == 0)
-                            await Utils.wait(10000)
+                            await Extras.wait(10000)
                         else if (headers)
                             break
                     }
                 }
 
-                const blockRequest = PeerToPeer.getRequestBlocks(headers)
+                const blockRequest = PeerToPeerController.getRequestBlocks(headers)
                 let block = null
 
                 do {
@@ -144,7 +146,7 @@ class Wallet implements IWalletService {
             }
 
         } catch (ex) {
-            PeerToPeer.disconnect()
+            PeerToPeerController.disconnect()
             Logger.error(`Error="Fail to download blockchain", Exception=${ex.stack}`)
             return this.sync()
         }
@@ -156,4 +158,4 @@ class Wallet implements IWalletService {
 
 }
 
-export const BtcWallet = new Wallet()
+export const BitcoinProvider = new WalletProvider()

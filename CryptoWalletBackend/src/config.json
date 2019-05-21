@@ -1,0 +1,14 @@
+{
+    "logLevel": "Trace",
+
+    "walletApi": {
+        "host": "localhost",
+        "port": 5000
+    },
+
+    "assets": {
+        "bitcoin": {
+            "network": "testnet"
+        }
+    }
+}

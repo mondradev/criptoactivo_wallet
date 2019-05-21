@@ -1,15 +1,15 @@
-import { Transaction, Output } from "bitcore-lib";
+import { Transaction, Output } from "bitcore-lib"
 import level from 'level'
-import TimeCounter from "../../utils/timecounter";
-import LoggerFactory from "../../../libs/utils/loggin-factory";
+import TimeCounter from "../../utils/TimeCounter"
 
-const CoinCache = new Map<{ txid: string, index: number }, Output>()
+import * as LoggerFactory from "../../utils/LogginFactory"
+
 const txsDb = level('./db/bitcoin/txs', { keyEncoding: 'hex', valueEncoding: 'hex' })
 const idxTxsDb = level('./db/bitcoin/txs/index', { keyEncoding: 'hex', valueEncoding: 'hex' })
 
-const Logger = LoggerFactory.getLogger('TxStore');
+const Logger = LoggerFactory.getLogger('TxStore')
 
-class Storage {
+class TxLevelDb {
     public getRawTx(txidRaw: Buffer): Promise<Buffer> {
         return new Promise<Buffer>((resolve) => {
             let raw: Buffer = null
@@ -49,4 +49,4 @@ class Storage {
     }
 }
 
-export const TxStore = new Storage()
+export const TxStore = new TxLevelDb()

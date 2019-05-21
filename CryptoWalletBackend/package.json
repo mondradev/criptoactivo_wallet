@@ -3,16 +3,7 @@
   "version": "1.0.0",
   "description": "Servidor centralizado de servicios para la billetera CryptoWallet",
   "main": "main.js",
-  "scripts": {
-    "test": "node dist/test/blockTest.js",
-    "start": "node_modules/pm2/bin/pm2 start main.js --name cryptowallet",
-    "log": "node_modules/pm2/bin/pm2 log",
-    "status": "node_modules/pm2/bin/pm2 status cryptowallet",
-    "monit": "node_modules/pm2/bin/pm2 monit",
-    "stop": "node_modules/pm2/bin/pm2 stop cryptowallet",
-    "reset": "node_modules/pm2/bin/pm2 reset cryptowallet",
-    "restart": "node_modules/pm2/bin/pm2 restart cryptowallet"
-  },
+  "scripts": {},
   "author": "InnSy Tech",
   "license": "Apache-2.0",
   "dependencies": {
@@ -21,12 +12,14 @@
     "crypto": "^1.0.1",
     "express": "^4.16.4",
     "level": "^5.0.1",
-    "mongodb": "^3.1.13",
-    "typescript-logging": "^0.6.3"
+    "typescript-logging": "^0.6.3",
+    "yargs": "^13.2.4"
   },
   "devDependencies": {
-    "@types/mongodb": "^3.1.22",
+    "@types/express": "^4.16.1",
     "@types/node": "^11.11.4",
+    "@types/yargs": "^13.0.0",
+    "dts-gen": "^0.5.7",
     "pm2": "^3.5.0"
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Provee de una interfaz que indica las funciones básicas para un servicio de billetera.
  */
-export default interface IWalletService {
+export default interface IWalletProvider {
 
     /**
      * Obtiene el historial de transacciones de una dirección especifica.

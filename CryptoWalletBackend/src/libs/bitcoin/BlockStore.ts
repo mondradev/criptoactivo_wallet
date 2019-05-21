@@ -1,21 +1,22 @@
-import level from 'level';
-import LoggerFactory from '../../../libs/utils/loggin-factory';
-import { Block, BlockHeader } from 'bitcore-lib';
-import Utils from '../../../libs/utils';
-import { TxStore } from '../txs';
-import TimeCounter from '../../utils/timecounter';
+import { Block, BlockHeader } from 'bitcore-lib'
+import { TxStore } from '../../../libs/basedbtc/txs'
 
-const blockDb = level('./db/bitcoin/blocks', { valueEncoding: 'hex' });
-const idxBlockDb = level('./db/bitcoin/blocks/index', { keyEncoding: 'hex' });
+import TimeCounter from '../../utils/TimeCounter'
+import level from 'level'
+
+import * as LoggerFactory from '../../utils/LogginFactory'
+import * as Extras from '../../utils/Extras'
+
+const blockDb = level('./db/bitcoin/blocks', { valueEncoding: 'hex' })
+const idxBlockDb = level('./db/bitcoin/blocks/index', { keyEncoding: 'hex' })
 const chainInfoDb = level('./db/bitcoin/chaininfo', { valueEncoding: 'json' })
 
-const Logger = LoggerFactory.getLogger('Bitcoin BlockDb');
+const Logger = LoggerFactory.getLogger('Bitcoin BlockDb')
 
-
-class Storage {
+class BlockLevelDb {
 
     public async  getLocalTip() {
-        const localTip = await Utils.callSyncWithNotThrow(chainInfoDb.get, ['tip'], chainInfoDb)
+        const localTip = await Extras.callAsync(chainInfoDb.get, ['tip'], chainInfoDb)
 
         return localTip ? { hash: Buffer.from(localTip.hash).toString('hex'), height: localTip.height }
             : { hash: Array(65).join('0'), height: 0 }
@@ -48,10 +49,10 @@ class Storage {
         await TxStore.import(block.transactions, hash)
 
         const prevHashBlock = Buffer.from(block.header.prevHash).reverse()
-        const prevIdx = await Utils.callSyncWithNotThrow(idxBlockDb.get, [prevHashBlock], idxBlockDb)
+        const prevIdx = await Extras.callAsync(idxBlockDb.get, [prevHashBlock], idxBlockDb)
         const height = prevIdx ? parseInt(prevIdx) + 1 : 1
 
-        const timer = TimeCounter.begin();
+        const timer = TimeCounter.begin()
 
         await idxBlockDb.batch()
             .del(hash)
@@ -61,7 +62,7 @@ class Storage {
         await blockDb.batch()
             .del(height)
             .put(height, (block.header as any).toBuffer())
-            .write();
+            .write()
 
         await chainInfoDb.batch()
             .del('tip')
@@ -79,4 +80,4 @@ class Storage {
 
 }
 
-export const BlockStore = new Storage();
+export const BlockStore = new BlockLevelDb()

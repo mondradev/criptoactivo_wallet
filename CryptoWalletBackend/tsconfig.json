@@ -1,23 +1,24 @@
 {
     "compilerOptions": {
-        "allowJs": true,
-        "baseUrl": ".",
+        "module": "commonjs",
+        "target": "es5",
+        "sourceMap": true,
+        "watch": true,
+        "outDir": "build",
         "resolveJsonModule": true,
         "esModuleInterop": true,
-        "moduleResolution": "node",
-        "experimentalDecorators": true,
+        "downlevelIteration": true,
+        "baseUrl": ".",
         "paths": {
-            "bitcore-lib": [
-                "types/bitcore-lib.d.ts"
-            ],
-            "bitcore-p2p": [
-                "types/bitcore-p2p.d.ts"
+            "*": [
+                "@types"
             ]
-        },
-        "rootDir": ".",
-        "target": "esnext",
-        "module": "commonjs",
-        "outDir": "dist",
-        "sourceMap": true
-    }
+        }
+    },
+    "exclude": [
+        "node_modules",
+        "build",
+        "bin",
+        ".vscode"
+    ]
 }

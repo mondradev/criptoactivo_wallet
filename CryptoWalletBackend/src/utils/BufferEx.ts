@@ -54,30 +54,30 @@ export default class BufferEx {
     }
 
     public appendVarintNum(value: number) {
-        let txnBuf: Buffer = null
+        let varn: Buffer = null
 
         if (value < 0xFD) {
-            txnBuf = Buffer.alloc(1)
-            txnBuf.writeUInt8(value, 0)
+            varn = Buffer.alloc(1)
+            varn.writeUInt8(value, 0)
         } else if (value <= 0xFFFF) {
-            txnBuf = Buffer.alloc(3)
-            txnBuf.writeUInt8(0xFD, 0)
-            txnBuf.writeUInt16LE(value, 1)
+            varn = Buffer.alloc(3)
+            varn.writeUInt8(0xFD, 0)
+            varn.writeUInt16LE(value, 1)
         } else if (value <= 0xFFFFFFFF) {
-            txnBuf = Buffer.alloc(5)
-            txnBuf.writeUInt8(0xFE, 0)
-            txnBuf.writeUInt32LE(value, 1)
+            varn = Buffer.alloc(5)
+            varn.writeUInt8(0xFE, 0)
+            varn.writeUInt32LE(value, 1)
         } else {
-            txnBuf = Buffer.alloc(9)
-            txnBuf.writeUInt8(0xFF, 0)
-            BufferEx._writeUInt64LEInternal(txnBuf, value, 1)
+            varn = Buffer.alloc(9)
+            varn.writeUInt8(0xFF, 0)
+            BufferEx._writeUInt64LEInternal(varn, value, 1)
         }
 
-        const newLength = this._buf.length + txnBuf.length
+        const newLength = this._buf.length + varn.length
         const newBuf = Buffer.alloc(newLength)
 
         BufferEx._copyInternal(this._buf, newBuf)
-        BufferEx._copyInternal(txnBuf, newBuf, this._buf.length)
+        BufferEx._copyInternal(varn, newBuf, this._buf.length)
 
         this._buf = newBuf
 

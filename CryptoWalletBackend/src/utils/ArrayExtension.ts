@@ -1,4 +1,3 @@
-
 interface Array<T> {
     clear(): void
     unique(): Array<T>
