@@ -2,7 +2,7 @@ import yargs from "yargs"
 import ConfigFile from '../config.json'
 import * as Extras from '../utils/Extras'
 
-export const Config = {
+const Config = {
     logLevel: Extras.coalesce(yargs.argv['logLevel'], ConfigFile.logLevel),
 
     walletApi: {
@@ -16,3 +16,5 @@ export const Config = {
         }
     }
 }
+
+export default Config
