@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Servidor centralizado de servicios para la billetera CryptoWallet",
   "main": "main.js",
-  "scripts": {},
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha -r ts-node/register test/*.test.ts",
+    "start": "node_modules/pm2/bin/pm2 build/"
+  },
   "author": "InnSy Tech",
   "license": "Apache-2.0",
   "dependencies": {
@@ -16,10 +19,15 @@
     "yargs": "^13.2.4"
   },
   "devDependencies": {
+    "@types/chai": "^4.1.7",
     "@types/express": "^4.16.1",
+    "@types/mocha": "^5.2.6",
     "@types/node": "^11.11.4",
     "@types/yargs": "^13.0.0",
+    "chai": "^4.2.0",
     "dts-gen": "^0.5.7",
-    "pm2": "^3.5.0"
+    "mocha": "^6.1.4",
+    "pm2": "^3.5.0",
+    "ts-node": "^8.1.0"
   }
 }
