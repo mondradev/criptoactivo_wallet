@@ -1,14 +1,14 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es5",
+        "target": "esnext",
         "sourceMap": true,
         "outDir": "build",
         "moduleResolution": "node",
         "resolveJsonModule": true,
         "esModuleInterop": true,
-        "baseUrl": ".",
         "downlevelIteration": true,
+        "baseUrl": ".",
         "paths": {
             "*": ["@types/*.d.ts"]
         }
