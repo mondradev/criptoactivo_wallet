@@ -52,6 +52,6 @@ export function requireNotNull(value: any, message?: string) {
 export function requireString(value: any, message?: string) {
     requireNotNull(value, message)
 
-    if (isNull(value))
+    if (!isString(value))
         throw EvalError(message || "value require be a string")
 }

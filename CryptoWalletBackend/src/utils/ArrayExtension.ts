@@ -5,8 +5,13 @@ interface Array<T> {
 
 Array.prototype.unique = function () {
     const self = this
+    const newArray = []
 
-    return [...new Set(self)]
+    for (const item of self)
+        if (newArray.indexOf(item) == -1)
+            newArray.push(item)
+
+    return newArray
 }
 
 Array.prototype.clear = function () {
