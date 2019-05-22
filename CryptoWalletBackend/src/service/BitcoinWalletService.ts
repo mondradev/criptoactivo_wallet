@@ -1,5 +1,5 @@
 import express from "express"
-import { Config } from '../config'
+import Config from '../config'
 import { BitcoinProvider } from "../libs/bitcoin/BitcoinProvider"
 import * as LoggerFactory from '../utils/LogginFactory'
 

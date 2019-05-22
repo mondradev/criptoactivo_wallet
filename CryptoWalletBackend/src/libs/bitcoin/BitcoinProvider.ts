@@ -1,7 +1,7 @@
 import { Networks } from "bitcore-lib"
 import * as LoggerFactory from "../../utils/LogginFactory"
 import IWalletProvider from "./IWalletProvider"
-import { Config } from "../../config"
+import Config from "../../config"
 import * as Extras from "../../utils/Extras"
 import TimeCounter from "../../utils/TimeCounter"
 import { EventEmitter } from "events"

@@ -1,4 +1,4 @@
-import { Config } from "./config"
+import Config from "./config"
 import { BitcoinWalletService } from "./service/BitcoinWalletService"
 import { BitcoinProvider } from "./libs/bitcoin/BitcoinProvider"
 import Http from "http"

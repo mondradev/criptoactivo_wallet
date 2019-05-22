@@ -1,5 +1,5 @@
 import { Block, BlockHeader } from 'bitcore-lib'
-import { TxStore } from '../../../libs/basedbtc/txs'
+import { TxStore } from './TxStore'
 
 import TimeCounter from '../../utils/TimeCounter'
 import level from 'level'
