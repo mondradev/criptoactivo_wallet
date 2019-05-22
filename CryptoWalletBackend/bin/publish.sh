@@ -48,8 +48,8 @@ echo "Build CryptoWalletBackend v$VERSION..."
 mkdir $CRYPTOWALLET_PATH &> /dev/null
 
 echo 'Copying data...'
-cp -r dist/* $CRYPTOWALLET_PATH/
-cp jjflores.pem ca-innsytech-cert.pem package.json $CRYPTOWALLET_PATH/
+cp -r build/* $CRYPTOWALLET_PATH/
+cp package.json $CRYPTOWALLET_PATH/
 
 cd $CURRENT_PATH
 
