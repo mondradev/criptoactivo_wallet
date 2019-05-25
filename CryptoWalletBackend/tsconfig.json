@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "paths": { "*": ["@types/*"] },
         "module": "commonjs",
         "target": "esnext",
         "sourceMap": true,
@@ -8,10 +9,7 @@
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "downlevelIteration": true,
-        "baseUrl": ".",
-        "paths": {
-            "*": ["@types/*.d.ts"]
-        }
+        "baseUrl": "."
     },
     "include": [
         "src/**/*",
