@@ -1,10 +1,10 @@
 import { Block, BlockHeader } from 'bitcore-lib'
-import { TxStore } from './TxStore'
+import { BtcTxStore } from './BtcTxStore'
 
 import TimeCounter from '../../utils/TimeCounter'
 import level from 'level'
 
-import * as LoggerFactory from '../../utils/LogginFactory'
+import LoggerFactory from '../../utils/LogginFactory'
 import * as Extras from '../../utils/Extras'
 
 const blockDb = level('./db/bitcoin/blocks', { valueEncoding: 'hex' })
@@ -46,7 +46,7 @@ class BlockLevelDb {
         // Import txs, if completed then save block
         const hash = Buffer.from(block.header.hash, 'hex')
 
-        await TxStore.import(block.transactions, hash)
+        await BtcTxStore.import(block.transactions, hash)
 
         const prevHashBlock = Buffer.from(block.header.prevHash).reverse()
         const prevIdx = await Extras.callAsync(idxBlockDb.get, [prevHashBlock], idxBlockDb)
@@ -80,4 +80,4 @@ class BlockLevelDb {
 
 }
 
-export const BlockStore = new BlockLevelDb()
+export const BtcBlockStore = new BlockLevelDb()

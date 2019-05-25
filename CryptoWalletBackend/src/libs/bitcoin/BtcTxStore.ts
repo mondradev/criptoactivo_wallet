@@ -2,7 +2,7 @@ import { Transaction, Output } from "bitcore-lib"
 import level from 'level'
 import TimeCounter from "../../utils/TimeCounter"
 
-import * as LoggerFactory from "../../utils/LogginFactory"
+import LoggerFactory from "../../utils/LogginFactory"
 
 const txsDb = level('./db/bitcoin/txs', { keyEncoding: 'hex', valueEncoding: 'hex' })
 const idxTxsDb = level('./db/bitcoin/txs/index', { keyEncoding: 'hex', valueEncoding: 'hex' })
@@ -49,4 +49,4 @@ class TxLevelDb {
     }
 }
 
-export const TxStore = new TxLevelDb()
+export const BtcTxStore = new TxLevelDb()

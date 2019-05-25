@@ -1,19 +1,24 @@
 import { Block } from "bitcore-lib"
-import { Pool, Peer } from "bitcore-p2p"
-import * as Extras from "../../utils/Extras"
-import * as LoggerFactory from "../../utils/LogginFactory"
+import { Peer } from "bitcore-p2p"
+import LoggerFactory from "../../utils/LogginFactory"
 import TimeCounter from "../../utils/TimeCounter"
-import { PeerToPeerController } from "./PeerToPeerController"
+import BtcNetwork from "./BtcNetwork"
+import { isString, isStringArray } from "../../utils/Preconditions";
 
-const Logger = LoggerFactory.getLogger('BlockRequest')
+const Logger = LoggerFactory.getLogger('Blockdownloader')
 
-export default class BlockDownloader {
+const TIMEOUT_WAIT_BLOCK = 10000;
+export default class BitcoinBlockDownloader {
 
     private _hashes = new Array<{ hash: string, block: Block }>()
     private _requested = -1
     private _position = 0
 
-    private _internalCallback: (block: Block) => void = null
+    private _internalCallback: () => void = null
+
+    public hasNext() {
+        return !(this._position >= this._hashes.length)
+    }
 
     public async next() {
         if (this._internalCallback != null)
@@ -29,12 +34,14 @@ export default class BlockDownloader {
 
                 if (current.block == null) {
                     this._requested = this._position - 1
-                    this._internalCallback = (block: Block) => {
+                    this._internalCallback = () => {
+                        const block = this._hashes[this._requested].block
                         this._hashes[this._requested] = null
                         this._internalCallback = null
                         this._requested = -1
                         resolve(block)
                     }
+                    setTimeout(() => resolve(null), TIMEOUT_WAIT_BLOCK)
                 }
                 else {
                     this._hashes[pos] = null
@@ -45,70 +52,64 @@ export default class BlockDownloader {
         })
     }
 
-    public constructor(hashes: string[], pool: Pool, getBlockMessage: { forBlock: (hash: string) => void }) {
+    public constructor(hashes: string[], getBlockMessage: { forBlock: (hash: string) => void }) {
+        if (!isStringArray(hashes))
+            throw new Error('Require only string values')
+
         this._hashes.push(...hashes.map((hash) => { return { hash, block: null } }))
 
-        Logger.trace(`Request of ${hashes.length} blocks`);
+        Logger.trace(`Request of ${hashes.length} blocks`)
+
+        let downloaded = 0
+        let position = 0
+        let peer: Peer = null
+
+        const timer = TimeCounter.begin()
+
+        const listener = (message: { block: Block }) => {
+            const pointer = this._hashes.find(h => h && h.hash === message.block.hash)
+
+            if (!pointer)
+                return
+
+            pointer.block = message.block
+            downloaded++
+
+            if (downloaded >= this._hashes.length) {
+                timer.stop()
+                peer.removeListener('block', listener)
+                Logger.debug(`Downloaded ${downloaded} blocks in ${timer.toLocalTimeString()}`)
+            }
+
+            if (this._internalCallback == null)
+                return
+
+            if (this._requested >= 0 && this._hashes[this._requested].block != null)
+                this._internalCallback()
+        }
 
         (async () => {
-            const timer = TimeCounter.begin()
+            do {
+                try {
+                    peer = await BtcNetwork.getPeer()
 
-            let downloaded = 0
-            let position = 0
-            let peer = null as Peer
-            let peerPos = 0
+                    Logger.trace(`Connected to Peer [Host=${peer.host}, Height=${peer.bestHeight}] for download`)
+                    peer.addListener('block', listener)
 
-            const getPeer = () => {
-
-                const peers = Object.entries(pool['_connectedPeers']) as []
-                const bestHeight = PeerToPeerController.bestHeight
-
-                if (peer && peer.status === 'ready' && peer.bestHeight >= bestHeight)
-                    return peer
-
-                while ((peer == null || peer.status !== 'ready' || peer.bestHeight < bestHeight) && peerPos <= peers.length)
-                    peer = Extras.coalesce(peers[peerPos++], [null, null])[1]
-
-                if (peer == null)
-                    throw new Error('Fail connect to peer')
-
-                Logger.trace(`Connected to Peer [Host=${peer.host}, Height=${peer.bestHeight}]`)
-
-                const listener = (message: { block: Block }) => {
-                    const pointer = this._hashes.find(h => h && h.hash === message.block.hash)
-
-                    if (pointer == null || pointer.block != null)
-                        return
-
-                    pointer.block = message.block
-                    downloaded++
-
-                    if (downloaded >= this._hashes.length) {
-                        timer.stop()
-                        peer.removeListener('block', listener)
-                        Logger.debug(`Downloaded blocks=${downloaded} in ${timer.toLocalTimeString()}`)
+                    while (this._hashes.length > position) {
+                        const item = this._hashes[position]
+                        peer.sendMessage(getBlockMessage.forBlock(item.hash))
+                        position++
                     }
 
-                    if (this._internalCallback == null)
-                        return
-
-                    if (this._requested >= 0) {
-                        const block = this._hashes[this._requested].block
-                        block == null || this._internalCallback(block)
-                    }
+                } catch (ex) {
+                    Logger.warn(`Fail to download blocks in peer [Host=${peer.host}, Height=${peer.bestHeight}], disconnecting`)
+                    position--
+                    peer.removeListener('block', listener)
+                    peer.disconnect()
                 }
 
-                peer.addListener('block', listener)
-
-                return peer
-            }
-
-            while (this._hashes.length > position) {
-                const item = this._hashes[position]
-                getPeer().sendMessage(getBlockMessage.forBlock(item.hash))
-                position++
-                await Extras.wait(0.1)
-            }
+            } while (position < this._hashes.length)
         })()
     }
 }
