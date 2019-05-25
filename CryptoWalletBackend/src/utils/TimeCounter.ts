@@ -21,7 +21,7 @@ export default class TimeCounter extends EventEmitter {
     public get milliseconds() {
         if (this._startTime == 0)
             return 0
-        return (this._endTime - this._startTime) / MS_BY_SECOND
+        return (this._endTime - this._startTime)
     }
 
     public start() {

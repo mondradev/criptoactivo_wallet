@@ -44,7 +44,7 @@ describe('Utils Module', () => {
             const end = new Date()
             const lapsed = end.getTime() - ini.getTime()
 
-            expect(lapsed).to.greaterThan(10) // Varía el tiempo de ejecución de las sentencias anteriores
+            expect(lapsed).to.greaterThan(9) // Varía el tiempo de ejecución de las sentencias anteriores
         })
 
         it('Return a second value when first is null', () => {
@@ -139,6 +139,51 @@ describe('Utils Module', () => {
         })
     })
 
-    // TODO Test para TimeCounter
-    // TODO Test para BufferEx
+    describe('TimeCounter instance', () => {
+        it('Count 10ms', async () => {
+            const t = TimeCounter.begin()
+            await wait(10)
+            t.stop()
+            expect(t.milliseconds).to.greaterThan(9)
+        })
+    })
+
+    describe('BufferEx instance', () => {
+        it('Append 0x0F1C from Buffer', () => {
+            const buffer = BufferEx.alloc(10)
+            buffer.append(Buffer.from('0F1C', 'hex'))
+
+            expect(buffer.toBuffer().toString('hex'))
+                .to.equal('000000000000000000000f1c')
+        })
+
+        it('Append Int32', () => {
+            const buffer = BufferEx.alloc(10)
+            buffer.appendInt32LE(10)
+
+            expect(buffer.toBuffer().toString('hex'))
+                .to.equal('000000000000000000000a000000')
+        })
+
+
+        it('Append and read UInt64', () => {
+            const buffer = BufferEx.alloc(10)
+
+            buffer.appendUInt64LE(2031001)
+
+            const value = buffer.readUInt64LE(10)
+
+            expect(value).to.equal(2031001)
+        })
+
+        it('Append and read variant number', () => {
+            const buffer = BufferEx.alloc(10)
+
+            buffer.appendVarintNum(3000)
+
+            const value = buffer.readVarintNum(10)
+
+            expect(value).to.equal(3000)
+        })
+    })
 })
