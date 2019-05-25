@@ -34,7 +34,7 @@ export class Networks {
      * @param {string|Array} keys - if set, only check if the magic number associated with this name matches
      * @return Network
      */
-    static get(arg: string | number | Network, keys: string | Array<any>): Network;
+    static get(arg: string | number | Network, keys?: string | Array<any>): Network;
 
     /**
      * @function
