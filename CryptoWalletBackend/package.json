@@ -2,10 +2,12 @@
   "name": "cryptowallet-backend",
   "version": "1.0.0",
   "description": "Servidor centralizado de servicios para la billetera CryptoWallet",
-  "main": "main.js",
+  "main": "server.js",
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha -r ts-node/register test/*.test.ts",
-    "start": "node_modules/pm2/bin/pm2 build/"
+    "test": "node node_modules/mocha/bin/mocha -r ts-node/register test/*.test.ts --log-level=info",
+    "start": "node node_modules/pm2/bin/pm2 build/server.js",
+    "publish": "bash -c 'cd bin/ ; ./publish.sh build innsyssh 1nn5yT3chAdm1n innsytech.com 22'",
+    "clean" : "bash -c 'rm -rfv build/*'"
   },
   "author": "InnSy Tech",
   "license": "Apache-2.0",

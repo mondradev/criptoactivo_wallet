@@ -22,7 +22,7 @@ case $BUILD_TYPE in
     ;;
 esac 
 
-function require {
+function require() {
     if [[ "$1" == "" ]]; then
         echo "Requires indicate '$2'"
         exit 1
@@ -37,10 +37,10 @@ PASSWORD=$3
 HOSTNAME=$4
 PORT=$5
 
-require $USERNAME "username"
-require $PASSWORD "password"
-require $HOSTNAME "hostname"
-require $PORT "port"
+require "$USERNAME" "username"
+require "$PASSWORD" "password"
+require "$HOSTNAME" "hostname"
+require "$PORT" "port"
 
 cd ..
 
