@@ -1,11 +1,17 @@
 export default class BufferEx {
-
     private _buf: Buffer;
 
     public static alloc(length: number, fill: string | number = 0) {
         const buf = new BufferEx()
 
         buf._buf = Buffer.alloc(length, fill)
+
+        return buf
+    }
+
+    public static zero() {
+        const buf = new BufferEx()
+        buf._buf = Buffer.alloc(0)
 
         return buf
     }
@@ -127,6 +133,13 @@ export default class BufferEx {
         return this
     }
 
+    public read(offset: number, lenght: number) {
+        const self = this._buf
+        const data = self.slice(offset, offset + lenght)
+
+        return data
+    }
+
     public readUInt64LE(offset: number) {
         const self = this._buf
         const data = Buffer.from(self.slice(offset, offset + 8))
@@ -142,23 +155,23 @@ export default class BufferEx {
         return this._buf.readInt32LE(offset)
     }
 
-    public readVarintNum(offset: number, sizeRef?: number) {
+    public readVarintNum(offset: number, sizeRef?: { size: number }) {
         const value = this._buf.readUInt8(offset)
 
         if (value < 0xFD) {
-            sizeRef = 1
+            sizeRef && (sizeRef.size = 1)
             return value
         }
         else if (value == 0xFD) {
-            sizeRef = 3
+            sizeRef && (sizeRef.size = 3)
             return this._buf.readUInt16LE(offset + 1)
         }
         else if (value == 0xFE) {
-            sizeRef = 5
+            sizeRef && (sizeRef.size = 5)
             return this._buf.readUInt32LE(offset + 1)
         }
         else if (value == 0xFF) {
-            sizeRef = 9
+            sizeRef && (sizeRef.size = 9)
             return parseInt(this._buf.slice(offset + 1, offset + 9).reverse().toString('hex'), 16)
         }
 
@@ -166,7 +179,7 @@ export default class BufferEx {
     }
 
     public toBuffer() {
-        return this._buf
+        return Buffer.from(this._buf)
     }
 
 }

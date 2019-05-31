@@ -1,28 +1,25 @@
-import express from "express"
-import Config from '../config'
-import LoggerFactory from '../utils/LogginFactory'
-import Bitcoin from "../libs/bitcoin";
+import Bitcoin from "../libs/bitcoin"
 
-const app = express()
-const logger = LoggerFactory.getLogger('CryptoWalletServer')
+export async function BitcoinWalletService(requestData: { method: string, body: any, params: any },
+    response: (statusCode: number, data: { payload: any, message?: string }) => void) {
+    const request = requestData.params && requestData.params.request
 
-Bitcoin.Blockchain.once('synchronized', () => {
-    app.get('/api/v1/rawTx/:txid', async (req, res) => {
-        const rawTx = await Bitcoin.Wallet.getRawTransaction(req.params.txid)
-        res.json(rawTx)
-    }).get('/api/v1/rawTxsByAddr/:address', async (req, res) => {
-        const rawTxs = await Bitcoin.Wallet.getRawTransactionsByAddress(req.params.address)
-        res.json(rawTxs)
-    })
+    if (requestData.method !== 'POST') {
+        response(400, { payload: null, message: `Can't do request with ${requestData.method} method` })
+        return
+    }
 
-    logger.info('Bitcoin Wallet Service started')
-})
-Bitcoin.Blockchain.sync()
+    if (!Bitcoin.Blockchain.synchronized) {
+        response(200, { payload: null, message: 'Bitcoin Synchronizing' })
+        return
+    }
 
-app.listen(Config.walletApi.port, Config.walletApi.host, () => {
-    logger.info(`Started on host: ${Config.walletApi.host} port: ${Config.walletApi.port} `)
-})
-
-export function BitcoinWalletService(req, res, next) {
-
+    switch (request) {
+        case 'tx':
+            const txRaw = await Bitcoin.Wallet.getRawTransaction(requestData.body.txid)
+            response(200, { payload: txRaw })
+            break
+        default:
+            response(200, { payload: { params: requestData.body }, message: `What?! Can´t be processed` })
+    }
 }

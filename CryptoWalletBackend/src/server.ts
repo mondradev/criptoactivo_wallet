@@ -1,13 +1,14 @@
 import Config from "./config"
-import { BitcoinWalletService } from "./service/BitcoinWalletService"
-import Http from "http"
 import App from "./app"
+import Http from 'http'
+import LoggerFactory from "./utils/LogginFactory";
+import Bitcoin from "./libs/bitcoin";
 
-// Bitcoin Support
-App.use('api/v1/btc', BitcoinWalletService)
+const Logger = LoggerFactory.getLogger('Cryptowallet Backend')
 
-// Config service
-App.set('port', Config.walletApi.port)
-App.set('host', Config.walletApi.host)
+// Bitcoin Node
+Bitcoin.Blockchain.sync()
 
-Http.createServer(App)
+Http.createServer(App).listen(Config.walletApi.port, Config.walletApi.host, () => {
+    Logger.info(`Server started on http://${Config.walletApi.host}:${Config.walletApi.port}`)
+})

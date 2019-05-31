@@ -1,3 +1,6 @@
+import Fs from 'fs'
+import Path from 'path'
+
 export async function callAsync(func: Function, args: any[], caller: any) {
     try {
         return await func.call(caller, ...args)
@@ -33,4 +36,11 @@ export function partition<T>(array: T[], size: number) {
     return array.length
         ? [array.slice(0, size)].concat(partition(array.slice(size), size))
         : []
+}
+
+export function getDirectory(uri: string): string {
+    const path = Path.join(Path.resolve('.'), uri)
+    Fs.mkdirSync(path, { recursive: true })
+
+    return path
 }
