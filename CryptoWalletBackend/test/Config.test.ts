@@ -7,13 +7,13 @@ describe('Config Module Default', () => {
     it('Default Bitcoin Network', () => {
         expect(Config.assets.bitcoin.network).to.equal('testnet')
     })
-    it('Default Log Level', () => {
-        expect(Config.logLevel).to.equal('Trace')
+    it('Log Level Info passed by argument', () => {
+        expect(Config.logLevel).to.equal('info')
     })
-    it('Default Wallet Api Host', () => {
+    it('Default Wallet Api hostname', () => {
         expect(Config.walletApi.host).to.equal('localhost')
     })
-    it('Default Wallet Api Port', () => {
+    it('Wallet Api port valid', () => {
         expect(Config.walletApi.port).greaterThan(0)
     })
 })
