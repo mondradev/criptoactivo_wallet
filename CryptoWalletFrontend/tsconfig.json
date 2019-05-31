@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "paths": {
+            "*": ["@types/*"]
+        },
+        "module": "commonjs",
+        "target": "esnext",
+        "sourceMap": true,
+        "outDir": "build",
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "downlevelIteration": true,
+        "baseUrl": "."
+    },
+    "include": [
+        "src/**/*",
+    ],
+    "exclude": [
+        "node_modules",
+        "build",
+        ".vscode",
+        "test",
+        "@types"
+    ]
+}
