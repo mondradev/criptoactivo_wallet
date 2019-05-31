@@ -619,6 +619,23 @@ export class Block {
 export class Address {
 
     /**
+     * Will return a buffer representation of the address
+     *
+     * @returns {Buffer} Bitcoin address buffer
+     */
+    public toBuffer(): Buffer;
+
+    /**
+     * Instantiate an address from an address string
+     *
+     * @param {string} str - An string of the bitcoin address
+     * @param {String|Network=} network - either a Network instance, 'livenet', or 'testnet'
+     * @param {string=} type - The type of address: 'script' or 'pubkey'
+     * @returns {Address} A new valid and frozen instance of an Address
+     */
+    public static fromString(str: string, network: string | Network, type: string): Buffer;
+
+    /**
      * Instantiate an address from an address String or Buffer, a public key or script hash Buffer,
      * or an instance of {@link PublicKey} or {@link Script}.
      *

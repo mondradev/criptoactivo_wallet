@@ -36,18 +36,19 @@ export default class BitcoinBlockDownloader {
                     this._requested = this._position - 1
                     this._internalCallback = () => {
                         const block = this._hashes[this._requested].block
-                        this._hashes[this._requested] = null
                         this._internalCallback = null
                         this._requested = -1
                         resolve(block)
                     }
-                    setTimeout(() => resolve(null), TIMEOUT_WAIT_BLOCK)
+                    setTimeout(() => {
+                        this._internalCallback = null
+                        this._requested = -1
+                        this._position--
+                        resolve(null)
+                    }, TIMEOUT_WAIT_BLOCK)
                 }
-                else {
-                    this._hashes[pos] = null
+                else 
                     resolve(current.block)
-                }
-
             }
         })
     }

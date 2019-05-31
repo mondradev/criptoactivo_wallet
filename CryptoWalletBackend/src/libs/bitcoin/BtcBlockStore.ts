@@ -1,17 +1,18 @@
 import { Block, BlockHeader } from 'bitcore-lib'
-import { BtcTxStore } from './BtcTxStore'
+import { BtcTxIndexStore } from './BtcTxIndexStore'
 
 import TimeCounter from '../../utils/TimeCounter'
 import level from 'level'
 
 import LoggerFactory from '../../utils/LogginFactory'
 import * as Extras from '../../utils/Extras'
+import { getDirectory } from '../../utils/Extras';
 
-const blockDb = level('./db/bitcoin/blocks', { valueEncoding: 'hex' })
-const idxBlockDb = level('./db/bitcoin/blocks/index', { keyEncoding: 'hex' })
-const chainInfoDb = level('./db/bitcoin/chaininfo', { valueEncoding: 'json' })
+const blockDb = level(getDirectory('db/bitcoin/blocks'), { valueEncoding: 'hex' })
+const blkIndexDb = level(getDirectory('db/bitcoin/blocks/index'), { keyEncoding: 'hex' })
+const chainInfoDb = level(getDirectory('db/bitcoin/chaininfo'), { valueEncoding: 'json' })
 
-const Logger = LoggerFactory.getLogger('Bitcoin BlockDb')
+const Logger = LoggerFactory.getLogger('Bitcoin BlockStore')
 
 class BlockLevelDb {
 
@@ -41,27 +42,26 @@ class BlockLevelDb {
     }
 
     public async import(block: Block) {
+        const timer = TimeCounter.begin()
         // Verify if require reorg
 
         // Import txs, if completed then save block
         const hash = Buffer.from(block.header.hash, 'hex')
 
-        await BtcTxStore.import(block.transactions, hash)
-
         const prevHashBlock = Buffer.from(block.header.prevHash).reverse()
-        const prevIdx = await Extras.callAsync(idxBlockDb.get, [prevHashBlock], idxBlockDb)
+        const prevIdx = await Extras.callAsync(blkIndexDb.get, [prevHashBlock], blkIndexDb)
         const height = prevIdx ? parseInt(prevIdx) + 1 : 1
 
-        const timer = TimeCounter.begin()
+        await BtcTxIndexStore.import(block.transactions, hash, height)
 
-        await idxBlockDb.batch()
+        await blkIndexDb.batch()
             .del(hash)
             .put(hash, height)
             .write()
 
         await blockDb.batch()
             .del(height)
-            .put(height, (block.header as any).toBuffer())
+            .put(height, block.toBuffer())
             .write()
 
         await chainInfoDb.batch()
@@ -75,9 +75,12 @@ class BlockLevelDb {
 
         timer.stop()
 
-        Logger.info(`Block saved [Height=${height}, Hash=${block.hash}, Txn=${block.transactions.length}, Size=${block.toBuffer().length}, PrevBlock=${Buffer.from(block.header.prevHash).reverse().toString('hex')}, Time=${timer.toLocalTimeString()}]`)
+        Logger.debug(`Block saved [Height=${height}, Hash=${block.hash}, Txn=${block.transactions.length}, Size=${block.toBuffer().length}, PrevBlock=${Buffer.from(block.header.prevHash).reverse().toString('hex')}, Time=${timer.toLocalTimeString()}]`)
     }
 
 }
 
 export const BtcBlockStore = new BlockLevelDb()
+export const BtcChainStateDb = chainInfoDb
+export const BtcBlockDb = blockDb
+export const BtcBlkIndexDb = blkIndexDb
