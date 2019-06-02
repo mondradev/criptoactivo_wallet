@@ -29,6 +29,13 @@ function require() {
     fi
 }
 
+function hasError() {
+    if [[ $1 -ne  0 ]]; then
+        echo "$2"
+        exit 1
+    fi
+}
+
 CURRENT_PATH=$PWD
 CRYPTOWALLET_PATH=$CURRENT_PATH/cryptowalletbackend
 
@@ -47,9 +54,13 @@ cd ..
 echo "Build CryptoWalletBackend v$VERSION..."
 mkdir $CRYPTOWALLET_PATH &> /dev/null
 
+hasError $? "Fail to create temp directory"
+
 echo 'Copying data...'
 cp -r build/* $CRYPTOWALLET_PATH/
 cp package.json $CRYPTOWALLET_PATH/
+
+hasError $? "Fail to copy data"
 
 cd $CURRENT_PATH
 
@@ -57,21 +68,31 @@ echo 'Compressing build...'
 
 tar -cf "cryptowallet_v${VERSION}.tar.gz" cryptowalletbackend
 
+hasError $? "Fail to compress data"
+
 echo 'Delete temps...'
 
 rm -rf $CRYPTOWALLET_PATH/
+
+hasError $? "Fail to delete temps"
 
 echo 'Upload files...'
 
 sshpass -p $PASSWORD scp -P $PORT "cryptowallet_v${VERSION}.tar.gz" $USERNAME@$HOSTNAME:
 
+hasError $? "Fail to upload files"
+
 echo 'Installing...'
 
 sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "tar -xf cryptowallet_v${VERSION}.tar.gz"
 
+hasError $? "Fail to install on remote"
+
 echo 'Executing...'
 
 sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "cd cryptowalletbackend; ./node_modules/pm2/bin/pm2 restart cryptowallet"
+
+hasError $? "Fail to execute on remote"
 
 rm -rf *.tar.gz
 
