@@ -1,15 +1,15 @@
-import LoggerFactory from "../../utils/LogginFactory";
+import LoggerFactory from "../../utils/LogginFactory"
 import BufferEx from '../../utils/BufferEx'
 import level from 'level'
-import { getDirectory } from "../../utils/Extras";
-import { Transaction, Script, Address, PublicKey, Networks, Output } from "bitcore-lib";
-import Bitcoin from ".";
-import TimeCounter from "../../utils/TimeCounter";
+import { getDirectory, callAsync } from "../../utils/Extras"
+import { Transaction, Script, Address, PublicKey, Networks, Output, Input } from "bitcore-lib"
+import TimeCounter from "../../utils/TimeCounter"
 
 const Logger = LoggerFactory.getLogger('Bitcoin AddrIndex')
 const addrIndexDb = level(getDirectory('db/bitcoin/addr/index'), { keyEncoding: 'hex', valueEncoding: 'hex' })
+const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: 'hex', valueEncoding: 'hex' })
 
-const cacheCoin = new Map<string, Map<number, Output>>()
+const cacheCoin = new Map<string, Buffer>()
 
 // TODO Optimizar lectura de transacciones sin usar
 class AddrIndexLevelDb {
@@ -25,63 +25,58 @@ class AddrIndexLevelDb {
      * 
      * @param script Script de la salida.
      */
-    private _getAddressFromScript(script: Script) {
+    private _getAddresses(script: Script): Buffer {
         if (!script)
-            return null;
+            return null
 
         // Obtenemos la función para resolver la dirección pública o devolvemos null.
 
         return (AddrIndexLevelDb._scriptFnAddress[script.classify().toString()] || (() => null))(script)
     }
 
-    private async _resolveInputs(tx: Transaction, txs: Transaction[]) {
-        const found = new Map<string, Transaction>()
-        const inputs = new Array<{ txid: Buffer, index: number }>()
+    private async _getUTXO(input: Input) {
+        const key = BufferEx.zero()
+            .append(input.prevTxId)
+            .appendUInt32LE(input.outputIndex)
+            .toBuffer()
+        const keyStr = key.toString('hex')
 
-        for (const input of tx.inputs)
-            if (!input.isNull())
-                inputs.push({ txid: input.prevTxId, index: input.outputIndex })
+        if (cacheCoin.has(keyStr))
+            return cacheCoin.get(keyStr)
 
-        const outputs = new Map<Buffer, Output>()
+        const address = await callAsync(utxoIndexDb.get, [key], utxoIndexDb)
 
-        for (const data of inputs) {
-            const hash = data.txid.toString('hex')
-            if (cacheCoin[hash] && cacheCoin[hash][data.index]) {
-                outputs.set(BufferEx.zero().append(data.txid).appendUInt32LE(data.index).toBuffer(), cacheCoin[hash][data.index])
+        if (!address)
+            Logger.warn(`Not found UTXO ${key.toString('hex')}`)
 
-                cacheCoin.get(hash).delete(data.index)
+        return address
+    }
 
-                if (cacheCoin.get(hash).size == 0)
-                    cacheCoin.delete(hash)
+    private async _resolveInputs(tx: Transaction) {
+        const addresses = new Array<Buffer>()
+        const batch = utxoIndexDb.batch()
 
-                continue
-            }
+        for (let i = 0; i < tx.inputs.length; i++) {
+            const address = await this._getUTXO(tx.inputs[i])
 
-            if (found.has(hash)) {
-                outputs.set(BufferEx.zero().append(data.txid).appendUInt32LE(data.index).toBuffer(), found.get(hash)[data.index])
-                continue
-            }
+            if (!address) continue
 
-            const prevTx = txs.find(t => t.hash === hash)
-            const txRaw = prevTx ? prevTx.toString() : await Bitcoin.Blockchain.getTxRaw(data.txid)
+            const key = BufferEx.zero().append(tx.inputs[i].prevTxId)
+                .appendUInt32LE(tx.inputs[i].outputIndex)
+                .toBuffer()
 
-            if (!txRaw) continue
+            const keyStr = key.toString('hex')
 
-            const tx = new Transaction(txRaw.toString('hex'))
+            cacheCoin.delete(keyStr)
 
-            if (!tx) continue
+            batch.del(key)
 
-            if (!found.has(tx.hash))
-                found.set(tx.hash, tx)
-
-            outputs.set(BufferEx.zero().append(data.txid).appendUInt32LE(data.index).toBuffer(), tx.outputs[data.index])
+            addresses.push(address)
         }
 
-        if (inputs.length != outputs.size)
-            Logger.warn(`Not found all outputs of tx ${tx.hash}`)
+        await batch.write()
 
-        for (const input of tx.inputs)
-            input.output = outputs.get(BufferEx.zero().append(input.prevTxId).appendUInt32LE(input.outputIndex).toBuffer())
+        return addresses
     }
 
     /**
@@ -90,25 +85,33 @@ class AddrIndexLevelDb {
    * @param txData Transacciones procesadas.
    * @param tx Transacciones con entradas y salidas.
    */
-    private _resolveAddresses(tx: Transaction) {
-        let addresses = new Array<Buffer>()
+    private async _resolveOutputs(tx: Transaction) {
+        const addresses = new Array<Buffer>()
+        const batch = utxoIndexDb.batch()
 
         for (let i = 0; i < tx.outputs.length; i++) {
-            addresses.push(this._getAddressFromScript(tx.outputs[i].script))
+            const address = this._getAddresses(tx.outputs[i].script)
 
-            if (!cacheCoin.has(tx.hash))
-                cacheCoin.set(tx.hash, new Map<number, Output>())
+            if (!address)
+                continue
 
-            cacheCoin.get(tx.hash).set(i, tx.outputs[i])
+            const key = BufferEx.zero().append(Buffer.from(tx.hash, 'hex'))
+                .appendUInt32LE(i)
+                .toBuffer()
+
+            const keyStr = key.toString('hex')
+
+            cacheCoin.set(keyStr, address)
+
+            batch.del(key)
+                .put(key, address)
+
+            addresses.push(address)
         }
 
-        for (let i = 0; i < tx.inputs.length; i++)
-            if (tx.inputs[i].output)
-                addresses.push(this._getAddressFromScript(tx.inputs[i].output.script));
+        await batch.write()
 
-        addresses.push(...new Set(addresses));
-
-        return addresses.filter(t => t != null)
+        return addresses
     }
 
     public async import(txs: Transaction[], blockHash: Buffer, blockHeight: number) {
@@ -118,10 +121,15 @@ class AddrIndexLevelDb {
         let count = 0
 
         for (const [index, tx] of txs.entries()) {
-            if (!tx.isCoinbase()) await this._resolveInputs(tx, txs)
-            const addresses = this._resolveAddresses(tx)
+            const addrsInput = []
+            const addrsOutput = await this._resolveOutputs(tx)
 
-            for (const address of addresses) {
+            if (!tx.isCoinbase())
+                addrsInput.push(...await this._resolveInputs(tx))
+
+            const addrs = [...addrsInput, ...addrsOutput]
+
+            for (const address of addrs) {
                 const txid = Buffer.from(tx.hash, 'hex')
                 const key = BufferEx.zero().append(address).append(txid).toBuffer()
                 const record = BufferEx.zero()
@@ -133,7 +141,7 @@ class AddrIndexLevelDb {
 
                 batch.del(key).put(key, record)
             }
-            count += addresses.length
+            count += addrsOutput.length
         }
 
         await batch.write()
