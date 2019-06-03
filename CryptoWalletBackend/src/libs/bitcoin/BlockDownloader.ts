@@ -43,7 +43,6 @@ export default class BitcoinBlockDownloader {
                     setTimeout(() => {
                         this._internalCallback = null
                         this._requested = -1
-                        this._position--
                         resolve(null)
                     }, TIMEOUT_WAIT_BLOCK)
                 }
