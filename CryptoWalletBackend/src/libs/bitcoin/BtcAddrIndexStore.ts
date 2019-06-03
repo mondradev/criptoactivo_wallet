@@ -27,11 +27,11 @@ class AddrIndexLevelDb {
      */
     private _getAddresses(script: Script): Buffer {
         if (!script)
-            return null
+            return Buffer.alloc(32, '0')
 
         // Obtenemos la función para resolver la dirección pública o devolvemos null.
 
-        return (AddrIndexLevelDb._scriptFnAddress[script.classify().toString()] || (() => null))(script)
+        return (AddrIndexLevelDb._scriptFnAddress[script.classify().toString()] || (() => Buffer.alloc(32, '0')))(script)
     }
 
     private async _getUTXO(input: Input) {
@@ -57,6 +57,9 @@ class AddrIndexLevelDb {
         const batch = utxoIndexDb.batch()
 
         for (let i = 0; i < tx.inputs.length; i++) {
+            if (tx.inputs[i].isNull())
+                continue
+
             const address = await this._getUTXO(tx.inputs[i])
 
             if (!address) continue

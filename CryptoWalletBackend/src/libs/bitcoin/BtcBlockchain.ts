@@ -83,10 +83,7 @@ class Blockchain extends EventEmitter {
                         if (!block)
                             continue
 
-                        height++
-                        Logger.trace(`Received Block [Hash=${block.hash}, Height=${height}]`)
-
-                        await BtcBlockStore.import(block)
+                        height = await BtcBlockStore.import(block)
                         progress.current = height
                     }
 

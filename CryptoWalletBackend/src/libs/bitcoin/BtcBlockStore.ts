@@ -26,14 +26,14 @@ class BlockLevelDb {
     public getLastHashes(bestHeight: number): Promise<string[]> {
         return new Promise<string[]>(async (resolve) => {
             if (bestHeight > 0) {
-                const hashes = []
+                const hashes: Array<{ height: number, hash: string }> = []
                 blockDb.createReadStream({ gte: bestHeight - 30, lte: bestHeight }).on('data', (data: { key: string, value: string }) => {
                     const rawBlock = Buffer.from(data.value, 'hex')
                     const header = BlockHeader.fromBuffer(rawBlock)
 
-                    hashes.push(header.hash)
+                    hashes.push({ hash: header.hash, height: parseInt(data.key) })
                 }).on('end', () => {
-                    resolve(hashes)
+                    resolve(hashes.sort((left, right) => left.height > right.height ? -1 : left.height < right.height ? 1 : 0).map(h => h.hash).slice(0, 30))
                 })
             }
             else
@@ -76,6 +76,8 @@ class BlockLevelDb {
         timer.stop()
 
         Logger.debug(`Block saved [Height=${height}, Hash=${block.hash}, Txn=${block.transactions.length}, Size=${block.toBuffer().length}, PrevBlock=${Buffer.from(block.header.prevHash).reverse().toString('hex')}, Time=${timer.toLocalTimeString()}]`)
+
+        return height
     }
 
 }
