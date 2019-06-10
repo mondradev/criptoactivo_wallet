@@ -1,4 +1,5 @@
 export default class BufferEx {
+
     private _buf: Buffer;
 
     public static alloc(length: number, fill: string | number = 0) {
@@ -16,7 +17,7 @@ export default class BufferEx {
         return buf
     }
 
-    public static fromBuffer(buf: Buffer) {
+    public static from(buf: Buffer) {
         const newBuf = new BufferEx()
 
         newBuf._buf = Buffer.from(buf)
@@ -32,7 +33,7 @@ export default class BufferEx {
         return newBuf
     }
 
-    private static _writeUInt64LEInternal(buf: Buffer, value: number, offset: number) {
+    private static _writeUInt64LEInternal(buf: Buffer, value: number, offset: number = 0) {
         const valueHex = Buffer.from(value.toString(16).padStart(16, '0'), 'hex').reverse()
 
         if (valueHex.length != 8)
@@ -57,6 +58,26 @@ export default class BufferEx {
 
     public constructor() {
         this._buf = Buffer.alloc(0)
+    }
+
+    public appendUInt8(value: number) {
+        const newBuf = Buffer.alloc(this._buf.length + 1)
+
+        BufferEx._copyInternal(this._buf, newBuf)
+        newBuf.writeUInt8(value, this._buf.length)
+
+        this._buf = newBuf
+        return this
+    }
+
+    public appendHex(value: string) {
+        const newBuf = Buffer.alloc(this._buf.length + value.length / 2)
+
+        BufferEx._copyInternal(this._buf, newBuf)
+        newBuf.write(value, this._buf.length, 'hex')
+
+        this._buf = newBuf
+        return this
     }
 
     public appendVarintNum(value: number) {
@@ -112,6 +133,18 @@ export default class BufferEx {
         return this
     }
 
+
+    public appendUInt32BE(value: number) {
+        const newBuf = Buffer.alloc(this._buf.length + 4)
+
+        BufferEx._copyInternal(this._buf, newBuf)
+        newBuf.writeUInt32BE(value, this._buf.length)
+
+        this._buf = newBuf
+
+        return this
+    }
+
     public appendUInt64LE(value: number) {
         const newBuf = Buffer.alloc(this._buf.length + 8)
 
@@ -133,29 +166,33 @@ export default class BufferEx {
         return this
     }
 
-    public read(offset: number, lenght: number) {
+    public read(offset: number = 0, lenght: number) {
         const self = this._buf
         const data = self.slice(offset, offset + lenght)
 
         return data
     }
 
-    public readUInt64LE(offset: number) {
+    public readUInt64LE(offset: number = 0) {
         const self = this._buf
         const data = Buffer.from(self.slice(offset, offset + 8))
 
         return parseInt(data.reverse().toString('hex'), 16)
     }
 
-    public readUInt32LE(offset: number) {
+    public readUInt32LE(offset: number = 0) {
         return this._buf.readUInt32LE(offset)
     }
 
-    public readInt32LE(offset: number) {
+    public readUInt32BE(offset: number = 0) {
+        return this._buf.readUInt32BE(offset)
+    }
+
+    public readInt32LE(offset: number = 0) {
         return this._buf.readInt32LE(offset)
     }
 
-    public readVarintNum(offset: number, sizeRef?: { size: number }) {
+    public readVarintNum(offset: number = 0, sizeRef?: { size: number }) {
         const value = this._buf.readUInt8(offset)
 
         if (value < 0xFD) {

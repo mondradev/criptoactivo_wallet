@@ -1,14 +1,6 @@
 import Fs from 'fs'
 import Path from 'path'
 
-export async function callAsync(func: Function, args: any[], caller: any) {
-    try {
-        return await func.call(caller, ...args)
-    } catch (ex) {
-        return null
-    }
-}
-
 export function wait(time: number) {
     return new Promise<void>(resolve => {
         setTimeout(() => resolve(), time)
