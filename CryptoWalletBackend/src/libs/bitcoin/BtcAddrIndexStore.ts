@@ -1,15 +1,28 @@
 import LoggerFactory from "../../utils/LogginFactory"
 import BufferEx from '../../utils/BufferEx'
 import level from 'level'
-import { getDirectory, callAsync } from "../../utils/Extras"
-import { Transaction, Script, Address, PublicKey, Networks, Output, Input } from "bitcore-lib"
+import { getDirectory } from "../../utils/Extras"
+import { Script, Address, PublicKey, Networks } from "bitcore-lib"
 import TimeCounter from "../../utils/TimeCounter"
+import '../../utils/ArrayExtension'
+import { Tx, UTXO } from "./BtcModel";
 
 const Logger = LoggerFactory.getLogger('Bitcoin AddrIndex')
-const addrIndexDb = level(getDirectory('db/bitcoin/addr/index'), { keyEncoding: 'hex', valueEncoding: 'hex' })
-const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: 'hex', valueEncoding: 'hex' })
+const addrIndexDb = level(getDirectory('db/bitcoin/addr/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
+const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 
-const cacheCoin = new Map<string, Buffer>()
+const MAX_CACHE_SIZE = 200000
+
+const cacheCoin = new Map<string, { utxo: UTXO, address?: Buffer }>()
+
+setInterval(() => {
+    if (cacheCoin.size >= MAX_CACHE_SIZE)
+        for (const key of cacheCoin.keys())
+            if (cacheCoin.size <= MAX_CACHE_SIZE / 2)
+                break
+            else
+                cacheCoin.delete(key)
+}, 1000)
 
 // TODO Optimizar lectura de transacciones sin usar
 class AddrIndexLevelDb {
@@ -27,130 +40,219 @@ class AddrIndexLevelDb {
      */
     private _getAddresses(script: Script): Buffer {
         if (!script)
-            return Buffer.alloc(32, '0')
+            return Buffer.alloc(32, 0)
 
         // Obtenemos la función para resolver la dirección pública o devolvemos null.
 
-        return (AddrIndexLevelDb._scriptFnAddress[script.classify().toString()] || (() => Buffer.alloc(32, '0')))(script)
+        return (AddrIndexLevelDb._scriptFnAddress[script.classify().toString()] || (() => Buffer.alloc(32, 0)))(script)
     }
 
-    private async _getUTXO(input: Input) {
-        const key = BufferEx.zero()
-            .append(input.prevTxId)
-            .appendUInt32LE(input.outputIndex)
-            .toBuffer()
-        const keyStr = key.toString('hex')
+    private _resolveUTXO(utxoToFind: Map<string, { utxo: UTXO, address?: Buffer }>) {
+        if (utxoToFind.size == 0)
+            return Promise.resolve(0)
 
-        if (cacheCoin.has(keyStr))
-            return cacheCoin.get(keyStr)
+        Logger.trace(`Try resolve UTXO [Size: ${utxoToFind.size}]`)
 
-        const address = await callAsync(utxoIndexDb.get, [key], utxoIndexDb)
+        return new Promise<{}>(async (success) => {
+            const timer = TimeCounter.begin()
 
-        if (!address)
-            Logger.warn(`Not found UTXO ${key.toString('hex')}`)
+            const idxKeys = {}
+            let pending = new Array<string>()
 
-        return address
+            utxoToFind.forEach((value, key) => idxKeys[value.utxo.toHex()] = key)
+            utxoToFind.forEach((value) => pending.push(value.utxo.toHex()))
+            pending.sort()
+
+            for (let i = 0; i < pending.length; i++) {
+                if (cacheCoin.has(pending[i].slice(2))) {
+                    utxoToFind.get(idxKeys[pending[i]]).address = cacheCoin.get(pending[i].slice(2)).address
+                    pending = pending.remove(pending[i])
+                    i = -1
+                }
+
+            }
+
+            if (pending.length == 0) {
+                timer.stop()
+                Logger.trace(`Found ${utxoToFind.size} UTXO in ${timer.toLocalTimeString()}`)
+
+                success(utxoToFind.size)
+                return
+            }
+
+            timer.stop()
+            Logger.trace(`Not Found ${pending.length} UTXO from cache in ${timer.toLocalTimeString()}`)
+
+            timer.start()
+
+            await (() => new Promise<void>((resolve) => {
+                utxoIndexDb.createReadStream({
+                    gte: Buffer.from(pending[0], 'hex'),
+                    lte: Buffer.from(pending[pending.length - 1], 'hex')
+                })
+                    .on('data', (data: { key: Buffer, value: Buffer }) => {
+                        if (pending.includes(data.key.toString('hex'))) {
+                            utxoToFind.get(idxKeys[data.key.toString('hex')]).address = data.value
+                            pending = pending.remove(data.key.toString('hex'))
+                        }
+                    })
+                    .on('end', () => resolve())
+            }))()
+
+            if (pending.length == 0) {
+                timer.stop()
+                Logger.trace(`Found ${utxoToFind.size} UTXO from uspent outputs in ${timer.toLocalTimeString()}`)
+
+                success(utxoToFind.size)
+                return
+            }
+
+            timer.stop()
+            Logger.trace(`Not Found ${pending.length} UTXO in ${timer.toLocalTimeString()}`)
+
+            timer.start()
+
+            pending = pending.map((i: string) => '01' + i.slice(2))
+
+            await (() => new Promise<void>((resolve) => {
+                utxoIndexDb.createReadStream({
+                    gte: Buffer.from(pending[0], 'hex'),
+                    lte: Buffer.from(pending[pending.length - 1], 'hex')
+                })
+                    .on('data', (data: { key: Buffer, value: Buffer }) => {
+                        if (pending.includes(data.key.toString('hex'))) {
+                            utxoToFind.get(idxKeys[data.key.toString('hex')]).address = data.value
+                            pending = pending.remove(data.key.toString('hex'))
+                        }
+                    })
+                    .on('end', () => resolve())
+            }))()
+
+            timer.stop()
+
+            if (pending.length == 0) {
+                Logger.trace(`Found ${utxoToFind.size} UTXO from spent outputs in ${timer.toLocalTimeString()}`)
+
+                success(utxoToFind.size)
+                return
+            }
+
+            for (const utxo of pending)
+                Logger.warn(`Not found UTXO ${utxo}`)
+
+            success(utxoToFind.size - pending.length)
+        })
     }
 
-    private async _resolveInputs(tx: Transaction) {
-        const addresses = new Array<Buffer>()
-        const batch = utxoIndexDb.batch()
-
-        for (let i = 0; i < tx.inputs.length; i++) {
-            if (tx.inputs[i].isNull())
-                continue
-
-            const address = await this._getUTXO(tx.inputs[i])
-
-            if (!address) continue
-
-            const key = BufferEx.zero().append(tx.inputs[i].prevTxId)
-                .appendUInt32LE(tx.inputs[i].outputIndex)
-                .toBuffer()
-
-            const keyStr = key.toString('hex')
-
-            cacheCoin.delete(keyStr)
-
-            batch.del(key)
-
-            addresses.push(address)
-        }
-
-        await batch.write()
-
-        return addresses
-    }
-
-    /**
-   * Determine las direcciones públicas de cada transacción.
-   * 
-   * @param txData Transacciones procesadas.
-   * @param tx Transacciones con entradas y salidas.
-   */
-    private async _resolveOutputs(tx: Transaction) {
-        const addresses = new Array<Buffer>()
-        const batch = utxoIndexDb.batch()
-
-        for (let i = 0; i < tx.outputs.length; i++) {
-            const address = this._getAddresses(tx.outputs[i].script)
-
-            if (!address)
-                continue
-
-            const key = BufferEx.zero().append(Buffer.from(tx.hash, 'hex'))
-                .appendUInt32LE(i)
-                .toBuffer()
-
-            const keyStr = key.toString('hex')
-
-            cacheCoin.set(keyStr, address)
-
-            batch.del(key)
-                .put(key, address)
-
-            addresses.push(address)
-        }
-
-        await batch.write()
-
-        return addresses
-    }
-
-    public async import(txs: Transaction[], blockHash: Buffer, blockHeight: number) {
+    public async import(txs: Tx[]) {
         const timer = TimeCounter.begin()
-        const batch = addrIndexDb.batch()
+        const addrBatch = addrIndexDb.batch()
 
-        let count = 0
+        let idxAddresses = 0
 
-        for (const [index, tx] of txs.entries()) {
-            const addrsInput = []
-            const addrsOutput = await this._resolveOutputs(tx)
+        const utxoBatch = utxoIndexDb.batch()
 
-            if (!tx.isCoinbase())
-                addrsInput.push(...await this._resolveInputs(tx))
+        for (const tx of txs) {
 
-            const addrs = [...addrsInput, ...addrsOutput]
+            for (const txOut of tx.txOut) {
+                const address = this._getAddresses(txOut.script)
 
-            for (const address of addrs) {
-                const txid = Buffer.from(tx.hash, 'hex')
-                const key = BufferEx.zero().append(address).append(txid).toBuffer()
-                const record = BufferEx.zero()
-                    .append(txid)
-                    .appendUInt32LE(index)
-                    .append(blockHash)
-                    .appendUInt32LE(blockHeight)
+                if (!address)
+                    continue
+
+                const utxo = new UTXO(tx.txID, txOut.txOutIdx)
+
+                cacheCoin.set(utxo.toOutpointHex(), { utxo, address })
+
+                utxoBatch.del(utxo.toBuffer())
+                    .put(utxo.toBuffer(), address)
+
+                if (address.toString('hex') !== Array(65).join('0')) {
+                    const addrKey = BufferEx.zero()
+                        .appendUInt8(0)
+                        .append(address)
+                        .append(tx.txID)
+                        .toBuffer()
+
+                    const record = BufferEx.from(tx.txID)
+                        .appendUInt32LE(tx.txIndex)
+                        .append(tx.blockHash)
+                        .appendUInt32LE(tx.blockHeight)
+                        .toBuffer()
+
+                    addrBatch.del(addrKey).put(addrKey, record)
+
+                    idxAddresses++
+                }
+            }
+        }
+
+        await utxoBatch.write()
+
+        const stxoBatch = utxoIndexDb.batch()
+        const stxos = new Map<string, { utxo: UTXO, address?: Buffer }>()
+
+        txs.forEach(t => t.txIn.forEach(i => stxos.set(i.txInID.toString('hex'), { utxo: i.uTxOut })))
+
+        let spent = await this._resolveUTXO(stxos)
+
+        for (const tx of txs) {
+            for (const txin of tx.txIn) {
+                const key = txin.txInID.toString('hex')
+
+                const utxo = stxos.has(key) ? stxos.get(key).utxo : null
+                const address = stxos.has(key) ? stxos.get(key).address : null
+
+                if (!address) continue
+
+                cacheCoin.delete(utxo.toOutpointHex())
+
+                stxoBatch.del(utxo.toBuffer())
+                    .put(utxo.spent.toBuffer(), address)
+
+                const addrKey = BufferEx.zero()
+                    .appendUInt8(1)
+                    .append(address)
+                    .append(tx.txID)
                     .toBuffer()
 
-                batch.del(key).put(key, record)
+                const record = BufferEx.from(tx.txID)
+                    .appendUInt32LE(tx.txIndex)
+                    .append(tx.blockHash)
+                    .appendUInt32LE(tx.blockHeight)
+                    .toBuffer()
+
+                addrBatch.del(addrKey).put(addrKey, record)
+
+                idxAddresses++
             }
-            count += addrsOutput.length
+
         }
 
-        await batch.write()
+        await addrBatch.write()
+
         timer.stop()
 
-        Logger.trace(`Indexed ${count} addresses in ${timer.toLocalTimeString()} from Block ${blockHash.toString('hex')}`)
+        if (timer.milliseconds > 1000)
+            Logger.warn(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.toString('hex')}, cache=${cacheCoin.size}`)
+        else
+            Logger.debug(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.toString('hex')}, cache=${cacheCoin.size}`)
+
+        return stxoBatch
+    }
+
+    public loadCache() {
+        return new Promise<void>((resolve) => {
+            utxoIndexDb.createReadStream({
+                gte: new UTXO(Buffer.alloc(32, 0), 0).toBuffer(),
+                lte: new UTXO(Buffer.alloc(32, 0xFF), 0xFFFFFFFF).toBuffer()
+            })
+                .on('data', (data: { key: Buffer, value: Buffer }) => cacheCoin.set(data.key.toString('hex'), { utxo: UTXO.fromBuffer(data.key), address: data.value }))
+                .on('end', () => {
+                    Logger.info(`Loaded UTXO cache [Total=${cacheCoin.size}]`)
+                    resolve()
+                })
+        })
     }
 }
 
