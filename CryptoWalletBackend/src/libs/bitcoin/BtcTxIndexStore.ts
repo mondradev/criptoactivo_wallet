@@ -1,40 +1,39 @@
-import { Transaction } from "bitcore-lib"
-import level from 'level'
+import level, { AbstractLevelDOWN, LevelUp, LevelUpChain } from 'level'
 import TimeCounter from "../../utils/TimeCounter"
 
 import LoggerFactory from "../../utils/LogginFactory"
 import BufferEx from "../../utils/BufferEx"
 import { getDirectory } from "../../utils/Extras";
-import { BtcAddrIndexStore } from "./BtcAddrIndexStore";
+import { Tx } from "./BtcModel";
 
-const txIndexDb = level(getDirectory('db/bitcoin/txs/index'), { keyEncoding: 'hex', valueEncoding: 'hex' })
+type DbBinary = LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
+const txIndexDb: DbBinary = level(getDirectory('db/bitcoin/txs/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 
 const Logger = LoggerFactory.getLogger('Bitcoin TxIndex')
 
 class TxIndexLevelDb {
-    public async import(txs: Transaction[], blockHash: Buffer, blockHeight: number) {
+    public async import(txs: Tx[]) {
+        if (txs.length == 0)
+            return
 
         const timer = TimeCounter.begin()
-        const idxBatch = txIndexDb.batch()
+        const idxBatch: LevelUpChain<Buffer, Buffer> = txIndexDb.batch()
 
-        for (const [index, tx] of txs.entries()) {
-            const txid = Buffer.from(tx.hash, 'hex')
+        for (const tx of txs) {
             const record = BufferEx.zero()
-                .append(blockHash)
-                .appendUInt32LE(index)
-                .appendUInt32LE(blockHeight)
+                .append(tx.blockHash)
+                .appendUInt32LE(tx.txIndex)
+                .appendUInt32LE(tx.blockHeight)
                 .toBuffer()
 
-            idxBatch.del(txid).put(txid, record)
+            idxBatch.del(tx.txID).put(tx.txID, record)
         }
-
-        await idxBatch.write()
-
-        await BtcAddrIndexStore.import(txs, blockHash, blockHeight)
 
         timer.stop()
 
-        Logger.trace(`Indexed ${txs.length} txs in ${timer.toLocalTimeString()} from Block ${blockHash.toString('hex')}`)
+        Logger.debug(`Indexed ${txs.length} txs in ${timer.toLocalTimeString()} from Block ${txs[0].blockHash.toString('hex')}`)
+
+        return idxBatch
     }
 }
 

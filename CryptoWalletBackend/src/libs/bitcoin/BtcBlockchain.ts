@@ -4,11 +4,12 @@ import BtcNetwork from "./BtcNetwork"
 import LoggerFactory from "../../utils/LogginFactory"
 import { Networks, Block } from 'bitcore-lib'
 import { BtcBlockStore, BtcBlockDb } from "./BtcBlockStore"
-import { wait, callAsync } from "../../utils/Extras"
+import { wait } from "../../utils/Extras"
 import TimeCounter from "../../utils/TimeCounter"
 import TimeSpan from "../../utils/TimeSpan"
 import { BtcTxIndexDb } from "./BtcTxIndexStore"
 import BufferEx from "../../utils/BufferEx"
+import { BtcAddrIndexStore } from "./BtcAddrIndexStore";
 
 
 const Logger = LoggerFactory.getLogger('Bitcoin Blockchain')
@@ -33,7 +34,7 @@ class Blockchain extends EventEmitter {
             const rate = progress.current - progress.last
             const remaining = BtcNetwork.bestHeight - progress.current
 
-            if (rate > 0 && progress.last > 0 && remaining > 0)
+            if (progress.last > 0 && remaining > 0)
                 Logger.info(`Status [Height=${progress.current}, Progress=${(progress.current / BtcNetwork.bestHeight * 100).toFixed(2)} % BlockRate=${rate} blk/s, Remaining=${remaining} blks, TimeLeft=${TimeSpan.fromSeconds(remaining / rate)}]`)
 
             progress.last = progress.current
@@ -46,6 +47,8 @@ class Blockchain extends EventEmitter {
                 throw new Error(`Can't connect to network`)
 
             Logger.info('Connected to Bitcoin Network')
+
+            await BtcAddrIndexStore.loadCache()
 
             const tip = await BtcBlockStore.getLocalTip()
 
@@ -81,7 +84,9 @@ class Blockchain extends EventEmitter {
                         const block = await blockDownloader.next()
 
                         if (!block)
-                            continue
+                            break
+
+                        Logger.trace(`Processing block [Hash=${block.hash}]`)
 
                         height = await BtcBlockStore.import(block)
                         progress.current = height
@@ -101,7 +106,10 @@ class Blockchain extends EventEmitter {
     }
 
     public async getTxRaw(txid: Buffer) {
-        const txIndex = await callAsync(BtcTxIndexDb.get, [txid], BtcTxIndexDb)
+        let txIndex = null
+
+        try { txIndex = await BtcTxIndexDb.get(txid) }
+        catch (ex) { return null }
 
         if (!txIndex)
             return null
@@ -114,7 +122,10 @@ class Blockchain extends EventEmitter {
             height: rawData.readUInt32LE(36)
         }
 
-        const blockRaw = await callAsync(BtcBlockDb.get, [txIndexRecord.height], BtcBlockDb)
+        let blockRaw = null
+
+        try { blockRaw = await BtcBlockDb.get(Buffer.from([txIndexRecord.height])) }
+        catch (ex) { return null }
 
         if (!blockRaw)
             return null
