@@ -1,6 +1,3 @@
-export class Signature {
-
-}
 
 export class Network {
 
@@ -525,7 +522,7 @@ export class Transaction {
 
     public toJSON(): string;
 
-    public fromObject(arg: object | Transaction);
+    public fromObject(arg: object | Transaction): any;
 
     /**
      * Calculates the fee of the transaction.
@@ -545,6 +542,8 @@ export class Transaction {
     public isCoinbase(): boolean;
 
     public toBuffer(): Buffer;
+
+    _getHash(): Buffer
 }
 
 /**
