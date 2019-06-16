@@ -3,7 +3,7 @@ import Path from 'path'
 
 export function wait(time: number) {
     return new Promise<void>(resolve => {
-        setTimeout(() => resolve(), time)
+        setTimeout(() => resolve(), time + 1)
     })
 }
 
