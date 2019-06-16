@@ -1,15 +1,14 @@
 import { EventEmitter } from "events"
-import Config from "../../config"
+import Config from "../../../config"
 import BtcNetwork from "./BtcNetwork"
 import LoggerFactory from "../../utils/LogginFactory"
 import { Networks, Block } from 'bitcore-lib'
-import { BtcBlockStore, BtcBlockDb } from "./BtcBlockStore"
 import { wait } from "../../utils/Extras"
 import TimeCounter from "../../utils/TimeCounter"
 import TimeSpan from "../../utils/TimeSpan"
-import { BtcTxIndexDb } from "./BtcTxIndexStore"
 import BufferEx from "../../utils/BufferEx"
-import { BtcAddrIndexStore } from "./BtcAddrIndexStore";
+import '../../utils/ArrayExtension'
+import { Storages, Indexers } from "./stores";
 
 
 const Logger = LoggerFactory.getLogger('Bitcoin Blockchain')
@@ -20,7 +19,7 @@ class Blockchain extends EventEmitter {
 
     public constructor() {
         super()
-        Networks.defaultNetwork = Networks.get(Config.assets.bitcoin.network)
+        Networks.defaultNetwork = Networks.get(Config.getAsset('bitcoin').network)
     }
 
     public get synchronized() { return this._synchronizeInitial }
@@ -29,6 +28,9 @@ class Blockchain extends EventEmitter {
         const timer = new TimeCounter()
         const progress = { last: 0, current: 0 }
 
+        let disconnect = false
+
+        BtcNetwork.once('disconnected', () => disconnect = true)
 
         timer.on('second', async () => {
             const rate = progress.current - progress.last
@@ -48,18 +50,21 @@ class Blockchain extends EventEmitter {
 
             Logger.info('Connected to Bitcoin Network')
 
-            await BtcAddrIndexStore.loadCache()
+            await Indexers.AddrIndex.loadCache()
 
-            const tip = await BtcBlockStore.getLocalTip()
+            const tip = await Indexers.BlockIndex.getLocalTip()
 
             Logger.info(`LocalTip [Hash=${tip.hash}, Height=${tip.height}]`)
 
             while (true) {
+                if (disconnect)
+                    break
+
                 timer.start()
 
-                let { hash, height } = await BtcBlockStore.getLocalTip()
+                let { hash, height } = await Indexers.BlockIndex.getLocalTip()
 
-                let locators = await BtcBlockStore.getLastHashes(height)
+                let locators = await Indexers.BlockIndex.getLastHashes(height)
 
                 if (!locators.includes(hash))
                     throw new Error(`Fail in chain state, can't find last block [Hash=${hash}]`)
@@ -70,37 +75,54 @@ class Blockchain extends EventEmitter {
                     this.emit('synchronized')
                     return
                 } else {
-                    const headers = await BtcNetwork.getHeaders(locators)
 
-                    if (!headers || headers.length == 0) {
+                    let blockToDownload = []
+                    let i = 6
+
+                    while (--i) {
+
+                        const headers = await BtcNetwork.getHashes(locators)
+
+                        if (!headers || headers.length == 0)
+                            break
+
+                        blockToDownload.push(...headers)
+                        locators = headers.slice(headers.length - 30).reverse()
+                    }
+
+                    blockToDownload = blockToDownload.unique()
+
+                    if (blockToDownload.length == 0) {
                         timer.stop()
                         await wait(10000)
                         continue
                     }
 
-                    const blockDownloader = BtcNetwork.getDownloader(headers)
+                    for (const blockhash of blockToDownload) {
+                        const block = await BtcNetwork.getBlock(blockhash)
 
-                    while (blockDownloader.hasNext()) {
-                        const block = await blockDownloader.next()
-
-                        if (!block)
+                        if (!block) {
+                            Logger.warn(`Fail in Bitcoin#Network#getBlock(${blockhash})`)
                             break
+                        }
 
                         Logger.trace(`Processing block [Hash=${block.hash}]`)
 
-                        height = await BtcBlockStore.import(block)
+                        height = await Indexers.BlockIndex.import(block)
                         progress.current = height
                     }
 
                     timer.stop()
-                    Logger.debug(`Processed Blocks [Count=${headers.length}, Time=${timer.toLocalTimeString()}]`)
+                    Logger.debug(`Processed Blocks [Count=${blockToDownload.length}, Time=${timer.toLocalTimeString()}]`)
                 }
 
             }
         } catch (ex) {
-            await BtcNetwork.disconnect()
             Logger.error(`Error="Fail to download blockchain", Exception=${ex.stack}`)
+            BtcNetwork.removeAllListeners('disconnected')
             return this.sync()
+        } finally {
+            timer && timer.stop()
         }
 
     }
@@ -108,7 +130,7 @@ class Blockchain extends EventEmitter {
     public async getTxRaw(txid: Buffer) {
         let txIndex = null
 
-        try { txIndex = await BtcTxIndexDb.get(txid) }
+        try { txIndex = await Storages.TxDb.get(txid) }
         catch (ex) { return null }
 
         if (!txIndex)
@@ -124,7 +146,7 @@ class Blockchain extends EventEmitter {
 
         let blockRaw = null
 
-        try { blockRaw = await BtcBlockDb.get(Buffer.from([txIndexRecord.height])) }
+        try { blockRaw = await Storages.BlockDb.get(Buffer.from([txIndexRecord.height])) }
         catch (ex) { return null }
 
         if (!blockRaw)

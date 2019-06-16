@@ -1,4 +1,4 @@
-import Config from "./config"
+import Config from "../config"
 import App from "./app"
 import Http from 'http'
 import LoggerFactory from "./utils/LogginFactory";

@@ -1,11 +1,11 @@
-import LoggerFactory from "../../utils/LogginFactory"
-import BufferEx from '../../utils/BufferEx'
+import LoggerFactory from "../../../utils/LogginFactory"
+import BufferEx from '../../../utils/BufferEx'
 import level from 'level'
-import { getDirectory } from "../../utils/Extras"
+import { getDirectory } from "../../../utils/Extras"
 import { Script, Address, PublicKey, Networks } from "bitcore-lib"
-import TimeCounter from "../../utils/TimeCounter"
-import '../../utils/ArrayExtension'
-import { Tx, UTXO } from "./BtcModel";
+import TimeCounter from "../../../utils/TimeCounter"
+import '../../../utils/ArrayExtension'
+import { Tx, UTXO } from "../BtcModel";
 
 const Logger = LoggerFactory.getLogger('Bitcoin AddrIndex')
 const addrIndexDb = level(getDirectory('db/bitcoin/addr/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
@@ -15,7 +15,7 @@ const MAX_CACHE_SIZE = 200000
 
 const cacheCoin = new Map<string, { utxo: UTXO, address?: Buffer }>()
 
-setInterval(() => {
+const cacheTask = setInterval(() => {
     if (cacheCoin.size >= MAX_CACHE_SIZE)
         for (const key of cacheCoin.keys())
             if (cacheCoin.size <= MAX_CACHE_SIZE / 2)
@@ -254,7 +254,12 @@ class AddrIndexLevelDb {
                 })
         })
     }
+
+    public stopMonitorCache() {
+        cacheTask && clearInterval(cacheTask)
+    }
 }
 
 export const BtcAddrIndexStore = new AddrIndexLevelDb()
 export const BtcAddrIndexDb = addrIndexDb
+export const BtcUTXOIndexDb = utxoIndexDb

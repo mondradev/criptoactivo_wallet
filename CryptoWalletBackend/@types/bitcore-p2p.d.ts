@@ -55,9 +55,9 @@ export class Messages {
     parseBuffer(dataBuffer: any): any;
 
     GetData: {
-        forBlock: (hash: string) => void
+        forBlock: (hash: string) => Messages
     }
-    GetHeaders: (params: { starts: Array<string> }) => void
+    GetHeaders: (params: { starts: Array<string> }) => Messages
 }
 export class Peer {
     static MAX_RECEIVE_BUFFER: number;
@@ -113,24 +113,38 @@ export class Pool {
     network: any;
     relay: any;
     addListener(type: any, listener: any): any;
-    connect(): any;
-    disconnect(): any;
+    connect(): Pool;
+    disconnect(): Pool;
     emit(type: any, args: any): any;
     eventNames(): any;
     getMaxListeners(): any;
-    inspect(): any;
+    inspect(): string;
     listen(): void;
     listenerCount(type: any): any;
     listeners(type: any): any;
-    numberConnected(): any;
+    numberConnected(): number;
     off(type: any, listener: any): any;
-    on(type: any, listener: any): any;
-    once(type: any, listener: any): any;
+    on(type: 'peerready' | 'peerdisconnect' | 'peerversion' | 'peerinv' | 'peergetdata' | 'peerping' | 'peerpong' | 'peeraddr' |
+        'peergetaddr' | 'peerverack' | 'peerreject' | 'peeralert' | 'peerheaders' | 'peerblock' | 'peermerkleblock' |
+        'peertx' | 'peergetblocks' | 'peergetheaders' | 'peererror' | 'peerfilterload' | 'peerfilteradd' |
+        'filterclear', listener: any): any;
+    once(type: 'peerready' | 'peerdisconnect' | 'peerversion' | 'peerinv' | 'peergetdata' | 'peerping' | 'peerpong' | 'peeraddr' |
+        'peergetaddr' | 'peerverack' | 'peerreject' | 'peeralert' | 'peerheaders' | 'peerblock' | 'peermerkleblock' |
+        'peertx' | 'peergetblocks' | 'peergetheaders' | 'peererror' | 'peerfilterload' | 'peerfilteradd' |
+        'filterclear', listener: any): any;
     prependListener(type: any, listener: any): any;
     prependOnceListener(type: any, listener: any): any;
     rawListeners(type: any): any;
-    removeAllListeners(type: any, ...args: any[]): any;
-    removeListener(type: any, listener: any): any;
+    removeAllListeners(type?: 'peerready' | 'peerdisconnect' | 'peerversion' | 'peerinv' | 'peergetdata' | 'peerping' | 'peerpong' | 'peeraddr' |
+        'peergetaddr' | 'peerverack' | 'peerreject' | 'peeralert' | 'peerheaders' | 'peerblock' | 'peermerkleblock' |
+        'peertx' | 'peergetblocks' | 'peergetheaders' | 'peererror' | 'peerfilterload' | 'peerfilteradd' |
+        'filterclear', ...args: any[]): any;
+
+    removeListener(type: 'peerready' | 'peerdisconnect' | 'peerversion' | 'peerinv' | 'peergetdata' | 'peerping' | 'peerpong' | 'peeraddr' |
+        'peergetaddr' | 'peerverack' | 'peerreject' | 'peeralert' | 'peerheaders' | 'peerblock' | 'peermerkleblock' |
+        'peertx' | 'peergetblocks' | 'peergetheaders' | 'peererror' | 'peerfilterload' | 'peerfilteradd' |
+        'filterclear', listener: any): any;
+
     sendMessage(message: any): void;
     setMaxListeners(n: any): any;
 }

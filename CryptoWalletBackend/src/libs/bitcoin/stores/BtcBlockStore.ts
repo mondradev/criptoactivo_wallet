@@ -1,14 +1,14 @@
 import { Block, BlockHeader } from 'bitcore-lib'
 import { BtcTxIndexStore } from './BtcTxIndexStore'
 
-import TimeCounter from '../../utils/TimeCounter'
+import TimeCounter from '../../../utils/TimeCounter'
 import level, { AbstractLevelDOWN, LevelUp } from 'level'
 
-import LoggerFactory from '../../utils/LogginFactory'
-import { getDirectory } from '../../utils/Extras';
-import BufferEx from '../../utils/BufferEx';
+import LoggerFactory from '../../../utils/LogginFactory'
+import { getDirectory } from '../../../utils/Extras';
+import BufferEx from '../../../utils/BufferEx';
 import { BtcAddrIndexStore } from './BtcAddrIndexStore';
-import { Tx, TxIn, TxOut, UTXO } from './BtcModel';
+import { Tx, TxIn, TxOut, UTXO } from '../BtcModel';
 
 type DbBinary = LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
 
@@ -105,30 +105,26 @@ class BlockLevelDb {
         const txIdxBatch = await BtcTxIndexStore.import(txs)
         // const stxoBatch = await BtcAddrIndexStore.import(txs)
 
-        await Promise.all([
-            blkIndexDb.batch()
-                .del(hash)
-                .put(hash, heightRaw)
-                .write(),
+        await txIdxBatch.write()
 
-            blockDb.batch()
-                .del(heightRaw)
-                .put(heightRaw, block.toBuffer())
-                .write(),
+        await blkIndexDb.batch()
+            .del(hash)
+            .put(hash, heightRaw)
+            .write()
 
-            chainInfoDb.batch()
-                .del('tip')
-                .put('tip', {
-                    hash,
-                    height,
-                    prevHashBlock: Buffer.from(block.header.prevHash).reverse()
-                })
-                .write(),
+        await blockDb.batch()
+            .del(heightRaw)
+            .put(heightRaw, block.toBuffer())
+            .write()
 
-            txIdxBatch.write(),
-
-            // stxoBatch.write()
-        ])
+        await chainInfoDb.batch()
+            .del('tip')
+            .put('tip', {
+                hash,
+                height,
+                prevHashBlock: Buffer.from(block.header.prevHash).reverse()
+            })
+            .write()
 
         timer.stop()
 

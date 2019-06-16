@@ -1,10 +1,10 @@
 import level, { AbstractLevelDOWN, LevelUp, LevelUpChain } from 'level'
-import TimeCounter from "../../utils/TimeCounter"
+import TimeCounter from "../../../utils/TimeCounter"
 
-import LoggerFactory from "../../utils/LogginFactory"
-import BufferEx from "../../utils/BufferEx"
-import { getDirectory } from "../../utils/Extras";
-import { Tx } from "./BtcModel";
+import LoggerFactory from "../../../utils/LogginFactory"
+import BufferEx from "../../../utils/BufferEx"
+import { getDirectory } from "../../../utils/Extras";
+import { Tx } from "../BtcModel";
 
 type DbBinary = LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
 const txIndexDb: DbBinary = level(getDirectory('db/bitcoin/txs/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })

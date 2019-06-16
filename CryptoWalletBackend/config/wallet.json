@@ -6,9 +6,7 @@
         "port": 5000
     },
 
-    "assets": {
-        "bitcoin": {
-            "network": "testnet"
-        }
-    }
+    "assets": [
+        "bitcoin"
+    ]
 }

@@ -5,15 +5,18 @@ import { Pool, Messages, Peer } from "bitcore-p2p";
 import { BlockHeader, Block, Networks } from "bitcore-lib";
 import { EventEmitter } from "events";
 
-import Config from "../../config";
-import { isNull } from "../../utils/Preconditions";
+import Config from "../../../config";
 import BitcoinBlockDownloader from "./BlockDownloader";
 
 const Logger = LogginFactory.getLogger('Bitcoin Network')
 
-const TIMEOUT_WAIT_HEADERS = 10000;
-const TIMEOUT_WAIT_BLOCKS = 10000;
+const TIMEOUT_WAIT_HEADERS = 30000;
+const TIMEOUT_WAIT_BLOCKS = 2000;
 const TIMEOUT_WAIT_CONNECT = 10000;
+
+/**
+ * Gestiona todas las funciones de la red de Bitcoin.
+ */
 class Network extends EventEmitter {
 
     private _pool: Pool
@@ -23,11 +26,14 @@ class Network extends EventEmitter {
     public constructor() {
         super()
 
-        this._availableMessages = new Messages({ network: Networks.get(Config.assets.bitcoin.network) })
-        this._pool = new Pool({ network: Networks.get(Config.assets.bitcoin.network) })
+        this._availableMessages = new Messages({ network: Networks.get(Config.getAsset('bitcoin').network) })
     }
 
-    public get bestHeight() {
+    /**
+     * Obtiene la altura de la mejor cadena de los puntos del pool.
+     * @returns {number} Altura de la cadena.
+     */
+    public get bestHeight(): number {
         if (this._pool.numberConnected() == 0)
             return 0
         return Object.entries(this._pool['_connectedPeers'])
@@ -35,85 +41,142 @@ class Network extends EventEmitter {
             .reduce((left: number, right: number) => left > right ? left : right)
     }
 
-    public get connected() { return this._connected }
+    /**
+     * Obtiene un valor que indica si el pool ya ha conectado.
+     * @returns {boolean} Un valor true para indicar que está conectado.
+     */
+    public get connected(): boolean { return this._connected }
 
     /**
-    * Obtiene un bloque de la red de bitcoin.
+     * Envía un mensaje al pool de conexiones.
+     * @param message Mensaje a enviar a la red.
+     */
+    public sendMessage(message: Messages) {
+        this._pool && this._pool.sendMessage(message)
+    }
+
+    /**
+    * Obtiene un bloque de la red de bitcoin especificado por el blockhash. La petición tiene un tiempo máximo de 2 segundos.
     * 
     * @param {string} blockhash Hash del bloque a descargar de la red.
-    * @returns {Promise<Block>} Bloque de Bitcoin.
+    * @returns {Promise<Block>} Una promesa que contiene un bloque de Bitcoin al concluir la petición o un valor nulo
+    *                            en caso que falle.
     */
     public getBlock(blockhash: string): Promise<Block> {
+        return new Promise<Block>(async (done) => {
+            const timeoutHandler = setTimeout(() => this.emit(blockhash, null), TIMEOUT_WAIT_BLOCKS)
 
-        return new Promise<Block>(async (resolve) => {
-            const peer = await this.getPeer()
-            const fnCallback = (message: { block: Block }) => {
-                if (message == null)
-                    resolve(null)
-                else if (message.block.hash === blockhash) {
-                    Logger.trace(`Received block with hash ${blockhash}`)
-                    resolve(message.block)
-                } else
-                    peer.once('block', fnCallback)
+            const resolve = (valueReturned?: Block) => {
+                clearTimeout(timeoutHandler)
+                done(valueReturned)
             }
 
-            peer.once('block', fnCallback)
-            peer.sendMessage(this._availableMessages.GetData.forBlock(blockhash))
-            setTimeout(() => peer.emit('block', null), TIMEOUT_WAIT_BLOCKS)
+            const listener = (block: Block) => {
+                if (block == null)
+                    resolve()
+                else if (block.hash === blockhash) {
+                    Logger.trace(`Received block ${blockhash}`)
+                    resolve(block)
+                }
+            }
+
+            try {
+                this.once(blockhash, listener)
+                this._pool.sendMessage(this._availableMessages.GetData.forBlock(blockhash))
+            } catch (ex) {
+                Logger.warn(`Fail to get block from pool: ${ex}`)
+                this.emit(blockhash, null)
+            }
         })
     }
 
     /**
-     * Obtiene la cabecera de un bloque de la red de bitcoin.
+     * Obtiene las hashes de los bloques encontrados en el pool, esto se limita a un máximo de 2000 cabeceras por petición.
+     * La petición tiene un tiempo máximo de 15 segundos.
      * 
-     * @param {string[]} hashblock hash del bloque que se desea obtener su cabecera.
-     * @returns {Promise<string[]>} La cabecera del bloque.
+     * @param {string[]} hashblock hashes de los bloques usados como referencia para obtener su cabecera.
+     * @returns {Promise<string[]>} Una promesa que contiene las cabeceras de los bloques encontrados al concluir la petición o 
+     *                              un valor nulo al fallar.
      */
-    public getHeaders(hashblock: string[]): Promise<string[]> {
+    public getHashes(hashblock: string[]): Promise<string[]> {
+        return new Promise<string[]>(async (done) => {
+            const timeoutHandler = setTimeout(() => this.emit('headers', null), TIMEOUT_WAIT_HEADERS)
 
-        return new Promise<string[]>(async (resolve) => {
-            const peer = await this.getPeer()
-            const listener = (message: { headers: BlockHeader[] }) => {
-                if (message == null) {
-                    resolve(null)
-                    return
-                }
-
-                if (message.headers.length > 0)
-                    Logger.trace(`Received ${message.headers.length} blockheaders`)
-
-                resolve(message.headers.map((header) => header.hash))
+            const resolve = (valueReturned?: string[]) => {
+                clearTimeout(timeoutHandler)
+                done(valueReturned)
             }
 
-            peer.once('headers', listener)
-            peer.sendMessage(this._availableMessages.GetHeaders({ starts: hashblock }))
-            setTimeout(() => peer.emit('headers', null), TIMEOUT_WAIT_HEADERS)
+            const listener = (headers: BlockHeader[]) => {
+                if (headers == null)
+                    resolve()
+                else if (headers.length > 0) {
+                    Logger.trace(`Received ${headers.length} headers`)
+
+                    resolve(headers.map((header) => header.hash))
+                }
+            }
+
+            try {
+                this.once('headers', listener)
+                this._pool.sendMessage(this._availableMessages.GetHeaders({ starts: hashblock }))
+            } catch (ex) {
+                Logger.warn(`Fail to get headers from pool: ${ex}`)
+                this.emit('headers', null)
+                resolve()
+            }
         })
     }
 
-    public getDownloader(hashes: string[]) {
-        return new BitcoinBlockDownloader(hashes, this._availableMessages.GetData)
+    /**
+     * Obtiene una instancia de administrador de descarga de bloques.
+     * 
+     * @param hashes Conjunto de hashes de los bloques que se desean descargar.
+     * @returns {BitcoinBlockDownloader}
+     */
+    public getDownloader(hashes: string[]): BitcoinBlockDownloader {
+        return new BitcoinBlockDownloader(hashes)
     }
 
-    public connect() {
+    /**
+     * Conecta el pool a la red de Bitcoin. Si se exceden los 10 segundos se finaliza la petición.
+     * @returns {Promise<boolean>} Una promesa con un valor true que indica que se ha conectado el pool.
+     */
+    public connect(): Promise<boolean> {
         Logger.trace('Connecting pool, waiting for peers')
+
+        this._pool = new Pool({ network: Networks.get(Config.getAsset('bitcoin').network) })
 
         this._addEventHandlers()
 
         this._pool.connect()
 
-        return new Promise((resolve) => {
+        return new Promise((done) => {
+            const timeoutHandler = setTimeout(() => this.emit('ready', false), TIMEOUT_WAIT_CONNECT)
+
+            const resolve = (valueReturned: boolean) => {
+                clearTimeout(timeoutHandler)
+                done(valueReturned)
+            }
+
             if (this._connected)
                 resolve(true)
             else
-                this.once('ready', () => resolve(true))
-
-            setTimeout(() => resolve(false), TIMEOUT_WAIT_CONNECT)
+                this.once('ready', (connected) => resolve(connected))
         })
     }
 
-    public disconnect() {
+    /**
+     * Desconecta todos los puntos remotos del pool de conexiones.
+     * @returns {Promise<void>} Una promesa vacía.
+     */
+    public disconnect(): Promise<void> {
         return new Promise<void>(async (resolve) => {
+            if (!this._connected) {
+                resolve()
+                return
+            }
+
             Logger.trace('Disconnecting pool from the peers')
 
             this._pool.disconnect()
@@ -125,9 +188,12 @@ class Network extends EventEmitter {
                     break
             }
 
-            this._pool.removeAllListeners('peerready')
-            this._connected = false
+            this._pool.removeAllListeners()
 
+            this._connected = false
+            this._pool = null
+
+            this.emit('disconnected')
             resolve()
         })
     }
@@ -143,40 +209,19 @@ class Network extends EventEmitter {
                     bestHeight = peer.bestHeight
 
                     this._connected = true
-                    this.emit('ready')
+                    this.emit('ready', true)
                 }
             })
+            .on('peerblock', (peer: Peer, message: { block: Block }) => {
+                if (message && message.block)
+                    this.emit(message.block.hash, message.block)
+
+            })
+            .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
+                if (message && message.headers)
+                    this.emit('headers', message.headers)
+            })
     }
-
-    public getPeer() {
-        return new Promise<Peer>((success) => {
-
-            const resolve = (peer: Peer) => {
-                Logger.debug(`Peer selected[Status=${peer.status}, BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`)
-                success(peer)
-            }
-
-            let peer: Peer = null
-            let i = 0
-            let size = this._pool.numberConnected()
-            let entries: [string, Peer][] = Object.entries(this._pool['_connectedPeers'])
-
-            while (isNull(peer) || peer.status == Peer.STATUS.DISCONNECTED)
-                if (i < size)
-                    peer = entries[i++][1]
-                else
-                    break
-
-            if (isNull(peer))
-                throw new Error(`Can't find a connected peer `)
-
-            if (peer.status != Peer.STATUS.READY)
-                peer.once('ready', () => resolve(peer))
-            else
-                resolve(peer)
-        })
-    }
-
 
 }
 

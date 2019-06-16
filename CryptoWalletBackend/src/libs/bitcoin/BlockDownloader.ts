@@ -1,115 +1,95 @@
-import { Block } from "bitcore-lib"
-import { Peer } from "bitcore-p2p"
+import { Block, Networks } from "bitcore-lib"
+import { Messages } from "bitcore-p2p"
 import LoggerFactory from "../../utils/LogginFactory"
 import TimeCounter from "../../utils/TimeCounter"
 import BtcNetwork from "./BtcNetwork"
-import { isString, isStringArray } from "../../utils/Preconditions";
+import { isStringArray } from "../../utils/Preconditions";
+import * as Extras from '../../utils/Extras'
+import { EventEmitter } from "events";
+import Config from "../../../config";
+import AsyncLock from 'async-lock'
 
 const Logger = LoggerFactory.getLogger('Blockdownloader')
+const lock = new AsyncLock()
 
-const TIMEOUT_WAIT_BLOCK = 10000;
+const MAX_BLOCKS = 200
 export default class BitcoinBlockDownloader {
 
-    private _hashes = new Array<{ hash: string, block: Block }>()
-    private _requested = -1
-    private _position = 0
+    private _notifier = new EventEmitter
 
-    private _internalCallback: () => void = null
+    private _left = 0
 
-    public hasNext() {
-        return !(this._position >= this._hashes.length)
+    private _hashes = {}
+
+    public has(hash: string): boolean {
+        return this._hashes[hash]
     }
 
-    public async next() {
-        if (this._internalCallback != null)
-            throw new Error(`Request called`)
+    public async get(hash: string): Promise<Block> {
 
         return new Promise<Block>(async (resolve) => {
-            if (this._position >= this._hashes.length)
-                resolve(null)
-            else {
-                const pos = this._position
-                const current = this._hashes[pos]
-                this._position++
-
-                if (current.block == null) {
-                    this._requested = this._position - 1
-                    this._internalCallback = () => {
-                        const block = this._hashes[this._requested].block
-                        this._internalCallback = null
-                        this._requested = -1
+            lock.acquire('get', (unlock) => {
+                if (this._left == 0)
+                    resolve(null)
+                else if (this._hashes[hash]) {
+                    const block = this._hashes[hash]
+                    delete this._hashes[hash]
+                    this._left--
+                    resolve(block)
+                } else {
+                    this._notifier.once(hash, (block: Block) => {
+                        delete this._hashes[hash]
+                        this._left--
                         resolve(block)
-                    }
-                    setTimeout(() => {
-                        this._internalCallback = null
-                        this._requested = -1
-                        resolve(null)
-                    }, TIMEOUT_WAIT_BLOCK)
+                    })
                 }
-                else 
-                    resolve(current.block)
-            }
+
+                unlock()
+            })
         })
     }
 
-    public constructor(hashes: string[], getBlockMessage: { forBlock: (hash: string) => void }) {
+    public constructor(hashes: string[]) {
+        const timer = TimeCounter.begin()
+
+        const getBlockMessage = new Messages({ network: Networks.get(Config.getAsset('bitcoin').network) }).GetData
+
         if (!isStringArray(hashes))
             throw new Error('Require only string values')
 
-        this._hashes.push(...hashes.map((hash) => { return { hash, block: null } }))
+        for (const hash of hashes)
+            this._hashes[hash] = null
 
-        Logger.trace(`Request of ${hashes.length} blocks`)
+        this._left = hashes.length
 
-        let downloaded = 0
-        let position = 0
-        let peer: Peer = null
-
-        const timer = TimeCounter.begin()
-
-        const listener = (message: { block: Block }) => {
-            const pointer = this._hashes.find(h => h && h.hash === message.block.hash)
-
-            if (!pointer)
-                return
-
-            pointer.block = message.block
-            downloaded++
-
-            if (downloaded >= this._hashes.length) {
-                timer.stop()
-                peer.removeListener('block', listener)
-                Logger.debug(`Downloaded ${downloaded} blocks in ${timer.toLocalTimeString()}`)
-            }
-
-            if (this._internalCallback == null)
-                return
-
-            if (this._requested >= 0 && this._hashes[this._requested].block != null)
-                this._internalCallback()
-        }
+        Logger.trace(`Request of ${hashes.length} blocks`);
 
         (async () => {
-            do {
-                try {
-                    peer = await BtcNetwork.getPeer()
+            let downloading = 0
+            for (const hash of hashes) {
+                BtcNetwork.once(hash, async (block: Block) => {
+                    downloading--
+                    downloading = downloading < 0 ? 0 : downloading
 
-                    Logger.trace(`Connected to Peer [Host=${peer.host}, Height=${peer.bestHeight}] for download`)
-                    peer.addListener('block', listener)
+                    await lock.acquire('get', (unlock) => {
 
-                    while (this._hashes.length > position) {
-                        const item = this._hashes[position]
-                        peer.sendMessage(getBlockMessage.forBlock(item.hash))
-                        position++
-                    }
+                        this._hashes[hash] = block
+                        this._notifier.emit(hash, block)
 
-                } catch (ex) {
-                    Logger.warn(`Fail to download blocks in peer [Host=${peer.host}, Height=${peer.bestHeight}], disconnecting`)
-                    position--
-                    peer.removeListener('block', listener)
-                    peer.disconnect()
-                }
+                        unlock()
+                    })
+                })
 
-            } while (position < this._hashes.length)
-        })()
+                BtcNetwork.sendMessage(getBlockMessage.forBlock(hash))
+                downloading++
+
+                while (downloading > MAX_BLOCKS)
+                    await Extras.wait(10)
+
+            }
+            timer.stop()
+
+            Logger.debug(`Downloaded ${hashes.length} blocks in ${timer.toLocalTimeString()}`)
+        })().catch(() => timer && timer.stop())
     }
 }

@@ -7,11 +7,12 @@
     "test": "node node_modules/mocha/bin/mocha -r ts-node/register test/*.test.ts --log-level=info",
     "start": "node node_modules/pm2/bin/pm2 build/server.js",
     "publish": "bash -c 'cd bin/ ; ./publish.sh build innsyssh 1nn5yT3chAdm1n innsytech.com 22'",
-    "clean" : "bash -c 'rm -rfv build/*'"
+    "clean": "bash -c 'rm -rfv build/*'"
   },
   "author": "InnSy Tech",
   "license": "Apache-2.0",
   "dependencies": {
+    "async-lock": "^1.2.0",
     "bitcore-lib": "^0.16.0",
     "bitcore-p2p": "^1.1.1",
     "crypto": "^1.0.1",
@@ -21,12 +22,15 @@
     "yargs": "^13.2.4"
   },
   "devDependencies": {
+    "@types/async-lock": "^1.1.1",
     "@types/chai": "^4.1.7",
+    "@types/chai-as-promised": "^7.1.0",
     "@types/express": "^4.16.1",
     "@types/mocha": "^5.2.6",
     "@types/node": "^11.11.4",
     "@types/yargs": "^13.0.0",
     "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "dts-gen": "^0.5.7",
     "mocha": "^6.1.4",
     "pm2": "^3.5.0",
