@@ -8,15 +8,10 @@ import TimeCounter from '../src/utils/TimeCounter'
 import BufferEx from '../src/utils/BufferEx'
 import TimeSpan from '../src/utils/TimeSpan'
 
-import { callAsync, wait, coalesce, partition } from '../src/utils/Extras';
+import { wait, coalesce, partition } from '../src/utils/Extras';
 import { isString, isNumeric, isDate, isStringArray, isNull, isBuffer, isArray, isNotNull, checkArguments, requireNotNull, requireString } from '../src/utils/Preconditions'
 
 const array = [1, 3, 5, 2, 4, 6, 1, 5, 3]
-const functionAsyncTest = async (num: number) => {
-    if (num == 0)
-        throw new Error("Num can't be zero")
-    return num
-}
 
 describe('Utils Module', () => {
     describe('Array Extension Methods', () => {
@@ -33,11 +28,6 @@ describe('Utils Module', () => {
     })
 
     describe('Extras Methods', () => {
-        it('Call async function and return null if fail', async () => {
-            expect(await callAsync(functionAsyncTest, [0], null)).to.equal(null)
-            expect(await callAsync(functionAsyncTest, [-1], null)).to.equal(-1)
-        })
-
         it('Wait 10ms', async () => {
             const ini = new Date()
             await wait(10)

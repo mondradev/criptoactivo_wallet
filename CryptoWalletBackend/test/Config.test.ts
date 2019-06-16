@@ -1,11 +1,11 @@
-import Config from '../src/config'
+import Config from '../config'
 import 'mocha'
 import { expect } from 'chai'
 
-describe('Config Module Default', () => {
+describe('Config Module', () => {
 
-    it('Default Bitcoin Network', () => {
-        expect(Config.assets.bitcoin.network).to.equal('testnet')
+    it('Bitcoin Config', () => {
+        expect(Config.getAsset('bitcoin')).to.be.not.null.and.have.ownProperty('network', 'testnet')
     })
     it('Log Level Info passed by argument', () => {
         expect(Config.logLevel).to.equal('info')
