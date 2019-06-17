@@ -11,8 +11,10 @@ import BitcoinBlockDownloader from "./BlockDownloader";
 import { Addr } from "./BtcModel";
 import { Hash256 } from "../crypto/Hash";
 import { requireNotNull } from "../../utils/Preconditions";
+import AsyncLock from 'async-lock'
 
 const Logger = LogginFactory.getLogger('Bitcoin Network')
+const Lock = new AsyncLock()
 
 const TIMEOUT_WAIT_HEADERS = 30000;
 const TIMEOUT_WAIT_BLOCKS = 2000;
@@ -216,16 +218,21 @@ class Network extends EventEmitter {
 
         this._pool
             .on('peerready', (peer: Peer, addr: Addr) => {
-                if (bestHeight < peer.bestHeight) {
-                    Logger.debug(`Peer ready[BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`)
+                Lock.acquire('ready', (unlock) => {
 
-                    bestHeight = peer.bestHeight
+                    if (bestHeight < peer.bestHeight) {
+                        Logger.debug(`Peer ready[BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`)
 
-                    !this._selectedPeer && this._registerPeer(peer, addr)
+                        bestHeight = peer.bestHeight
 
-                    this._connected = true
-                    this.emit('ready', true)
-                }
+                        this._registerPeer(peer, addr)
+
+                        this._connected = true
+                        this.emit('ready', true)
+                    }
+
+                    unlock()
+                })
             })
             .on('peerblock', (peer: Peer, message: { block: Block }) => {
                 !this._selectedPeer && this._registerPeer(peer)
@@ -252,12 +259,14 @@ class Network extends EventEmitter {
             const ipv4 = isIPv4(peer.host) ? peer.host : undefined
             const ipv6 = isIPv6(peer.host) ? peer.host : undefined
             const port = peer.port
-            const hash = Hash256.sha256(new Buffer(ipv6 + ipv4 + port)).toHex()
+            const hash = Hash256.sha256(Buffer.from(ipv6 + ipv4 + port)).toHex()
 
             addr = { hash, port, ip: { v4: ipv4, v6: ipv6 } }
         }
 
         this._selectedPeer = { peer, addr }
+
+        Logger.info(`Peer selected [Hash=${addr.hash}, Host=${addr.ip.v6 || addr.ip.v4}, Port=${addr.port}, BestHeight=${peer.bestHeight}]`)
     }
 
 }
