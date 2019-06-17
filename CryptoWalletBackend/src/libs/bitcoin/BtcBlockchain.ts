@@ -29,6 +29,7 @@ class Blockchain extends EventEmitter {
         const progress = { last: 0, current: 0 }
 
         let disconnect = false
+        let receivedHeaders = false
 
         BtcNetwork.once('disconnected', () => disconnect = true)
 
@@ -36,7 +37,7 @@ class Blockchain extends EventEmitter {
             const rate = progress.current - progress.last
             const remaining = BtcNetwork.bestHeight - progress.current
 
-            if (progress.last > 0 && remaining > 0)
+            if (progress.last > 0 && remaining > 0 && !receivedHeaders)
                 Logger.info(`Status [Height=${progress.current}, Progress=${(progress.current / BtcNetwork.bestHeight * 100).toFixed(2)} % BlockRate=${rate} blk/s, Remaining=${remaining} blks, TimeLeft=${TimeSpan.fromSeconds(remaining / rate)}]`)
 
             progress.last = progress.current
@@ -77,19 +78,29 @@ class Blockchain extends EventEmitter {
                 } else {
 
                     let blockToDownload = []
-                    let i = 6
+                    let i = 5
 
-                    while (--i) {
+                    receivedHeaders = true
+
+                    while (i) {
 
                         const headers = await BtcNetwork.getHashes(locators)
+
+                        if ([].concat(headers, locators).unique().length < locators.length + headers.length)
+                            continue
 
                         if (!headers || headers.length == 0)
                             break
 
-                        blockToDownload.push(...headers)
-                        locators = headers.slice(headers.length - 30).reverse()
-                    }
+                        Logger.trace(`Received ${headers.length} headers`)
 
+                        blockToDownload.push(...headers)
+                        locators = headers.slice(headers.length - 30).reverse().concat(locators)
+
+                        i--
+                    }
+                    
+                    receivedHeaders = false
                     blockToDownload = blockToDownload.unique()
 
                     if (blockToDownload.length == 0) {
@@ -98,11 +109,13 @@ class Blockchain extends EventEmitter {
                         continue
                     }
 
-                    for (const blockhash of blockToDownload) {
-                        const block = await BtcNetwork.getBlock(blockhash)
+                    const blockDownloader = BtcNetwork.getDownloader(blockToDownload)
+
+                    for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
+                        const block = await blockDownloader.get(blockHash)
 
                         if (!block) {
-                            Logger.warn(`Fail in Bitcoin#Network#getBlock(${blockhash})`)
+                            Logger.warn(`Fail in Bitcoin#Network#getBlock(${blockHash})`)
                             break
                         }
 

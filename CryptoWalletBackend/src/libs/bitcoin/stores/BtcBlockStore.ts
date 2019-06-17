@@ -35,7 +35,7 @@ class BlockLevelDb {
         return new Promise<string[]>(async (resolve) => {
             if (bestHeight > 0) {
                 const hashes: Array<{ height: number, hash: string }> = []
-                const min = BufferEx.zero().appendUInt32BE(bestHeight - 30).toBuffer()
+                const min = BufferEx.zero().appendUInt32BE(bestHeight - 29).toBuffer()
                 const max = BufferEx.zero().appendUInt32BE(bestHeight).toBuffer()
                 blockDb.createReadStream({ gte: min, lte: max })
                     .on('data', (data: { key: Buffer, value: Buffer }) => {

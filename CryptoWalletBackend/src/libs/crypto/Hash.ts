@@ -31,8 +31,12 @@ export class Hash256 {
 
     private _data: Buffer;
 
-    public toString() {
-        return Buffer.from(this._data).reverse().toString('hex');
+    public toHex() {
+        return Buffer.from(this._data).toString('hex');
+    }
+
+    public reverse() {
+        return Hash256.fromBuffer(Buffer.from(this._data).reverse())
     }
 
     public toBuffer() {
@@ -41,9 +45,5 @@ export class Hash256 {
 
     public isNull() {
         return !this._data.some(byte => byte != 0)
-    }
-
-    public toBufferString(): string {
-        return Buffer.from(this._data).toString('hex')
     }
 }

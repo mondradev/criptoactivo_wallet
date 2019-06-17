@@ -1,27 +1,33 @@
 import { Script, Input } from 'bitcore-lib';
 import BufferEx from '../../utils/BufferEx';
 
+export type Addr = {
+    hash: string
+    ip: { v4?: string, v6?: string }
+    port: number
+}
+
 export type TxIn = {
-    txInIdx: number,
-    prevTx: Buffer,
-    txOutIdx: number,
-    txInID: Buffer,
+    txInIdx: number
+    prevTx: Buffer
+    txOutIdx: number
+    txInID: Buffer
     uTxOut: UTXO
 }
 
 export type TxOut = {
-    script: Script,
+    script: Script
     txOutIdx: number
 }
 
 export type Tx = {
-    blockHash: Buffer,
-    blockHeight: number,
-    txIndex: number,
-    txID: Buffer,
-    nTxOut: number,
-    nTxIn: number,
-    txOut: TxOut[],
+    blockHash: Buffer
+    blockHeight: number
+    txIndex: number
+    txID: Buffer
+    nTxOut: number
+    nTxIn: number
+    txOut: TxOut[]
     txIn: TxIn[]
 }
 

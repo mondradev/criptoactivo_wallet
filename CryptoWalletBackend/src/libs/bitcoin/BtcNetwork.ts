@@ -1,12 +1,16 @@
 import LogginFactory from "../../utils/LogginFactory";
 import { wait } from "../../utils/Extras";
 
+import { isIPv4, isIPv6 } from 'net';
 import { Pool, Messages, Peer } from "bitcore-p2p";
 import { BlockHeader, Block, Networks } from "bitcore-lib";
 import { EventEmitter } from "events";
 
 import Config from "../../../config";
 import BitcoinBlockDownloader from "./BlockDownloader";
+import { Addr } from "./BtcModel";
+import { Hash256 } from "../crypto/Hash";
+import { requireNotNull } from "../../utils/Preconditions";
 
 const Logger = LogginFactory.getLogger('Bitcoin Network')
 
@@ -22,6 +26,8 @@ class Network extends EventEmitter {
     private _pool: Pool
     private _availableMessages: Messages
     private _connected = false
+
+    private _selectedPeer: { peer: Peer, addr: Addr }
 
     public constructor() {
         super()
@@ -52,7 +58,10 @@ class Network extends EventEmitter {
      * @param message Mensaje a enviar a la red.
      */
     public sendMessage(message: Messages) {
-        this._pool && this._pool.sendMessage(message)
+        if (this._selectedPeer)
+            this._selectedPeer.peer.sendMessage(message)
+        else
+            this._pool && this._pool.sendMessage(message)
     }
 
     /**
@@ -64,10 +73,12 @@ class Network extends EventEmitter {
     */
     public getBlock(blockhash: string): Promise<Block> {
         return new Promise<Block>(async (done) => {
+            let retryHandler = null
             const timeoutHandler = setTimeout(() => this.emit(blockhash, null), TIMEOUT_WAIT_BLOCKS)
 
             const resolve = (valueReturned?: Block) => {
                 clearTimeout(timeoutHandler)
+                retryHandler && clearInterval(retryHandler)
                 done(valueReturned)
             }
 
@@ -82,7 +93,9 @@ class Network extends EventEmitter {
 
             try {
                 this.once(blockhash, listener)
-                this._pool.sendMessage(this._availableMessages.GetData.forBlock(blockhash))
+                this.sendMessage(this._availableMessages.GetData.forBlock(blockhash))
+
+                retryHandler = setInterval(() => this.sendMessage(this._availableMessages.GetData.forBlock(blockhash)), 1000)
             } catch (ex) {
                 Logger.warn(`Fail to get block from pool: ${ex}`)
                 this.emit(blockhash, null)
@@ -100,26 +113,26 @@ class Network extends EventEmitter {
      */
     public getHashes(hashblock: string[]): Promise<string[]> {
         return new Promise<string[]>(async (done) => {
+            let retryHandler = null
             const timeoutHandler = setTimeout(() => this.emit('headers', null), TIMEOUT_WAIT_HEADERS)
 
             const resolve = (valueReturned?: string[]) => {
                 clearTimeout(timeoutHandler)
+                retryHandler && clearInterval(retryHandler)
                 done(valueReturned)
             }
 
             const listener = (headers: BlockHeader[]) => {
                 if (headers == null)
                     resolve()
-                else if (headers.length > 0) {
-                    Logger.trace(`Received ${headers.length} headers`)
-
+                else if (headers.length > 0)
                     resolve(headers.map((header) => header.hash))
-                }
             }
 
             try {
                 this.once('headers', listener)
-                this._pool.sendMessage(this._availableMessages.GetHeaders({ starts: hashblock }))
+                this.sendMessage(this._availableMessages.GetHeaders({ starts: hashblock }))
+                retryHandler = setInterval(() => this.sendMessage(this._availableMessages.GetHeaders({ starts: hashblock })), 1000)
             } catch (ex) {
                 Logger.warn(`Fail to get headers from pool: ${ex}`)
                 this.emit('headers', null)
@@ -202,25 +215,49 @@ class Network extends EventEmitter {
         let bestHeight = 0
 
         this._pool
-            .on('peerready', (peer: Peer) => {
+            .on('peerready', (peer: Peer, addr: Addr) => {
                 if (bestHeight < peer.bestHeight) {
                     Logger.debug(`Peer ready[BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`)
 
                     bestHeight = peer.bestHeight
+
+                    !this._selectedPeer && this._registerPeer(peer, addr)
 
                     this._connected = true
                     this.emit('ready', true)
                 }
             })
             .on('peerblock', (peer: Peer, message: { block: Block }) => {
+                !this._selectedPeer && this._registerPeer(peer)
+
                 if (message && message.block)
                     this.emit(message.block.hash, message.block)
-
             })
             .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
+                !this._selectedPeer && this._registerPeer(peer)
+
                 if (message && message.headers)
                     this.emit('headers', message.headers)
             })
+            .on('peerdisconnect', (peer: Peer, addr: Addr) => {
+                if (this._selectedPeer)
+                    if (addr.hash === this._selectedPeer.addr.hash)
+                        this._selectedPeer = null
+            })
+    }
+    private _registerPeer(peer: Peer, addr?: Addr) {
+        requireNotNull(peer)
+
+        if (!addr) {
+            const ipv4 = isIPv4(peer.host) ? peer.host : undefined
+            const ipv6 = isIPv6(peer.host) ? peer.host : undefined
+            const port = peer.port
+            const hash = Hash256.sha256(new Buffer(ipv6 + ipv4 + port)).toHex()
+
+            addr = { hash, port, ip: { v4: ipv4, v6: ipv6 } }
+        }
+
+        this._selectedPeer = { peer, addr }
     }
 
 }

@@ -21,8 +21,8 @@ export default class BitcoinBlockDownloader {
 
     private _hashes = {}
 
-    public has(hash: string): boolean {
-        return this._hashes[hash]
+    public hasNext(): boolean {
+        return this._left > 0
     }
 
     public async get(hash: string): Promise<Block> {
