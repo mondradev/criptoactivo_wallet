@@ -90,7 +90,7 @@ hasError $? "Fail to install on remote"
 
 echo 'Executing...'
 
-sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "cd cryptowalletbackend; ./node_modules/pm2/bin/pm2 restart cryptowallet"
+sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "cd cryptowalletbackend; ./node_modules/pm2/bin/pm2 restart cryptowallet-server"
 
 hasError $? "Fail to execute on remote"
 
