@@ -613,6 +613,8 @@ export class Block {
     public static fromRawBlock(data: Buffer | string): Block;
 
     public toBuffer(): Buffer;
+
+    public _getHash(): Buffer
 }
 
 export class Address {
