@@ -12,23 +12,13 @@ import { Tx, TxIn, TxOut, UTXO } from '../BtcModel';
 
 type DbBinary = LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
 
+const blockDb: DbBinary = level(getDirectory('db/bitcoin/blocks'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 const blkIndexDb: DbBinary = level(getDirectory('db/bitcoin/blocks/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 const chainInfoDb: LevelUp<AbstractLevelDOWN<string, { hash: string, height: number }>> = level(getDirectory('db/bitcoin/chaininfo'), { valueEncoding: 'json' })
 
 const Logger = LoggerFactory.getLogger('Bitcoin BlockStore')
 
 class BlockLevelDb {
-    public async getBlock(hash: Buffer): Promise<Buffer> {
-        const blockDb: DbBinary = level(getDirectory('db/bitcoin/blocks'), { keyEncoding: 'binary', valueEncoding: 'binary' })
-
-        try {
-            const data = await blockDb.get(hash)
-            return data
-        }
-        finally {
-            blockDb.isOpen() && await blockDb.close()
-        }
-    }
 
     public async  getLocalTip() {
         try {
@@ -43,7 +33,7 @@ class BlockLevelDb {
 
     public getLastHashes(bestHeight: number): Promise<string[]> {
         return new Promise<string[]>(async (done) => {
-            const blockDb: DbBinary = level(getDirectory('db/bitcoin/blocks'), { keyEncoding: 'binary', valueEncoding: 'binary' })
+            blockDb.isClosed() && await blockDb.open()
 
             const resolve = async (hashes: string[]) => {
                 blockDb.isOpen() && await blockDb.close()
@@ -70,7 +60,6 @@ class BlockLevelDb {
     }
 
     public async import(block: Block) {
-        const blockDb: DbBinary = level(getDirectory('db/bitcoin/blocks'), { keyEncoding: 'binary', valueEncoding: 'binary' })
         const timer = TimeCounter.begin()
         // Verify if require reorg
 
@@ -143,15 +132,15 @@ class BlockLevelDb {
             .write()
 
         timer.stop()
-        blockDb.isOpen() && await blockDb.close()
 
         Logger.debug(`Block saved [Height=${height}, Hash=${block.hash}, Txn=${block.transactions.length}, Size=${block.toBuffer().length}, PrevBlock=${Buffer.from(block.header.prevHash).reverse().toString('hex')}, Time=${timer.toLocalTimeString()}]`)
 
-        return height
+        return [height, txs.length]
     }
 
 }
 
 export const BtcBlockStore = new BlockLevelDb()
 export const BtcChainStateDb = chainInfoDb
+export const BtcBlockDb = blockDb
 export const BtcBlkIndexDb = blkIndexDb

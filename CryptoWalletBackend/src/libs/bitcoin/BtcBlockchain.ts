@@ -9,9 +9,6 @@ import TimeSpan from "../../utils/TimeSpan"
 import BufferEx from "../../utils/BufferEx"
 import '../../utils/ArrayExtension'
 import { Storages, Indexers } from "./stores";
-import { BtcBlockStore } from "./stores/BtcBlockStore";
-import { BtcTxIndexStore } from "./stores/BtcTxIndexStore";
-
 
 const Logger = LoggerFactory.getLogger('Bitcoin Blockchain')
 
@@ -28,7 +25,7 @@ class Blockchain extends EventEmitter {
 
     public async sync() {
         const timer = new TimeCounter()
-        const info = { last: 0, current: 0 }
+        const info = { last: 0, current: 0, txn: 0 }
 
         let disconnect = false
         let receivedHeaders = false
@@ -36,13 +33,18 @@ class Blockchain extends EventEmitter {
         BtcNetwork.once('disconnected', () => disconnect = true)
 
         timer.on('second', async () => {
-            const rate = info.current - info.last
             const remaining = BtcNetwork.bestHeight - info.current
-            const progress = (info.current / BtcNetwork.bestHeight * 100).toFixed(2)
-            const time = TimeSpan.fromSeconds(remaining / rate)
 
-            if (info.last > 0 && remaining > 0 && !receivedHeaders)
-                Logger.info(`Status [Height=${info.current}, Progress=${progress} % BlockRate=${rate} blk/s, Remaining=${remaining} blks, TimeLeft=${time}]`)
+            if (info.last > 0 && remaining > 0 && !receivedHeaders) {
+                const rate = info.current - info.last
+                const progress = (info.current / BtcNetwork.bestHeight * 100).toFixed(2)
+                const time = TimeSpan.fromSeconds(remaining / rate)
+                const memUsage = process.memoryUsage().rss / 1024 / 1024
+
+                Logger.info(`Status [Height=${info.current}, Progress=${progress} % BlockRate=${rate} blk/s, Remaining=${remaining} blks, TimeLeft=${time}, MemUsage=${memUsage.toFixed(2)} MB, Txn=${info.txn}]`)
+
+                info.txn = 0
+            }
 
             info.last = info.current
         })
@@ -114,18 +116,27 @@ class Blockchain extends EventEmitter {
 
                     const blockDownloader = BtcNetwork.getDownloader(blockToDownload)
 
-                    for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
-                        const block = await blockDownloader.get(blockHash)
+                    try {
+                        Storages.BlockDb.isClosed() && await Storages.BlockDb.open()
+                        Storages.TxIdxDb.isClosed() && await Storages.TxIdxDb.open()
 
-                        if (!block) {
-                            Logger.warn(`Fail in Bitcoin.Network#getBlock(${blockHash})`)
-                            break
+                        for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
+                            const block = await blockDownloader.get(blockHash)
+
+                            if (!block) {
+                                Logger.warn(`Fail in Bitcoin.Network#getBlock(${blockHash})`)
+                                break
+                            }
+
+                            Logger.trace(`Processing block [Hash=${block.hash}]`)
+
+                            const [height, txn] = await Indexers.BlockIndex.import(block)
+                            info.current = height
+                            info.txn += txn
                         }
-
-                        Logger.trace(`Processing block [Hash=${block.hash}]`)
-
-                        height = await Indexers.BlockIndex.import(block)
-                        info.current = height
+                    } finally {
+                        Storages.BlockDb.isOpen() && await Storages.BlockDb.close()
+                        Storages.TxIdxDb.isOpen() && await Storages.TxIdxDb.close()
                     }
 
                     timer.stop()
@@ -146,7 +157,7 @@ class Blockchain extends EventEmitter {
     public async getTxRaw(txid: Buffer) {
         let txIndex = null
 
-        try { txIndex = await BtcTxIndexStore.getTxIndex(txid) }
+        try { txIndex = await Storages.TxIdxDb.get(txid) }
         catch (ex) { return null }
 
         if (!txIndex)
@@ -162,7 +173,7 @@ class Blockchain extends EventEmitter {
 
         let blockRaw = null
 
-        try { blockRaw = await BtcBlockStore.getBlock(Buffer.from([txIndexRecord.height])) }
+        try { blockRaw = await Storages.BlockDb.get(Buffer.from([txIndexRecord.height])) }
         catch (ex) { return null }
 
         if (!blockRaw)
