@@ -119,6 +119,7 @@ class Blockchain extends EventEmitter {
                     try {
                         Storages.BlockDb.isClosed() && await Storages.BlockDb.open()
                         Storages.TxIdxDb.isClosed() && await Storages.TxIdxDb.open()
+                        Storages.AddrIdxDb.isClosed() && await Storages.AddrIdxDb.open()
 
                         for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
                             const block = await blockDownloader.get(blockHash)
@@ -137,6 +138,7 @@ class Blockchain extends EventEmitter {
                     } finally {
                         Storages.BlockDb.isOpen() && await Storages.BlockDb.close()
                         Storages.TxIdxDb.isOpen() && await Storages.TxIdxDb.close()
+                        Storages.AddrIdxDb.isClosed() && await Storages.AddrIdxDb.open()
                     }
 
                     timer.stop()
