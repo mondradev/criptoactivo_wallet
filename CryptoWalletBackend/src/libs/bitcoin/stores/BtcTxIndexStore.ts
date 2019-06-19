@@ -17,7 +17,8 @@ class TxIndexLevelDb {
             return
 
         const timer = TimeCounter.begin()
-        const idxBatch: LevelUpChain<Buffer, Buffer> = txIndexDb.batch()
+
+        let idxBatch: LevelUpChain<Buffer, Buffer> = txIndexDb.batch()
 
         for (const tx of txs) {
             const record = BufferEx.zero()
@@ -26,6 +27,10 @@ class TxIndexLevelDb {
                 .appendUInt32LE(tx.blockHeight)
                 .toBuffer()
 
+            if (idxBatch.length > 10000) {
+                await idxBatch.write()
+                idxBatch = txIndexDb.batch()
+            }
             idxBatch.del(tx.txID).put(tx.txID, record)
         }
 

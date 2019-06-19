@@ -146,11 +146,10 @@ class AddrIndexLevelDb {
 
     public async import(txs: Tx[]) {
         const timer = TimeCounter.begin()
-        const addrBatch = addrIndexDb.batch()
 
+        let addrBatch = addrIndexDb.batch()
         let idxAddresses = 0
-
-        const utxoBatch = utxoIndexDb.batch()
+        let utxoBatch = utxoIndexDb.batch()
 
         for (const tx of txs) {
 
@@ -163,6 +162,11 @@ class AddrIndexLevelDb {
                 const utxo = new UTXO(tx.txID, txOut.txOutIdx)
 
                 cacheCoin.set(utxo.toOutpointHex(), { utxo, address })
+
+                if (utxoBatch.length > 10000) {
+                    await utxoBatch.write()
+                    utxoBatch = utxoIndexDb.batch()
+                }
 
                 utxoBatch.del(utxo.toBuffer())
                     .put(utxo.toBuffer(), address)
@@ -180,6 +184,11 @@ class AddrIndexLevelDb {
                         .appendUInt32LE(tx.blockHeight)
                         .toBuffer()
 
+                    if (addrBatch.length > 10000) {
+                        await addrBatch.write()
+                        addrBatch = addrIndexDb.batch()
+                    }
+
                     addrBatch.del(addrKey).put(addrKey, record)
 
                     idxAddresses++
@@ -189,7 +198,8 @@ class AddrIndexLevelDb {
 
         await utxoBatch.write()
 
-        const stxoBatch = utxoIndexDb.batch()
+        let stxoBatch = utxoIndexDb.batch()
+
         const stxos = new Map<string, { utxo: UTXO, address?: Buffer }>()
 
         txs.forEach(t => t.txIn.forEach(i => stxos.set(i.txInID.toString('hex'), { utxo: i.uTxOut })))
@@ -207,6 +217,11 @@ class AddrIndexLevelDb {
 
                 cacheCoin.delete(utxo.toOutpointHex())
 
+                if (stxoBatch.length > 10000) {
+                    await stxoBatch.write()
+                    stxoBatch = utxoIndexDb.batch()
+                }
+
                 stxoBatch.del(utxo.toBuffer())
                     .put(utxo.spent.toBuffer(), address)
 
@@ -222,6 +237,11 @@ class AddrIndexLevelDb {
                     .appendUInt32LE(tx.blockHeight)
                     .toBuffer()
 
+                if (addrBatch.length > 10000) {
+                    await addrBatch.write()
+                    addrBatch = addrIndexDb.batch()
+                }
+
                 addrBatch.del(addrKey).put(addrKey, record)
 
                 idxAddresses++
@@ -230,6 +250,7 @@ class AddrIndexLevelDb {
         }
 
         await addrBatch.write()
+        await stxoBatch.write()
 
         timer.stop()
 
@@ -237,8 +258,6 @@ class AddrIndexLevelDb {
             Logger.warn(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.toString('hex')}, cache=${cacheCoin.size}`)
         else
             Logger.debug(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.toString('hex')}, cache=${cacheCoin.size}`)
-
-        return stxoBatch
     }
 
     public loadCache() {
