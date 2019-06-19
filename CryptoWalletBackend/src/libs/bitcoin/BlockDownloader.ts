@@ -12,7 +12,9 @@ import AsyncLock from 'async-lock'
 const Logger = LoggerFactory.getLogger('Blockdownloader')
 const lock = new AsyncLock()
 
-const MAX_BLOCKS = 200
+const MAX_BLOCKS = Config.getAsset('bitcoin').cacheBlockSize
+const MB = (1024 * 1024)
+const MAX_SIZE = Config.getAsset('bitcoin').cacheBlockSizeMB * MB
 export default class BitcoinBlockDownloader {
 
     private _notifier = new EventEmitter
@@ -20,6 +22,8 @@ export default class BitcoinBlockDownloader {
     private _left = 0
 
     private _hashes = {}
+
+    private _size = 0
 
     public hasNext(): boolean {
         return this._left > 0
@@ -34,11 +38,13 @@ export default class BitcoinBlockDownloader {
                 else if (this._hashes[hash]) {
                     const block = this._hashes[hash]
                     delete this._hashes[hash]
+                    this._size -= block.toBuffer().length
                     this._left--
                     resolve(block)
                 } else {
                     this._notifier.once(hash, (block: Block) => {
                         delete this._hashes[hash]
+                        this._size -= block.toBuffer().length
                         this._left--
                         resolve(block)
                     })
@@ -74,6 +80,7 @@ export default class BitcoinBlockDownloader {
                     await lock.acquire('get', (unlock) => {
 
                         this._hashes[hash] = block
+                        this._size += block.toBuffer().length
                         this._notifier.emit(hash, block)
 
                         unlock()
@@ -83,7 +90,7 @@ export default class BitcoinBlockDownloader {
                 BtcNetwork.sendMessage(getBlockMessage.forBlock(hash))
                 downloading++
 
-                while (downloading > MAX_BLOCKS)
+                while (downloading > MAX_BLOCKS || this._size > MAX_SIZE)
                     await Extras.wait(10)
 
             }

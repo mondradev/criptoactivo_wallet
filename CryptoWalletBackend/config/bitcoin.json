@@ -1,4 +1,6 @@
 {
     "name": "bitcoin",
-    "network": "testnet"
+    "network": "testnet",
+    "cacheBlockSize": 100,
+    "cacheBlockSizeMB": 40
 }
