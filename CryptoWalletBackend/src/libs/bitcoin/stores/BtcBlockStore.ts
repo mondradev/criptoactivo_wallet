@@ -83,8 +83,6 @@ class BlockLevelDb {
             const txIn: TxIn[] = t.inputs.filter((txin) => !txin.isNull()).map((txin, idx) => {
                 return {
                     txInIdx: idx,
-                    prevTx: txin.prevTxId,
-                    txOutIdx: txin.outputIndex,
                     txInID: BufferEx.from(txID).appendUInt32LE(idx).toBuffer(),
                     uTxOut: UTXO.fromInput(txin)
                 }
@@ -110,7 +108,7 @@ class BlockLevelDb {
         })
 
         await BtcTxIndexStore.import(txs)
-        // const stxoBatch = await BtcAddrIndexStore.import(txs)
+        await BtcAddrIndexStore.import(txs)
 
         await blkIndexDb.batch()
             .del(hash)

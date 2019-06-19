@@ -9,8 +9,6 @@ export type Addr = {
 
 export type TxIn = {
     txInIdx: number
-    prevTx: Buffer
-    txOutIdx: number
     txInID: Buffer
     uTxOut: UTXO
 }
