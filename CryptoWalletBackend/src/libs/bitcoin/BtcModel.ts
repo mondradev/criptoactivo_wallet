@@ -102,6 +102,6 @@ export class UTXO {
     }
 
     public static fromInput(input: Input) {
-        return new UTXO(input.prevTxId, input.outputIndex)
+        return new UTXO(Buffer.from(input.prevTxId).reverse(), input.outputIndex)
     }
 }
