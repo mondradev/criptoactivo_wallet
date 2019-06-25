@@ -11,7 +11,8 @@ const Logger = LoggerFactory.getLogger('Bitcoin AddrIndex')
 const addrIndexDb = level(getDirectory('db/bitcoin/addr/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 
-const MAX_CACHE_SIZE = 200000
+const MAX_CACHE_SIZE = 500000
+const MB = (1024 * 1024)
 
 const cacheCoin = new Map<string, { utxo: UTXO, address?: Buffer }>()
 
@@ -255,9 +256,9 @@ class AddrIndexLevelDb {
         timer.stop()
 
         if (timer.milliseconds > 1000)
-            Logger.warn(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.toString('hex')}, cache=${cacheCoin.size}`)
+            Logger.warn(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.reverse().toString('hex')}, cache=${(cacheCoin.size * 34 / MB).toFixed(2)} MB(${cacheCoin.size}utxo)`)
         else
-            Logger.debug(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.toString('hex')}, cache=${cacheCoin.size}`)
+            Logger.debug(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.reverse().toString('hex')}, cache=${(cacheCoin.size * 34 / MB).toFixed(2)} MB(${cacheCoin.size}utxo)`)
     }
 
     public loadCache() {
@@ -266,7 +267,8 @@ class AddrIndexLevelDb {
                 gte: new UTXO(Buffer.alloc(32, 0), 0).toBuffer(),
                 lte: new UTXO(Buffer.alloc(32, 0xFF), 0xFFFFFFFF).toBuffer()
             })
-                .on('data', (data: { key: Buffer, value: Buffer }) => cacheCoin.set(data.key.toString('hex'), { utxo: UTXO.fromBuffer(data.key), address: data.value }))
+                .on('data', (data: { key: Buffer, value: Buffer }) =>
+                    cacheCoin.set(data.key.toString('hex', 1), { utxo: UTXO.fromBuffer(data.key), address: data.value }))
                 .on('end', () => {
                     Logger.info(`Loaded UTXO cache [Total=${cacheCoin.size}]`)
                     resolve()
