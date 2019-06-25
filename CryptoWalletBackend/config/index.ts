@@ -8,18 +8,18 @@ class AssetConfig {
 
     private _network: string
     private _cacheBlockSizeMB: number
-    private _cacheBlockSize: number
+    private _maxParallelDownloadBlock: number
 
     constructor(config: any) {
         this._network = config.network || 'testnet'
         this._cacheBlockSizeMB = config.cacheBlockSizeMB || 50
-        this._cacheBlockSize = config.cacheBlockSize || 200
+        this._maxParallelDownloadBlock = config.maxParallelDownloadBlock || 200
     }
 
     public get network() { return this._network }
 
     public get cacheBlockSizeMB() { return this._cacheBlockSizeMB }
-    public get cacheBlockSize() { return this._cacheBlockSize }
+    public get maxParallelDownloadBlock() { return this._maxParallelDownloadBlock }
 
 }
 
