@@ -36,3 +36,7 @@ export function getDirectory(uri: string): string {
 
     return path
 }
+
+export function ifNeg(value: number, ifNegValue: number) {
+    return value < 0 ? ifNegValue : value
+}
