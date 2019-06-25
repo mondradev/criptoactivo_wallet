@@ -10,6 +10,7 @@ import BufferEx from '../../../utils/BufferEx';
 import { BtcAddrIndexStore } from './BtcAddrIndexStore';
 import { Tx, TxIn, TxOut, UTXO } from '../BtcModel';
 import Config from '../../../../config';
+import BtcNetwork from '../BtcNetwork';
 
 type DbBinary = LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
 
@@ -223,7 +224,7 @@ class BlockLevelDb {
 
         timer.stop()
 
-        Logger.info(`UpdateTip [Height=${height}, Hash=${block.hash}, Txn=${cacheTip.txn}, MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
+        Logger.info(`UpdateTip [Height=${height}, Hash=${block.hash}, Txn=${cacheTip.txn}, Progress=${(height / BtcNetwork.bestHeight).toFixed(2)}% MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
     }
 
 }

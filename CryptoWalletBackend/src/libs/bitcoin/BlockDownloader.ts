@@ -3,10 +3,10 @@ import { Messages } from "bitcore-p2p"
 import LoggerFactory from "../../utils/LogginFactory"
 import TimeCounter from "../../utils/TimeCounter"
 import BtcNetwork from "./BtcNetwork"
-import { isStringArray } from "../../utils/Preconditions";
+import { isStringArray } from "../../utils/Preconditions"
 import * as Extras from '../../utils/Extras'
-import { EventEmitter } from "events";
-import Config from "../../../config";
+import { EventEmitter } from "events"
+import Config from "../../../config"
 import AsyncLock from 'async-lock'
 
 const Logger = LoggerFactory.getLogger('Blockdownloader')
@@ -15,6 +15,8 @@ const lock = new AsyncLock()
 const MAX_BLOCKS = Config.getAsset('bitcoin').maxParallelDownloadBlock
 const MB = (1024 * 1024)
 const MAX_SIZE = Config.getAsset('bitcoin').cacheBlockSizeMB * MB
+const TIMEWAIT_NEW_REQUEST = 5000
+
 export default class BitcoinBlockDownloader {
 
     private _notifier = new EventEmitter
@@ -102,7 +104,7 @@ export default class BitcoinBlockDownloader {
 
                     while (!received) {
                         BtcNetwork.sendMessage(getBlockMessage.forBlock(hashblock))
-                        await Extras.wait(1000)
+                        await Extras.wait(TIMEWAIT_NEW_REQUEST)
                     }
                 })(hash)
 
