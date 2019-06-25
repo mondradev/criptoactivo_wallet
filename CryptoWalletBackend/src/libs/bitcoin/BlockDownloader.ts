@@ -12,7 +12,7 @@ import AsyncLock from 'async-lock'
 const Logger = LoggerFactory.getLogger('Blockdownloader')
 const lock = new AsyncLock()
 
-const MAX_BLOCKS = Config.getAsset('bitcoin').cacheBlockSize
+const MAX_BLOCKS = Config.getAsset('bitcoin').maxParallelDownloadBlock
 const MB = (1024 * 1024)
 const MAX_SIZE = Config.getAsset('bitcoin').cacheBlockSizeMB * MB
 export default class BitcoinBlockDownloader {
@@ -31,7 +31,7 @@ export default class BitcoinBlockDownloader {
 
     public async get(hash: string): Promise<Block> {
 
-        return new Promise<Block>(async (resolve) => {
+        return new Promise<Block>((resolve) => {
             lock.acquire('get', (unlock) => {
                 if (this._left == 0)
                     resolve(null)
@@ -72,31 +72,47 @@ export default class BitcoinBlockDownloader {
 
         (async () => {
             let downloading = 0
-            for (const hash of hashes) {
-                BtcNetwork.once(hash, async (block: Block) => {
-                    downloading--
-                    downloading = downloading < 0 ? 0 : downloading
 
-                    await lock.acquire('get', (unlock) => {
+            for (let i = 0; i < hashes.length; i++) {
+                const hash = hashes[i]
 
-                        this._hashes[hash] = block
-                        this._size += block.toBuffer().length
-                        this._notifier.emit(hash, block)
+                if (this._hashes[hash]) continue
 
-                        unlock()
+                (async (hashblock: string) => {
+                    let received = false
+
+                    BtcNetwork.once(hashblock, async (block: Block) => {
+                        received = true
+                        downloading--
+                        downloading = downloading < 0 ? 0 : downloading
+
+                        await lock.acquire('get', (unlock) => {
+                            this._hashes[hashblock] = block
+                            this._size += block.toBuffer().length
+                            this._notifier.emit(hashblock, block)
+
+                            unlock()
+                        })
+
+                        if (hashblock === hashes[hashes.length - 1]) {
+                            timer.stop()
+                            Logger.debug(`Downloaded ${hashes.length} blocks in ${timer.toLocalTimeString()}`)
+                        }
                     })
-                })
 
-                BtcNetwork.sendMessage(getBlockMessage.forBlock(hash))
+                    while (!received) {
+                        BtcNetwork.sendMessage(getBlockMessage.forBlock(hashblock))
+                        await Extras.wait(1000)
+                    }
+                })(hash)
+
+
                 downloading++
 
                 while (downloading > MAX_BLOCKS || this._size > MAX_SIZE)
                     await Extras.wait(10)
-
             }
-            timer.stop()
 
-            Logger.debug(`Downloaded ${hashes.length} blocks in ${timer.toLocalTimeString()}`)
         })().catch(() => timer && timer.stop())
     }
 }
