@@ -11,7 +11,7 @@ const Logger = LoggerFactory.getLogger('Bitcoin AddrIndex')
 const addrIndexDb = level(getDirectory('db/bitcoin/addr/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 
-const MAX_CACHE_SIZE = 500000
+const MAX_CACHE_SIZE = 5000000
 const MB = (1024 * 1024)
 
 const cacheCoin = new Map<string, { utxo: UTXO, address?: Buffer }>()
@@ -60,13 +60,13 @@ class AddrIndexLevelDb {
             const idxKeys = {}
             let pending = new Array<string>()
 
-            utxoToFind.forEach((value, key) => idxKeys[value.utxo.toHex()] = key)
-            utxoToFind.forEach((value) => pending.push(value.utxo.toHex()))
+            utxoToFind.forEach((value, key) => idxKeys[value.utxo.toOutpointHex()] = key)
+            utxoToFind.forEach((value) => pending.push(value.utxo.toOutpointHex()))
             pending.sort()
 
             for (let i = 0; i < pending.length; i++) {
-                if (cacheCoin.has(pending[i].slice(2))) {
-                    utxoToFind.get(idxKeys[pending[i]]).address = cacheCoin.get(pending[i].slice(2)).address
+                if (cacheCoin.has(pending[i])) {
+                    utxoToFind.get(idxKeys[pending[i]]).address = cacheCoin.get(pending[i]).address
                     pending = pending.remove(pending[i])
                     i = -1
                 }
@@ -88,13 +88,13 @@ class AddrIndexLevelDb {
 
             await (() => new Promise<void>((resolve) => {
                 utxoIndexDb.createReadStream({
-                    gte: Buffer.from(pending[0], 'hex'),
-                    lte: Buffer.from(pending[pending.length - 1], 'hex')
+                    gte: Buffer.from('00' + pending[0], 'hex'),
+                    lte: Buffer.from('00' + pending[pending.length - 1], 'hex')
                 })
                     .on('data', (data: { key: Buffer, value: Buffer }) => {
                         if (pending.includes(data.key.toString('hex'))) {
-                            utxoToFind.get(idxKeys[data.key.toString('hex')]).address = data.value
-                            pending = pending.remove(data.key.toString('hex'))
+                            utxoToFind.get(idxKeys[data.key.toString('hex').slice(2)]).address = data.value
+                            pending = pending.remove(data.key.toString('hex').slice(2))
                         }
                     })
                     .on('end', () => resolve())
@@ -117,13 +117,13 @@ class AddrIndexLevelDb {
 
             await (() => new Promise<void>((resolve) => {
                 utxoIndexDb.createReadStream({
-                    gte: Buffer.from(pending[0], 'hex'),
-                    lte: Buffer.from(pending[pending.length - 1], 'hex')
+                    gte: Buffer.from('01' + pending[0], 'hex'),
+                    lte: Buffer.from('01' + pending[pending.length - 1], 'hex')
                 })
                     .on('data', (data: { key: Buffer, value: Buffer }) => {
                         if (pending.includes(data.key.toString('hex'))) {
-                            utxoToFind.get(idxKeys[data.key.toString('hex')]).address = data.value
-                            pending = pending.remove(data.key.toString('hex'))
+                            utxoToFind.get(idxKeys[data.key.toString('hex').slice(2)]).address = data.value
+                            pending = pending.remove(data.key.toString('hex').slice(2))
                         }
                     })
                     .on('end', () => resolve())

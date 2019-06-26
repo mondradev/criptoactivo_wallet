@@ -29,6 +29,8 @@ class Network extends EventEmitter {
     private _availableMessages: Messages
     private _connected = false
 
+    private _timeOutHandler;
+
     private _selectedPeer: { peer: Peer, addr: Addr }
 
     public constructor() {
@@ -60,8 +62,14 @@ class Network extends EventEmitter {
      * @param message Mensaje a enviar a la red.
      */
     public sendMessage(message: Messages) {
-        if (this._selectedPeer)
+        if (this._selectedPeer) {
+            if (!this._timeOutHandler)
+                this._timeOutHandler = setTimeout(() => {
+                    this._selectedPeer = null
+                    this._timeOutHandler = null
+                }, 30000)
             this._selectedPeer.peer.sendMessage(message)
+        }
         else
             this._pool && this._pool.sendMessage(message)
     }
@@ -237,21 +245,34 @@ class Network extends EventEmitter {
             .on('peerblock', (peer: Peer, message: { block: Block }) => {
                 !this._selectedPeer && this._registerPeer(peer)
 
+                this._clearTimeout();
+
                 if (message && message.block)
                     this.emit(message.block.hash, message.block)
             })
             .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
                 !this._selectedPeer && this._registerPeer(peer)
 
+                this._clearTimeout();
+
                 if (message && message.headers)
                     this.emit('headers', message.headers)
             })
             .on('peerdisconnect', (peer: Peer, addr: Addr) => {
                 if (this._selectedPeer)
-                    if (addr.hash === this._selectedPeer.addr.hash)
+                    if (addr.hash === this._selectedPeer.addr.hash) {
+                        this._clearTimeout();
                         this._selectedPeer = null
+                    }
             })
     }
+    private _clearTimeout() {
+        if (this._timeOutHandler) {
+            clearTimeout(this._timeOutHandler);
+            this._timeOutHandler = null;
+        }
+    }
+
     private _registerPeer(peer: Peer, addr?: Addr) {
         requireNotNull(peer)
 
@@ -265,8 +286,6 @@ class Network extends EventEmitter {
         }
 
         this._selectedPeer = { peer, addr }
-
-        Logger.info(`Peer selected [Hash=${addr.hash}, Host=${addr.ip.v6 || addr.ip.v4}, Port=${addr.port}, BestHeight=${peer.bestHeight}]`)
     }
 
 }
