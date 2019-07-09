@@ -65,9 +65,6 @@ export default class BitcoinBlockDownloader {
         if (!isStringArray(hashes))
             throw new Error('Require only string values')
 
-        for (const hash of hashes)
-            this._hashes[hash] = null
-
         this._left = hashes.length
 
         Logger.trace(`Request of ${hashes.length} blocks`);
@@ -113,9 +110,8 @@ export default class BitcoinBlockDownloader {
                 downloading++
 
                 do {
-                    if (!locked && (downloading > MAX_BLOCKS || this._size > MAX_SIZE)) {
+                    if (!locked && (downloading > MAX_BLOCKS || this._size > MAX_SIZE))
                         locked = true
-                    }
 
                     if (locked && downloading <= MAX_BLOCKS / 2)
                         locked = false
