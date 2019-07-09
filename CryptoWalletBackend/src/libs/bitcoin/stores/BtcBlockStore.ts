@@ -153,7 +153,6 @@ class BlockLevelDb {
     }
 
     public async import(block: Block) {
-        const timer = TimeCounter.begin()
         // Verify if require reorg
 
         // Import txs, if completed then save block
@@ -222,9 +221,7 @@ class BlockLevelDb {
             .put('tip', cacheTip)
             .write()
 
-        timer.stop()
-
-        Logger.info(`UpdateTip [Height=${height}, Hash=${block.hash}, Txn=${cacheTip.txn}, Progress=${(height / BtcNetwork.bestHeight * 100).toFixed(2)}% MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
+        return [height, cacheTip.txn]
     }
 
 }

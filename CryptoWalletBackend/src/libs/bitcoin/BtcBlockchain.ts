@@ -101,6 +101,7 @@ class Blockchain extends EventEmitter {
                         Storages.AddrIdxDb.isClosed() && await Storages.AddrIdxDb.open()
 
                         for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
+                            const timer = TimeCounter.begin()
                             const block = await blockDownloader.get(blockHash)
 
                             if (!block) {
@@ -110,7 +111,11 @@ class Blockchain extends EventEmitter {
 
                             Logger.trace(`Processing block [Hash=${block.hash}]`)
 
-                            await Indexers.BlockIndex.import(block)
+                            const [height, txn] = await Indexers.BlockIndex.import(block)
+
+                            timer.stop()
+
+                            Logger.info(`UpdateTip [Height=${height}, Hash=${block.hash}, Txn=${txn}, Progress=${(height / BtcNetwork.bestHeight * 100).toFixed(2)}% MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
                         }
                     } finally {
                         Storages.BlockDb.isOpen() && await Storages.BlockDb.close()
