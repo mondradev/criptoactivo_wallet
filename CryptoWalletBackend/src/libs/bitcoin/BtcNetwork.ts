@@ -28,9 +28,6 @@ class Network extends EventEmitter {
     private _pool: Pool
     private _availableMessages: Messages
     private _connected = false
-
-    private _timeOutHandler;
-
     private _selectedPeer: { peer: Peer, addr: Addr }
 
     public constructor() {
@@ -62,14 +59,8 @@ class Network extends EventEmitter {
      * @param message Mensaje a enviar a la red.
      */
     public sendMessage(message: Messages) {
-        if (this._selectedPeer) {
-            if (!this._timeOutHandler)
-                this._timeOutHandler = setTimeout(() => {
-                    this._selectedPeer = null
-                    this._timeOutHandler = null
-                }, 30000)
+        if (this._selectedPeer && this._selectedPeer.peer.status != Peer.STATUS.DISCONNECTED)
             this._selectedPeer.peer.sendMessage(message)
-        }
         else
             this._pool && this._pool.sendMessage(message)
     }
@@ -179,6 +170,7 @@ class Network extends EventEmitter {
 
             const resolve = (valueReturned: boolean) => {
                 clearTimeout(timeoutHandler)
+                this._initMonitor()
                 done(valueReturned)
             }
 
@@ -226,10 +218,11 @@ class Network extends EventEmitter {
 
         this._pool
             .on('peerready', (peer: Peer, addr: Addr) => {
+                Logger.debug(`Peer connected [BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`)
+
                 Lock.acquire('ready', (unlock) => {
 
                     if (bestHeight < peer.bestHeight) {
-                        Logger.debug(`Peer ready[BestHeight=${peer.bestHeight}, Version=${peer.version}, Host=${peer.host}, Port=${peer.port}, Network=${peer.network}]`)
 
                         bestHeight = peer.bestHeight
 
@@ -245,47 +238,76 @@ class Network extends EventEmitter {
             .on('peerblock', (peer: Peer, message: { block: Block }) => {
                 !this._selectedPeer && this._registerPeer(peer)
 
-                this._clearTimeout();
-
                 if (message && message.block)
                     this.emit(message.block.hash, message.block)
             })
             .on('peerheaders', (peer: Peer, message: { headers: BlockHeader[] }) => {
                 !this._selectedPeer && this._registerPeer(peer)
 
-                this._clearTimeout();
-
                 if (message && message.headers)
                     this.emit('headers', message.headers)
             })
             .on('peerdisconnect', (peer: Peer, addr: Addr) => {
                 if (this._selectedPeer)
-                    if (addr.hash === this._selectedPeer.addr.hash) {
-                        this._clearTimeout();
+                    if (addr.hash === this._selectedPeer.addr.hash)
                         this._selectedPeer = null
-                    }
             })
-    }
-    private _clearTimeout() {
-        if (this._timeOutHandler) {
-            clearTimeout(this._timeOutHandler);
-            this._timeOutHandler = null;
-        }
     }
 
     private _registerPeer(peer: Peer, addr?: Addr) {
         requireNotNull(peer)
 
-        if (!addr) {
-            const ipv4 = isIPv4(peer.host) ? peer.host : undefined
-            const ipv6 = isIPv6(peer.host) ? peer.host : undefined
-            const port = peer.port
-            const hash = Hash256.sha256(Buffer.from(ipv6 + ipv4 + port)).toHex()
-
-            addr = { hash, port, ip: { v4: ipv4, v6: ipv6 } }
-        }
+        addr = addr || this._getAddrFromPeer(peer);
 
         this._selectedPeer = { peer, addr }
+    }
+
+
+
+    private _getAddrFromPeer(peer: Peer) {
+        const ipv4 = isIPv4(peer.host) ? peer.host : undefined
+        const ipv6 = isIPv6(peer.host) ? peer.host : undefined
+        const port = peer.port
+        const hash = Hash256.sha256(Buffer.from(ipv6 + ipv4 + port)).toHex()
+        return { hash, port, ip: { v4: ipv4, v6: ipv6 } }
+    }
+
+
+    /**
+     * Inicia el monitor de los pares
+     */
+    private _initMonitor() {
+        return new Promise<void>(async done => {
+            while (this._connected) {
+                for (let key in this._pool['_connectedPeers']) {
+                    let peer: Peer = this._pool['_connectedPeers'][key]
+
+                    await new Promise<void>(resolve => {
+                        let fnPingHandler = () => {
+                            clearTimeout(timer)
+                            resolve()
+                        }
+
+                        let timer = setTimeout(async () => {
+                            if (this._selectedPeer && this._getAddrFromPeer(peer).hash === this._selectedPeer.addr.hash) {
+                                Logger.info(`Peer unselected because it doesn't respond to ping: ${peer.host}`)
+                                this._selectedPeer = null
+                            }
+
+                            peer.removeListener('ping', fnPingHandler)
+                        }, 1000)
+
+                        peer.once('ping', fnPingHandler)
+
+                        peer.sendMessage(this._availableMessages.Ping())
+                    })
+                }
+
+                await wait(10000)
+            }
+
+            done()
+        })
     }
 
 }
