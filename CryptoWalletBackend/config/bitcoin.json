@@ -1,6 +1,6 @@
 {
     "name": "bitcoin",
     "network": "mainnet",
-    "maxParallelDownloadBlock": 800,
-    "cacheBlockSizeMB": 40
+    "maxParallelDownloadBlock": 300,
+    "cacheBlockSizeMB": 300
 }
