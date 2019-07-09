@@ -44,6 +44,7 @@ export class Inventory {
     toBufferWriter(bw: any): any;
 }
 export class Messages {
+    Ping(): Messages
     static MINIMUM_LENGTH: number;
     static Message(options: any): void;
     static PAYLOAD_START: number;
