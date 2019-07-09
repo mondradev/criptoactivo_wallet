@@ -15,7 +15,7 @@ const lock = new AsyncLock()
 const MAX_BLOCKS = Config.getAsset('bitcoin').maxParallelDownloadBlock
 const MB = (1024 * 1024)
 const MAX_SIZE = Config.getAsset('bitcoin').cacheBlockSizeMB * MB
-const TIMEWAIT_NEW_REQUEST = 5000
+const TIMEWAIT_NEW_REQUEST = 1000
 
 export default class BitcoinBlockDownloader {
 
@@ -74,6 +74,7 @@ export default class BitcoinBlockDownloader {
 
         (async () => {
             let downloading = 0
+            let locked = false
 
             for (let i = 0; i < hashes.length; i++) {
                 const hash = hashes[i]
@@ -111,8 +112,16 @@ export default class BitcoinBlockDownloader {
 
                 downloading++
 
-                while (downloading > MAX_BLOCKS || this._size > MAX_SIZE)
+                do {
+                    if (!locked && (downloading > MAX_BLOCKS || this._size > MAX_SIZE)) {
+                        locked = true
+                    }
+
+                    if (locked && downloading <= MAX_BLOCKS / 2)
+                        locked = false
+
                     await Extras.wait(10)
+                } while (locked)
             }
 
         })().catch(() => timer && timer.stop())
