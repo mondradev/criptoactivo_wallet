@@ -115,7 +115,7 @@ class Blockchain extends EventEmitter {
                     } finally {
                         Storages.BlockDb.isOpen() && await Storages.BlockDb.close()
                         Storages.TxIdxDb.isOpen() && await Storages.TxIdxDb.close()
-                        Storages.AddrIdxDb.isClosed() && await Storages.AddrIdxDb.open()
+                        Storages.AddrIdxDb.isOpen() && await Storages.AddrIdxDb.close()
                     }
 
                     timer.stop()
