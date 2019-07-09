@@ -13,8 +13,9 @@ const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: '
 
 const MAX_CACHE_SIZE = 5000000
 const MB = (1024 * 1024)
+const CACHE_ITEM_SIZE = 37 * 2 + 21
 
-const cacheCoin = new Map<string, { utxo: UTXO, address?: Buffer }>()
+const cacheCoin = new Map<string, { address?: Buffer }>()
 
 const cacheTask = setInterval(() => {
     if (cacheCoin.size >= MAX_CACHE_SIZE)
@@ -162,7 +163,7 @@ class AddrIndexLevelDb {
 
                 const utxo = new UTXO(tx.txID, txOut.txOutIdx)
 
-                cacheCoin.set(utxo.toOutpointHex(), { utxo, address })
+                cacheCoin.set(utxo.toOutpointHex(), { address })
 
                 if (utxoBatch.length > 10000) {
                     await utxoBatch.write()
@@ -256,21 +257,22 @@ class AddrIndexLevelDb {
         timer.stop()
 
         if (timer.milliseconds > 1000)
-            Logger.warn(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.reverse().toString('hex')}, cache=${(cacheCoin.size * 34 / MB).toFixed(2)} MB(${cacheCoin.size}utxo)`)
+            Logger.warn(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.reverse().toString('hex')}, cache=${(cacheCoin.size * CACHE_ITEM_SIZE / MB).toFixed(2)} MB(${cacheCoin.size}utxo)`)
         else
-            Logger.debug(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.reverse().toString('hex')}, cache=${(cacheCoin.size * 34 / MB).toFixed(2)} MB(${cacheCoin.size}utxo)`)
+            Logger.debug(`Indexed ${idxAddresses} addresses in ${timer.toLocalTimeString()} with ${spent} spent, block ${txs[0].blockHash.reverse().toString('hex')}, cache=${(cacheCoin.size * CACHE_ITEM_SIZE / MB).toFixed(2)} MB(${cacheCoin.size}utxo)`)
     }
 
     public loadCache() {
         return new Promise<void>((resolve) => {
+            Logger.debug(`Open UTXO data [MemUsage=${(process.memoryUsage().rss / MB).toFixed(2)} MB]`)
             utxoIndexDb.createReadStream({
                 gte: new UTXO(Buffer.alloc(32, 0), 0).toBuffer(),
                 lte: new UTXO(Buffer.alloc(32, 0xFF), 0xFFFFFFFF).toBuffer()
             })
                 .on('data', (data: { key: Buffer, value: Buffer }) =>
-                    cacheCoin.set(data.key.toString('hex', 1), { utxo: UTXO.fromBuffer(data.key), address: data.value }))
+                    cacheCoin.set(data.key.toString('hex', 1), { address: data.value }))
                 .on('end', () => {
-                    Logger.info(`Loaded UTXO cache [Total=${cacheCoin.size}]`)
+                    Logger.info(`Loaded UTXO cache [Total=${cacheCoin.size}, MemUsage=${(process.memoryUsage().rss / MB).toFixed(2)} MB]`)
                     resolve()
                 })
         })
