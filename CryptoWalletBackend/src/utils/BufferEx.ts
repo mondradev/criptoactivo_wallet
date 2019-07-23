@@ -215,6 +215,10 @@ export default class BufferEx {
         throw Error('Invalid format')
     }
 
+    public reverse() {
+        return BufferEx.from(Buffer.from(this._buf).reverse())
+    }
+
     public toBuffer() {
         return Buffer.from(this._buf)
     }
