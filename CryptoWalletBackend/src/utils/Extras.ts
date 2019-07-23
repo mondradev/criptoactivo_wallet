@@ -19,7 +19,7 @@ export function coalesce(value: any, ...ifNull: any[]) {
     return notNullValue
 }
 
-export function partition<T>(array: T[], size: number) {
+export function partition<T>(array: T[], size: number): T[][] {
     size = size > 0 ? Math.ceil(size) : 1
 
     if (array.length <= size)
