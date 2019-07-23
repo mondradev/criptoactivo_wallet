@@ -32,6 +32,7 @@ export default class TimeCounter extends EventEmitter {
     public stop() {
         this._endTime = new Date().getTime()
         clearInterval(this._timerInternal)
+        this._timerInternal = null
     }
 
     public toLocalTimeString() {
@@ -50,6 +51,10 @@ export default class TimeCounter extends EventEmitter {
             return `${this._to2Digits(totalTime / MS_BY_SECOND)}.${this._to3Digits(totalTime % MS_BY_SECOND)} secs`
 
         return `${totalTime} msecs`
+    }
+
+    public isRunning() {
+        return this._timerInternal != null
     }
 
     private _to2Digits(n: number): string {
