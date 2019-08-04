@@ -63,7 +63,7 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import okhttp3.internal.NamedRunnable;
+import com.cryptowallet.utils.NamedRunnable;
 
 /**
  * Actividad que permite el envío de pagos, también ofrece leer códigos QR que almacenan un URI

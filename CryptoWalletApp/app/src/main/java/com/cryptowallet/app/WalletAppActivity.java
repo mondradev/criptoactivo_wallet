@@ -60,7 +60,7 @@ import org.bitcoinj.core.Coin;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 
-import okhttp3.internal.NamedRunnable;
+import com.cryptowallet.utils.NamedRunnable;
 
 /**
  * Actividad principal de la billetera. Desde esta actividad se establece el flujo de trabajo de

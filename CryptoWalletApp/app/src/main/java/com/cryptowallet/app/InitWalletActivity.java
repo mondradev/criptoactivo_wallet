@@ -24,12 +24,11 @@ import android.view.View;
 
 import com.cryptowallet.R;
 import com.cryptowallet.bitcoin.BitcoinService;
+import com.cryptowallet.utils.NamedRunnable;
 
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-
-import okhttp3.internal.NamedRunnable;
 
 /**
  * Esta actividad permite la creación de una billetera o su restauración a través de sus 12

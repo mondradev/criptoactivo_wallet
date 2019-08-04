@@ -59,7 +59,7 @@ import java.util.Objects;
 
 import javax.crypto.Cipher;
 
-import okhttp3.internal.NamedRunnable;
+import com.cryptowallet.utils.NamedRunnable;
 
 import static android.content.Context.FINGERPRINT_SERVICE;
 import static android.content.Context.KEYGUARD_SERVICE;
