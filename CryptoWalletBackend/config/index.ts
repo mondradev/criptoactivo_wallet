@@ -4,23 +4,23 @@ import ConfigFile from './wallet.json';
 import Path from 'path'
 import Fs from 'fs'
 
-class AssetConfig {
-
+export class AssetConfig {
     private _network: string
-    private _cacheBlockSizeMB: number
-    private _maxParallelDownloadBlock: number
+    private _port: number
+    private _maxConnections: number
+    private _seeds: Array<string>
 
     constructor(config: any) {
-        this._network = config.network || 'testnet'
-        this._cacheBlockSizeMB = config.cacheBlockSizeMB || 50
-        this._maxParallelDownloadBlock = config.maxParallelDownloadBlock || 200
+        this._network = config.network || 'mainnet'
+        this._port = config.port
+        this._maxConnections = config.maxConnections || 16
+        this._seeds = config.seeds || []
     }
 
     public get network() { return this._network }
-
-    public get cacheBlockSizeMB() { return this._cacheBlockSizeMB }
-    public get maxParallelDownloadBlock() { return this._maxParallelDownloadBlock }
-
+    public get port() { return this._port }
+    public get maxConnections() { return this._maxConnections }
+    public get seeds() { return this._seeds }
 }
 
 class ConfigManager {

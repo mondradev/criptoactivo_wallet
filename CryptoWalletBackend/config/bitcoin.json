@@ -1,6 +1,16 @@
 {
     "name": "bitcoin",
     "network": "mainnet",
-    "maxParallelDownloadBlock": 300,
-    "cacheBlockSizeMB": 300
+    "port": 8333,
+    "maxConnections": 16,
+    "seeds": [
+        "seed.bitcoin.sipa.be",
+        "dnsseed.bluematt.me",
+        "dnsseed.bitcoin.dashjr.org",
+        "seed.bitcoinstats.com",
+        "seed.bitcoin.jonasschnelli.ch",
+        "seed.btc.petertodd.org",
+        "seed.bitcoin.sprovoost.nl",
+        "dnsseed.emzy.de"
+    ]
 }

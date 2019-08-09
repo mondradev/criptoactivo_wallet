@@ -44,7 +44,9 @@ export class Inventory {
     toBufferWriter(bw: any): any;
 }
 export class Messages {
+    Pong(nonce: Buffer): Messages
     Ping(): Messages
+    GetAddr(): Messages
     static MINIMUM_LENGTH: number;
     static Message(options: any): void;
     static PAYLOAD_START: number;
@@ -58,7 +60,7 @@ export class Messages {
     GetData: {
         forBlock: (hash: string) => Messages
     }
-    GetHeaders: (params: { starts: Array<string> }) => Messages
+    GetHeaders: (params: { starts: Array<string>, stop: string }) => Messages
 }
 export class Peer {
     static MAX_RECEIVE_BUFFER: number;
