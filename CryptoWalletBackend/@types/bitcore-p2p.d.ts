@@ -1,3 +1,5 @@
+import { Network } from "bitcore-lib";
+
 export class BloomFilter {
     static BLOOM_UPDATE_ALL: number;
     static BLOOM_UPDATE_NONE: number;
@@ -72,16 +74,16 @@ export class Peer {
     };
     constructor(options: any);
     socket: any;
-    host: any;
-    port: any;
-    status: any;
-    network: any;
-    messages: any;
+    host: string;
+    port: number;
+    status: string;
+    network: Network;
+    messages: Messages;
     dataBuffer: any;
     version: any;
-    bestHeight: any;
-    subversion: any;
-    relay: any;
+    bestHeight: number;
+    subversion: string;
+    relay: boolean;
     versionSent: any;
     addListener(type: any, listener: any): any;
     connect(): any;

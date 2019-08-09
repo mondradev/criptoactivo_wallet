@@ -1,6 +1,16 @@
 
 export class Network {
-
+    public toString(): string
+    public name: string
+    public alias: string
+    public pubkeyhash: number
+    public privatekey: number
+    public scripthash: number
+    public xpubkey: number
+    public xprivkey: number
+    public networkMagic: number
+    public port: number
+    public dnsSeeds: Array<string>
 }
 
 export class Input {
@@ -60,7 +70,7 @@ export class Networks {
         xprivkey: number,
         networkMagic: number,
         port: number,
-        dnsSeeds: Array<any>
+        dnsSeeds: Array<string>
     }): Network;
 
     /**
