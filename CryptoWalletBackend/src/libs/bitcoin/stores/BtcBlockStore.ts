@@ -42,74 +42,13 @@ class BlockLevelDb {
         }
 
         if (block) {
-            try {
-                blockDb.isClosed() && await blockDb.open()
-
-                const hash = block._getHash()
-                const heightRaw = BufferEx.zero().appendUInt32BE(0).toBuffer()
-
-
-                const txs: Tx[] = block.transactions.map((t, idx) => {
-                    const txID = t._getHash()
-                    const txIn: TxIn[] = t.inputs.filter((txin) => !txin.isNull()).map((txin, idx) => {
-                        return {
-                            txInIdx: idx,
-                            txInID: BufferEx.from(txID).appendUInt32LE(idx).toBuffer(),
-                            uTxOut: UTXO.fromInput(txin)
-                        }
-                    })
-
-                    const txOut: TxOut[] = t.outputs.map((txout, idx) => {
-                        return {
-                            script: txout.script,
-                            txOutIdx: idx
-                        }
-                    })
-
-                    return {
-                        blockHash: hash,
-                        blockHeight: 0,
-                        txIndex: idx,
-                        txID: txID,
-                        nTxOut: txOut.length,
-                        nTxIn: txIn.length,
-                        txOut,
-                        txIn
-                    }
-                })
-
-                await BtcTxIndexStore.import(txs)
-                await BtcAddrIndexStore.import(txs)
-
-                await blkIndexDb.batch()
-                    .del(hash)
-                    .put(hash, heightRaw)
-                    .write()
-
-                await blockDb.batch()
-                    .del(heightRaw)
-                    .put(heightRaw, block.toBuffer())
-                    .write()
-
-                await chainStateDb.batch()
-                    .del('tip')
-                    .put('tip', {
-                        hash: Buffer.from(hash).toString('hex'),
-                        height: 0
-                    })
-                    .write()
-
-                cacheTip = { hash: Buffer.from(hash).toString('hex'), height: 0, txn: txs.length }
-
-                Logger.info(`Block genesis created: ${block.hash}`)
-            } finally {
-                blockDb.isOpen() && await blockDb.close()
-            }
+            await this.import(block)
+            Logger.info(`Block genesis created: ${block.hash}`)
         }
 
     }
 
-    public async  getLocalTip() {
+    public async getLocalTip() {
         try {
             if (cacheTip)
                 return cacheTip
@@ -125,14 +64,12 @@ class BlockLevelDb {
 
     public getLastHashes(bestHeight: number): Promise<string[]> {
         return new Promise<string[]>(async (done) => {
-            blockDb.isClosed() && await blockDb.open()
 
             const resolve = async (hashes: string[]) => {
-                blockDb.isOpen() && await blockDb.close()
                 done(hashes)
             }
 
-            if (bestHeight > 0) {
+            if (bestHeight >= 0) {
                 const hashes: Array<{ height: number, hash: string }> = []
                 const min = BufferEx.zero().appendUInt32BE(ifNeg(bestHeight - 29, bestHeight)).toBuffer()
                 const max = BufferEx.zero().appendUInt32BE(bestHeight).toBuffer()
@@ -153,6 +90,7 @@ class BlockLevelDb {
     }
 
     public async import(block: Block) {
+        const timer = TimeCounter.begin()
         // Verify if require reorg
 
         // Import txs, if completed then save block
@@ -167,7 +105,7 @@ class BlockLevelDb {
             Logger.warn(`Block not found ${prevHashBlock.toString('hex')}`)
         }
 
-        const height = prevIdx ? prevIdx.readUInt32BE(0) + 1 : 1
+        const height = prevIdx ? prevIdx.readUInt32BE(0) + 1 : 0
         const heightRaw = BufferEx.zero().appendUInt32BE(height).toBuffer()
 
         const txs: Tx[] = block.transactions.map((t, idx) => {
@@ -221,7 +159,9 @@ class BlockLevelDb {
             .put('tip', cacheTip)
             .write()
 
-        return [height, cacheTip.txn]
+        timer.stop()
+
+        Logger.info(`Update chain [Block=${cacheTip.hash}, Height=${height}, Txn=${cacheTip.txn}, Progress=${(height / BtcNetwork.bestHeight * 100).toFixed(2)}%, MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
     }
 
 }
