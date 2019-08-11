@@ -5,7 +5,7 @@ import LoggerFactory from "../../utils/LogginFactory"
 import { Networks, Block } from 'bitcore-lib'
 import { wait } from "../../utils/Extras"
 import TimeCounter from "../../utils/TimeCounter"
-import BufferEx from "../../utils/BufferEx"
+import BufferHelper from "../../utils/BufferHelper"
 import '../../utils/ArrayExtension'
 import { Storages, Indexers } from "./stores";
 import { BtcBlockStore } from "./stores/BtcBlockStore";
@@ -13,6 +13,10 @@ import { BtcBlockStore } from "./stores/BtcBlockStore";
 const Logger = LoggerFactory.getLogger('Bitcoin Blockchain')
 
 class Blockchain extends EventEmitter {
+
+    public addBlock(block: Block) {
+        // TODO Procesar y agregar los bloques a la cadena de bloques
+    }
 
     private _synchronizeInitial = false
 
@@ -48,94 +52,128 @@ class Blockchain extends EventEmitter {
 
             Logger.info(`LocalTip [Hash=${tip.hash}, Height=${tip.height}]`)
 
-            while (true) {
-                if (disconnect)
-                    break
+            await this._requestBlocks(tip.height);
 
-                timer.start()
+            // while (true) {
+            //     if (disconnect)
+            //         break
 
-                let { hash, height } = await Indexers.BlockIndex.getLocalTip()
+            //     timer.start()
 
-                let locators = await Indexers.BlockIndex.getLastHashes(height)
+            //     let { hash, height } = await Indexers.BlockIndex.getLocalTip()
 
-                if (BtcNetwork.bestHeight <= height) {
-                    this._synchronizeInitial = true
-                    Logger.info(`Download finalized [Tip=${hash}, Height=${height}]`)
-                    this.emit('synchronized')
-                    return
-                } else {
-                    let blockToDownload = []
-                    let i = 5
+            //     let locators = await Indexers.BlockIndex.getLastHashes(height)
 
-                    while (i) {
+            //     if (BtcNetwork.bestHeight <= height) {
+            //         this._synchronizeInitial = true
+            //         Logger.info(`Download finalized [Tip=${hash}, Height=${height}]`)
+            //         this.emit('synchronized')
+            //         return
+            //     } else {
+            //         let blockToDownload = []
+            //         let i = 5
 
-                        const headers = await BtcNetwork.getHashes(locators)
+            //         while (i) {
 
-                        if (!headers || headers.length == 0)
-                            break
+            //             const headers = await BtcNetwork.getHashes(locators)
 
-                        if ([].concat(headers, locators).unique().length < locators.length + headers.length)
-                            continue
+            //             if (!headers || headers.length == 0)
+            //                 break
 
-                        Logger.trace(`Received ${headers.length} headers`)
+            //             if ([].concat(headers, locators).unique().length < locators.length + headers.length)
+            //                 continue
 
-                        blockToDownload.push(...headers)
-                        locators = headers.slice(headers.length - 30).reverse().concat(locators)
+            //             Logger.trace(`Received ${headers.length} headers`)
 
-                        i--
-                    }
+            //             blockToDownload.push(...headers)
+            //             locators = headers.slice(headers.length - 30).reverse().concat(locators)
 
-                    blockToDownload = blockToDownload.unique()
+            //             i--
+            //         }
 
-                    if (blockToDownload.length == 0) {
-                        timer.stop()
-                        await wait(10000)
-                        continue
-                    }
+            //         blockToDownload = blockToDownload.unique()
 
-                    const blockDownloader = BtcNetwork.getDownloader(blockToDownload)
+            //         if (blockToDownload.length == 0) {
+            //             timer.stop()
+            //             await wait(10000)
+            //             continue
+            //         }
 
-                    try {
-                        Storages.BlockDb.isClosed() && await Storages.BlockDb.open()
-                        Storages.TxIdxDb.isClosed() && await Storages.TxIdxDb.open()
-                        Storages.AddrIdxDb.isClosed() && await Storages.AddrIdxDb.open()
+            //         const blockDownloader = BtcNetwork.getDownloader(blockToDownload)
 
-                        for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
-                            const timer = TimeCounter.begin()
-                            const block = await blockDownloader.get(blockHash)
+            //         try {
+            //             Storages.BlockDb.isClosed() && await Storages.BlockDb.open()
+            //             Storages.TxIdxDb.isClosed() && await Storages.TxIdxDb.open()
+            //             Storages.AddrIdxDb.isClosed() && await Storages.AddrIdxDb.open()
 
-                            if (!block) {
-                                Logger.warn(`Fail in Bitcoin.Network#getBlock(${blockHash})`)
-                                break
-                            }
+            //             for (let i = 0, blockHash = blockToDownload[i]; blockDownloader.hasNext(); i++ , blockHash = blockToDownload[i]) {
+            //                 const timer = TimeCounter.begin()
+            //                 const block = await blockDownloader.get(blockHash)
 
-                            Logger.trace(`Processing block [Hash=${block.hash}]`)
+            //                 if (!block) {
+            //                     Logger.warn(`Fail in Bitcoin.Network#getBlock(${blockHash})`)
+            //                     break
+            //                 }
 
-                            const [height, txn] = await Indexers.BlockIndex.import(block)
+            //                 Logger.trace(`Processing block [Hash=${block.hash}]`)
 
-                            timer.stop()
+            //                 const [height, txn] = await Indexers.BlockIndex.import(block)
 
-                            Logger.info(`UpdateTip [Height=${height}, Hash=${block.hash}, Txn=${txn}, Progress=${(height / BtcNetwork.bestHeight * 100).toFixed(2)}% MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
-                        }
-                    } finally {
-                        Storages.BlockDb.isOpen() && await Storages.BlockDb.close()
-                        Storages.TxIdxDb.isOpen() && await Storages.TxIdxDb.close()
-                        Storages.AddrIdxDb.isOpen() && await Storages.AddrIdxDb.close()
-                    }
+            //                 timer.stop()
 
-                    timer.stop()
-                    Logger.debug(`Processed Blocks [Count=${blockToDownload.length}, Time=${timer.toLocalTimeString()}]`)
-                }
+            //                 Logger.info(`UpdateTip [Height=${height}, Hash=${block.hash}, Txn=${txn}, Progress=${(height / BtcNetwork.bestHeight * 100).toFixed(2)}% MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
+            //             }
+            //         } finally {
+            //             Storages.BlockDb.isOpen() && await Storages.BlockDb.close()
+            //             Storages.TxIdxDb.isOpen() && await Storages.TxIdxDb.close()
+            //             Storages.AddrIdxDb.isOpen() && await Storages.AddrIdxDb.close()
+            //         }
 
-            }
+            //         timer.stop()
+            //         Logger.debug(`Processed Blocks [Count=${blockToDownload.length}, Time=${timer.toLocalTimeString()}]`)
+            //     }
+
+            // }
         } catch (ex) {
             Logger.error(`Error="Fail to download blockchain", Exception=${ex.stack}`)
             BtcNetwork.removeAllListeners('disconnected')
+            await BtcNetwork.disconnect()
             return this.sync()
         } finally {
             timer && timer.stop()
         }
 
+    }
+
+    private async _requestBlocks(height: number) {
+        const locators = await BtcBlockStore.getLastHashes(height);
+        const { starts, stop } = this._getCheckpoints(locators, height);
+
+        BtcNetwork.sendGetHeaders(starts, stop);
+    }
+
+    private _getCheckpoints(locators: Array<string>, height: number) {
+        const checkpointData = [
+            { height: 11111, hash: "0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d" },
+            { height: 33333, hash: "000000002dd5588a74784eaa7ab0507a18ad16a236e7b1ce69f00d7ddfb5d0a6" },
+            { height: 74000, hash: "0000000000573993a3c9e41ce34471c079dcf5f52a0e824a81e7f953b8661a20" },
+            { height: 105000, hash: "00000000000291ce28027faea320c8d2b054b2e0fe44a773f3eefb151d6bdc97" },
+            { height: 134444, hash: "00000000000005b12ffd4cd315cd34ffd4a594f430ac814c91184a0d42d2b0fe" },
+            { height: 168000, hash: "000000000000099e61ea72015e79632f216fe6cb33d7899acb35b75c8303b763" },
+            { height: 193000, hash: "000000000000059f452a5f7340de6682a977387c17010ff6e6c3bd83ca8b1317" },
+            { height: 210000, hash: "000000000000048b95347e83192f69cf0366076336c639f9b7228e9ba171342e" },
+            { height: 216116, hash: "00000000000001b4f4b433e81ee46494af945cf96014816a4e2370f11b23df4e" },
+            { height: 225430, hash: "00000000000001c108384350f74090433e7fcf79a606b8e797f065b130575932" },
+            { height: 250000, hash: "000000000000003887df1f29024b06fc2200b55f8af8f35453d7be294df2d214" },
+            { height: 279000, hash: "0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40" },
+            { height: 295000, hash: "00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983" },
+        ]
+
+        for (const checkpoint of checkpointData)
+            if (height < checkpoint.height)
+                return { starts: locators, stop: checkpoint.hash }
+
+        return { starts: locators, stop: Array(65).join('0') }
     }
 
     public async getTxRaw(txid: Buffer) {
@@ -147,10 +185,10 @@ class Blockchain extends EventEmitter {
         if (!txIndex)
             return null
 
-        const rawData = BufferEx.fromHex(txIndex)
+        const rawData = BufferHelper.fromHex(txIndex)
 
         const txIndexRecord = {
-            hash: rawData.read(0, 32),
+            hash: BufferHelper.read(rawData, 0, 32),
             index: rawData.readUInt32LE(32),
             height: rawData.readUInt32LE(36)
         }
