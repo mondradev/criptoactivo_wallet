@@ -1,5 +1,5 @@
 import { Script, Input } from 'bitcore-lib';
-import BufferEx from '../../utils/BufferEx';
+import BufferHelper from '../../utils/BufferHelper';
 
 export type Addr = {
     hash: string
@@ -56,30 +56,23 @@ export class UTXO {
     }
 
     public toBuffer() {
-        return BufferEx.zero()
-            .appendUInt8(this._type)
-            .append(this._txid)
-            .appendUInt32LE(this._txindex)
-            .toBuffer()
+        let buf = BufferHelper.appendUInt8(BufferHelper.zero(), this._type)
+        buf = BufferHelper.append(buf, this._txid)
+
+        return BufferHelper.appendUInt32LE(buf, this._txindex)
     }
 
     public get outpoint() {
-        return BufferEx.zero()
-            .append(this._txid)
-            .appendUInt32LE(this._txindex)
-            .toBuffer()
+        let buf = BufferHelper.append(BufferHelper.zero(), this._txid)
+        return BufferHelper.appendUInt32LE(buf, this._txindex)
     }
 
     public toOutpointHex() {
-        return BufferEx.zero()
-            .append(this._txid)
-            .appendUInt32LE(this._txindex)
-            .toBuffer()
-            .toString('hex')
+        return BufferHelper.toHex(this.outpoint)
     }
 
     public toHex() {
-        return this.toBuffer().toString('hex')
+        return BufferHelper.toHex(this.toBuffer())
     }
 
     public static fromBuffer(raw: Buffer) {

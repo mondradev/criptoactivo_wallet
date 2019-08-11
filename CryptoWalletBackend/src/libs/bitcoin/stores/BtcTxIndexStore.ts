@@ -2,7 +2,7 @@ import level, { AbstractLevelDOWN, LevelUp, LevelUpChain } from 'level'
 import TimeCounter from "../../../utils/TimeCounter"
 
 import LoggerFactory from "../../../utils/LogginFactory"
-import BufferEx from "../../../utils/BufferEx"
+import BufferHelper from "../../../utils/BufferHelper"
 import { getDirectory } from "../../../utils/Extras";
 import { Tx } from "../BtcModel";
 
@@ -21,11 +21,8 @@ class TxIndexLevelDb {
         let idxBatch: LevelUpChain<Buffer, Buffer> = txIndexDb.batch()
 
         for (const tx of txs) {
-            const record = BufferEx.zero()
-                .append(tx.blockHash)
-                .appendUInt32LE(tx.txIndex)
-                .appendUInt32LE(tx.blockHeight)
-                .toBuffer()
+            let record = BufferHelper.appendUInt32LE(tx.blockHash, tx.txIndex)
+            record = BufferHelper.appendUInt32LE(record, tx.blockHeight)
 
             if (idxBatch.length > 10000) {
                 await idxBatch.write()

@@ -6,7 +6,7 @@ import level, { AbstractLevelDOWN, LevelUp } from 'level'
 
 import LoggerFactory from '../../../utils/LogginFactory'
 import { getDirectory, ifNeg } from '../../../utils/Extras';
-import BufferEx from '../../../utils/BufferEx';
+import BufferHelper from '../../../utils/BufferHelper';
 import { BtcAddrIndexStore } from './BtcAddrIndexStore';
 import { Tx, TxIn, TxOut, UTXO } from '../BtcModel';
 import Config from '../../../../config';
@@ -71,8 +71,8 @@ class BlockLevelDb {
 
             if (bestHeight >= 0) {
                 const hashes: Array<{ height: number, hash: string }> = []
-                const min = BufferEx.zero().appendUInt32BE(ifNeg(bestHeight - 29, bestHeight)).toBuffer()
-                const max = BufferEx.zero().appendUInt32BE(bestHeight).toBuffer()
+                const min = BufferHelper.appendUInt32BE(BufferHelper.zero(), ifNeg(bestHeight - 29, bestHeight))
+                const max = BufferHelper.appendUInt32BE(BufferHelper.zero(), bestHeight)
 
                 blockDb.createReadStream({ gte: min, lte: max })
                     .on('data', (data: { key: Buffer, value: Buffer }) => {
@@ -100,20 +100,23 @@ class BlockLevelDb {
         let prevIdx = null
 
         try {
-            prevIdx = await blkIndexDb.get(prevHashBlock)
+            prevIdx = BufferHelper.isNull(prevHashBlock) ? null : await blkIndexDb.get(prevHashBlock)
         } catch (ignore) {
-            Logger.warn(`Block not found ${prevHashBlock.toString('hex')}`)
+            Logger.warn(`Found orphan block ${hash.toString('hex')}`)
+            timer.stop()
+
+            return block
         }
 
         const height = prevIdx ? prevIdx.readUInt32BE(0) + 1 : 0
-        const heightRaw = BufferEx.zero().appendUInt32BE(height).toBuffer()
+        const heightRaw = BufferHelper.appendUInt32BE(BufferHelper.zero(), height)
 
         const txs: Tx[] = block.transactions.map((t, idx) => {
             const txID = t._getHash()
             const txIn: TxIn[] = t.inputs.filter((txin) => !txin.isNull()).map((txin, idx) => {
                 return {
                     txInIdx: idx,
-                    txInID: BufferEx.from(txID).appendUInt32LE(idx).toBuffer(),
+                    txInID: BufferHelper.appendUInt32LE(txID, idx),
                     uTxOut: UTXO.fromInput(txin)
                 }
             })

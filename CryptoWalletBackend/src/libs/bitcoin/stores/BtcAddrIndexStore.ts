@@ -1,5 +1,5 @@
 import LoggerFactory from "../../../utils/LogginFactory"
-import BufferEx from '../../../utils/BufferEx'
+import BufferHelper from '../../../utils/BufferHelper'
 import level from 'level'
 import { getDirectory } from "../../../utils/Extras"
 import { Script, Address, PublicKey, Networks } from "bitcore-lib"
@@ -174,17 +174,13 @@ class AddrIndexLevelDb {
                     .put(utxo.toBuffer(), address)
 
                 if (address.toString('hex') !== Array(65).join('0')) {
-                    const addrKey = BufferEx.zero()
-                        .appendUInt8(0)
-                        .append(address)
-                        .append(tx.txID)
-                        .toBuffer()
+                    let addrKey = BufferHelper.appendUInt8(BufferHelper.zero(), 0)
+                    addrKey = BufferHelper.append(addrKey, address)
+                    addrKey = BufferHelper.append(addrKey, tx.txID)
 
-                    const record = BufferEx.from(tx.txID)
-                        .appendUInt32LE(tx.txIndex)
-                        .append(tx.blockHash)
-                        .appendUInt32LE(tx.blockHeight)
-                        .toBuffer()
+                    let record = BufferHelper.appendUInt32LE(tx.txID, tx.txIndex)
+                    record = BufferHelper.append(record, tx.blockHash)
+                    record = BufferHelper.appendUInt32LE(record, tx.blockHeight)
 
                     if (addrBatch.length > 10000) {
                         await addrBatch.write()
@@ -227,17 +223,14 @@ class AddrIndexLevelDb {
                 stxoBatch.del(utxo.toBuffer())
                     .put(utxo.spent.toBuffer(), address)
 
-                const addrKey = BufferEx.zero()
-                    .appendUInt8(1)
-                    .append(address)
-                    .append(tx.txID)
-                    .toBuffer()
+                let addrKey = BufferHelper.appendUInt8(BufferHelper.zero(), 1)
+                addrKey = BufferHelper.append(addrKey, address)
+                addrKey = BufferHelper.append(addrKey, tx.txID)
 
-                const record = BufferEx.from(tx.txID)
-                    .appendUInt32LE(tx.txIndex)
-                    .append(tx.blockHash)
-                    .appendUInt32LE(tx.blockHeight)
-                    .toBuffer()
+                let record = Buffer.from(tx.txID)
+                record = BufferHelper.appendUInt32LE(record, tx.txIndex)
+                record = BufferHelper.append(record, tx.blockHash)
+                record = BufferHelper.appendUInt32LE(record, tx.blockHeight)
 
                 if (addrBatch.length > 10000) {
                     await addrBatch.write()
