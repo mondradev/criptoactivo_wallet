@@ -44,6 +44,8 @@ class BlockLevelDb {
         if (block) {
             await this.import(block)
             Logger.info(`Block genesis created: ${block.hash}`)
+
+            return { hash: block.hash, height: 0, txn: 0 }
         }
 
     }
@@ -105,7 +107,7 @@ class BlockLevelDb {
             Logger.warn(`Found orphan block ${hash.toString('hex')}`)
             timer.stop()
 
-            return block
+            return
         }
 
         const height = prevIdx ? prevIdx.readUInt32BE(0) + 1 : 0
