@@ -7,15 +7,46 @@ import { wait } from "../../utils/Extras"
 import TimeCounter from "../../utils/TimeCounter"
 import BufferHelper from "../../utils/BufferHelper"
 import '../../utils/ArrayExtension'
-import { Storages, Indexers } from "./stores";
-import { BtcBlockStore } from "./stores/BtcBlockStore";
+import { Storages, Indexers } from "./stores"
+import { BtcBlockStore } from "./stores/BtcBlockStore"
+import AsyncLock from 'async-lock'
+import TimeSpan from "../../utils/TimeSpan";
 
 const Logger = LoggerFactory.getLogger('Bitcoin Blockchain')
+const Lock = new AsyncLock()
 
 class Blockchain extends EventEmitter {
 
+    private _orphanBlocks = {}
+    private _searchNextBlock(hash: string) {
+        if (this._orphanBlocks[hash])
+            Lock.acquire('addBlock', async () => {
+                const block = this._orphanBlocks[hash]
+
+                delete this._orphanBlocks[hash]
+
+                await BtcBlockStore.import(block)
+                return block.hash
+            }).then(hash => hash && this._searchNextBlock(hash))
+    }
+
     public addBlock(block: Block) {
-        // TODO Procesar y agregar los bloques a la cadena de bloques
+        const hash = block.hash
+        const prevHash = BufferHelper.reverseToHex(block.header.prevHash)
+
+        this._orphanBlocks[prevHash] = block
+
+        if (!Lock.isBusy('addBlock'))
+            Lock.acquire('addBlock', async () => {
+                const tip = await BtcBlockStore.getLocalTip()
+
+                if (tip.hash === prevHash) {
+                    await BtcBlockStore.import(block)
+                    return hash
+                }
+
+                return tip.hash
+            }).then(hash => hash && this._searchNextBlock(hash))
     }
 
     private _synchronizeInitial = false
