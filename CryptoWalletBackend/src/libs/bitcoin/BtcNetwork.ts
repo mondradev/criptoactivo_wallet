@@ -308,13 +308,13 @@ class Network extends EventEmitter {
         Logger.debug(`Received ${message.headers.length} block headers [${message.headers[0].hash}] from ${peer.host}`)
 
         if (message.headers.length == 2000) {
-            // TODO Procesar bloques recibidos 
+            // TODO Validar bloques recibidos 
             //if (await this._validateHeaders(message.headers)) return
             this.sendGetHeaders(message.headers.reverse().slice(0, 30).map(blkHdr => blkHdr.hash), this._stoppingHash)
         } else
             this._stoppingHash = NULL_HASH
 
-        this._downloadBlocks(message.headers.map(header => header.hash))
+        this._downloadBlocks(message.headers.map(header => header.hash).reverse())
     }
 
     /**
