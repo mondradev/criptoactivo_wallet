@@ -9,7 +9,7 @@ export async function BitcoinWalletService(requestData: { method: string, body: 
         return
     }
 
-    if (!Bitcoin.Blockchain.synchronized) {
+    if (!Bitcoin.Network.isReady) {
         response(200, { payload: null, message: 'Bitcoin Synchronizing' })
         return
     }
