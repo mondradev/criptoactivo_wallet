@@ -1,4 +1,10 @@
 export default class BufferHelper {
+    public static reverseToHex(src: Buffer) {
+        return Buffer.from(src)
+            .reverse()
+            .toString('hex')
+    }
+    
     public static isNull(src: Buffer): boolean {
         for (const byte of src)
             if (byte != 0)
