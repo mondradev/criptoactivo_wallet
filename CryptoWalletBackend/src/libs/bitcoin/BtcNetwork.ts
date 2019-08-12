@@ -36,6 +36,9 @@ class Network extends EventEmitter {
     private _stoppingHash = NULL_HASH
     private _workers = new Array<Peer>()
     private _blocksToDownload = new Array<string>()
+    private _isReady = false
+
+    public get isReady(): boolean { return this._isReady }
 
     public constructor() {
         super()
@@ -79,12 +82,14 @@ class Network extends EventEmitter {
                 this._connected = true
                 clearTimeout(timeoutHandler)
                 done(connected)
+
+                Logger.info('Connected to Bitcoin Network')
             }
 
             if (this._connected)
                 resolve(true)
             else {
-                Logger.trace('Connecting pool, waiting for peers')
+                Logger.info('Connecting pool, waiting for peers')
                 this.once('ready', (connected) => resolve(connected))
             }
 
@@ -489,6 +494,39 @@ class Network extends EventEmitter {
         }
     }
 
+    /**
+     * Inicia la sincronización de la cadena de bloques.
+     */
+    public async startSync() {
+        if (!this.connected && !await this.connect())
+            throw new Error(`Please connect to Bitcoin network`)
+
+        if (await BtcBlockchain.getLocalHeight() == this.bestHeight) {
+            // TODO Initialize node
+        } else {
+            Logger.debug('Initializing blocks download')
+
+            await BtcBlockchain.initialize()
+            await this._requestBlocks()
+        }
+
+    }
+
+    /**
+     * Realiza una petición de bloques en el proceso de 'descarga inicial'.
+     */
+    private async _requestBlocks() {
+        const { starts, stop } = await BtcBlockchain.getLocators()
+
+        // TODO Optimizar la descarga para peticiones sin checkpoint
+        BtcBlockchain.on(stop, () => {
+            BtcBlockchain.removeAllListeners(stop)
+            this._requestBlocks()
+        })
+
+        this.sendGetHeaders(starts, stop)
+
+    }
 }
 
 const BtcNetwork = new Network()
