@@ -141,54 +141,66 @@ class Network extends EventEmitter {
                 return
             }
 
-            let peer = new Peer({
-                host: address,
-                port: this._configuration.port,
-                message: this._availableMessages,
-                network: Networks.defaultNetwork
-            })
+            await Lock.acquire('connectPeer', async (unlock) => {
+                if (this._connectedPeers >= this._configuration.maxConnections) {
+                    unlock()
+                    return
+                }
 
-            let timeout = null
-
-            this._addEventHandlers(peer)
-
-            peer.on('ready', async () => {
-                clearTimeout(timeout)
-
-                const connectedPeers = await Lock.acquire<number>('peer', (unlock) => {
-                    this._peers.push(peer)
-                    unlock(null, this._connectedPeers)
+                let peer = new Peer({
+                    host: address,
+                    port: this._configuration.port,
+                    message: this._availableMessages,
+                    network: Networks.defaultNetwork
                 })
 
-                Logger.info(`Peer connected ${connectedPeers}/${this._configuration.maxConnections} [Version=${peer.version}, Agent=${peer.subversion}, BestHeight=${peer.bestHeight}, Host=${peer.host}]`)
-                this._bestHeight = peer.bestHeight > this._bestHeight ? peer.bestHeight : this._bestHeight
+                let timeout = null
 
-                if (!this._connected)
-                    this.emit('ready', true)
+                this._addEventHandlers(peer)
 
-                peer.removeAllListeners('ready')
+                peer.on('ready', async () => {
+                    clearTimeout(timeout)
 
-                if (!this._connected)
+                    const connectedPeers = await Lock.acquire<number>('peer', (unlock) => {
+                        this._peers.push(peer)
+                        unlock(null, this._connectedPeers)
+                    })
+
+                    Logger.info(`Peer connected ${connectedPeers}/${this._configuration.maxConnections} [Version=${peer.version}, Agent=${peer.subversion}, BestHeight=${peer.bestHeight}, Host=${peer.host}]`)
+                    this._bestHeight = peer.bestHeight > this._bestHeight ? peer.bestHeight : this._bestHeight
+
+                    if (!this._connected)
+                        this.emit('ready', true)
+
+                    peer.removeAllListeners('ready')
+
+                    if (!this._connected)
+                        peer.disconnect()
+
+                    unlock()
+                })
+
+                try { peer.connect() } catch (ex) {
+                    peer.disconnect()
+                }
+
+                await wait(100)
+
+                timeout = setTimeout(() => {
                     peer.disconnect()
 
-                resolve()
+                    peer.removeAllListeners('error')
+                    peer.removeAllListeners('addr')
+                    peer.removeAllListeners('disconnect')
+                    peer.removeAllListeners('ready')
+
+                    unlock()
+                }, TIMEOUT_WAIT_CONNECT_PEER)
             })
 
-            peer.connect()
-
-            await wait(100)
-
-            timeout = setTimeout(() => {
-                peer.disconnect()
-
-                peer.removeAllListeners('error')
-                peer.removeAllListeners('addr')
-                peer.removeAllListeners('disconnect')
-                peer.removeAllListeners('ready')
-
-                resolve()
-            }, TIMEOUT_WAIT_CONNECT_PEER)
+            resolve()
         })
+
     }
 
     /**
@@ -240,6 +252,7 @@ class Network extends EventEmitter {
                 await this._connectPeer(IP)
 
                 connectedPeers = await Lock.acquire<number>('peer', (unlock) => unlock(null, this._connectedPeers))
+                await wait(100)
             }
         });
     }
@@ -392,7 +405,7 @@ class Network extends EventEmitter {
             let timers = {}
             let failed = false
 
-            const timeoutHandler = () => {
+            const timeoutHandler = async () => {
                 if (!pendingCount || failed)
                     return
 
@@ -405,6 +418,8 @@ class Network extends EventEmitter {
 
                 peer.removeAllListeners('block')
                 peer.disconnect()
+
+                await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
 
                 this._toStack(blocks.filter(hash => pending[hash]))
 
@@ -433,6 +448,7 @@ class Network extends EventEmitter {
                     if (!pendingCount) {
                         peer.removeAllListeners('block')
                         await Lock.acquire<Array<Peer>>('peer', () => !this._peers.includes(peer) ? this._peers.push(peer) : null)
+
                         await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
 
                         resolve()
@@ -517,12 +533,19 @@ class Network extends EventEmitter {
      */
     private async _requestBlocks() {
         const { starts, stop } = await BtcBlockchain.getLocators()
+        const height = await BtcBlockchain.getLocalHeight()
 
-        // TODO Optimizar la descarga para peticiones sin checkpoint
-        BtcBlockchain.on(stop, () => {
-            BtcBlockchain.removeAllListeners(stop)
+        let event = stop
+
+        if (event === NULL_HASH)
+            event = (((height / 10000) + 1) * 10000).toFixed(0)
+
+        BtcBlockchain.on(event, () => {
+            BtcBlockchain.removeAllListeners(event)
             this._requestBlocks()
         })
+
+        Logger.debug(`Request headers from ${starts[0]} to ${stop}`)
 
         this.sendGetHeaders(starts, stop)
 
