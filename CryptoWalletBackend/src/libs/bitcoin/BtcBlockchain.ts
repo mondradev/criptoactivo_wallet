@@ -21,7 +21,7 @@ class Blockchain extends EventEmitter {
     public async getLocators(): Promise<{ starts: string[], stop: string }> {
         const { height } = await BtcBlockStore.getLocalTip()
         const locators = await BtcBlockStore.getLastHashes(height)
-        return this._getCheckpoints(locators, height)
+        return { starts: locators, stop: this._getCheckpoints(height) }
     }
 
     public async emitAsync(event: string, ...args: any[]) {
@@ -33,12 +33,19 @@ class Blockchain extends EventEmitter {
         if (this._orphanBlocks[hash])
             Lock.acquire('addBlock', async () => {
                 const block = this._orphanBlocks[hash]
+                const blockHash = block.hash
 
                 delete this._orphanBlocks[hash]
 
                 await BtcBlockStore.import(block)
 
-                this.emitAsync(block.hash)
+                const height = await this.getLocalHeight()
+                let checkpoint = this._getCheckpoints(height - 1)
+
+                if (checkpoint !== NULL_HASH && checkpoint === blockHash)
+                    this.emitAsync(blockHash)
+                else if (checkpoint === NULL_HASH)
+                    height % 10000 == 0 && this.emitAsync(height.toString())
 
                 return block.hash
             }).then(hash => hash && this._searchNextBlock(hash))
@@ -60,7 +67,7 @@ class Blockchain extends EventEmitter {
         Networks.defaultNetwork = Networks.get(Config.getAsset('bitcoin').network)
     }
 
-    private _getCheckpoints(locators: Array<string>, height: number) {
+    private _getCheckpoints(height: number) {
         const checkpointData = [
             { height: 11111, hash: "0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d" },
             { height: 33333, hash: "000000002dd5588a74784eaa7ab0507a18ad16a236e7b1ce69f00d7ddfb5d0a6" },
@@ -79,9 +86,9 @@ class Blockchain extends EventEmitter {
 
         for (const checkpoint of checkpointData)
             if (height < checkpoint.height)
-                return { starts: locators, stop: checkpoint.hash }
+                return checkpoint.hash
 
-        return { starts: locators, stop: Array(65).join('0') }
+        return Array(65).join('0')
     }
 
     public async initialize() {
