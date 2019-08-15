@@ -16,14 +16,15 @@ type DbBinary = LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
 
 const blockDb: DbBinary = level(getDirectory('db/bitcoin/blocks'), { keyEncoding: 'binary', valueEncoding: 'binary' })
 const blkIndexDb: DbBinary = level(getDirectory('db/bitcoin/blocks/index'), { keyEncoding: 'binary', valueEncoding: 'binary' })
-const chainStateDb: LevelUp<AbstractLevelDOWN<string, { hash: string, height: number, txn: number }>> = level(getDirectory('db/bitcoin/chainstate'), { valueEncoding: 'json' })
+const chainStateDb: LevelUp<AbstractLevelDOWN<string, { hash: string, height: number, txn: number, time: Date }>> = level(getDirectory('db/bitcoin/chainstate'), { valueEncoding: 'json' })
 
 const Logger = LoggerFactory.getLogger('Bitcoin BlockStore')
 
 let cacheTip: {
     hash: string,
     height: number,
-    txn: number
+    txn: number,
+    time: Date
 } = null
 
 class BlockLevelDb {
@@ -45,7 +46,7 @@ class BlockLevelDb {
             await this.import(block)
             Logger.info(`Block genesis created: ${block.hash}`)
 
-            return { hash: block.hash, height: 0, txn: 0 }
+            return { hash: block.hash, height: 0, txn: block.transactions.length, time: new Date(block.header.time * 1000) }
         }
 
     }
@@ -56,11 +57,11 @@ class BlockLevelDb {
                 return cacheTip
 
             const localTip = await chainStateDb.get('tip')
-            return (cacheTip = localTip ? { hash: Buffer.from(localTip.hash, 'hex').toString('hex'), height: localTip.height, txn: localTip.txn }
-                : { hash: Array(65).join('0'), height: 0, txn: 0 })
+            return (cacheTip = localTip ? { hash: Buffer.from(localTip.hash, 'hex').toString('hex'), height: localTip.height, txn: localTip.txn, time: localTip.time }
+                : { hash: Array(65).join('0'), height: 0, txn: 0, time: null })
         }
         catch (ignore) {
-            return (cacheTip = { hash: Array(65).join('0'), height: 0, txn: 0 })
+            return (cacheTip = { hash: Array(65).join('0'), height: 0, txn: 0, time: null })
         }
     }
 
@@ -156,8 +157,8 @@ class BlockLevelDb {
             .write()
 
 
-        cacheTip = cacheTip ? { hash: Buffer.from(hash).toString('hex'), height, txn: cacheTip.txn + txs.length }
-            : { hash: Buffer.from(hash).toString('hex'), height, txn: txs.length }
+        cacheTip = cacheTip ? { hash: Buffer.from(hash).toString('hex'), height, txn: cacheTip.txn + txs.length, time: new Date(block.header.time * 1000) }
+            : { hash: Buffer.from(hash).toString('hex'), height, txn: txs.length, time: new Date(block.header.time * 1000) }
 
         await chainStateDb.batch()
             .del('tip')
@@ -166,7 +167,14 @@ class BlockLevelDb {
 
         timer.stop()
 
-        Logger.info(`Update chain [Block=${cacheTip.hash}, Height=${height}, Txn=${cacheTip.txn}, Progress=${(height / BtcNetwork.bestHeight * 100).toFixed(2)}%, MemUsage=${(process.memoryUsage().rss / 1048576).toFixed(2)} MB, Time=${timer.toLocalTimeString()}]`)
+        Logger.info(`Update chain [Block={}, Height={}, Txn={}, Progress={}, MemUsage={} MB, Time={}`,
+            cacheTip.hash,
+            cacheTip.height,
+            cacheTip.txn,
+            (height / BtcNetwork.bestHeight * 100).toFixed(2) + '%',
+            (process.memoryUsage().rss / 1048576).toFixed(2),
+            timer.toLocalTimeString()
+        )
     }
 
 }
