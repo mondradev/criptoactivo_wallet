@@ -13,6 +13,12 @@ const Lock = new AsyncLock()
 const NULL_HASH = Array(65).join('0')
 
 class Blockchain extends EventEmitter {
+    public getLocalTip(): Promise<{ hash: string, height: number, txn: number, time: Date }> {
+        return BtcBlockStore.getLocalTip()
+    }
+
+    public get orphan() { return Object.entries(this._orphanBlocks).length }
+
     public async getLocalHeight() {
         return (await BtcBlockStore.getLocalTip()).height
     }
@@ -141,7 +147,13 @@ class Blockchain extends EventEmitter {
 
         const tx = block.transactions[txIndexRecord.index]
 
-        Logger.debug(`Found tx [TxID=${tx.hash}, Outputs=${tx.outputs.length}, Inputs=${tx.inputs.length}, Coinbase=${tx.isCoinbase()}, Amount=${tx.outputAmount}]`)
+        Logger.debug(`Found tx [TxID=%, Outputs=%, Inputs=%, Coinbase=%, Amount=%`,
+            tx.hash,
+            tx.outputs.length,
+            tx.inputs.length,
+            tx.isCoinbase(),
+            tx.outputAmount
+        )
 
         return tx.toBuffer()
 
