@@ -2,7 +2,7 @@
     "name": "bitcoin",
     "network": "mainnet",
     "port": 8333,
-    "maxConnections": 16,
+    "maxConnections": 32,
     "seeds": [
         "seed.bitcoin.sipa.be",
         "dnsseed.bluematt.me",

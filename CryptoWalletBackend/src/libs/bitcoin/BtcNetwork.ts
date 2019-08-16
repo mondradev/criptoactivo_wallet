@@ -10,12 +10,13 @@ import AsyncLock from 'async-lock'
 import dns from 'dns'
 import { requireNotNull } from "../../utils/Preconditions";
 import BtcBlockchain from "./BtcBlockchain";
+import TimeSpan from "../../utils/TimeSpan";
 
 const Logger = LogginFactory.getLogger('Bitcoin Network')
 const Lock = new AsyncLock()
 
 const TIMEOUT_WAIT_HEADERS = 3000
-const TIMEOUT_WAIT_BLOCKS = 3000
+const TIMEOUT_WAIT_BLOCKS = 2000
 const TIMEOUT_WAIT_CONNECT = 20000
 const TIMEOUT_WAIT_CONNECT_PEER = 5000
 const MAX_BLOCKS_PER_PEER = 16
@@ -36,6 +37,7 @@ class Network extends EventEmitter {
     private _stoppingHash = NULL_HASH
     private _workers = new Array<Peer>()
     private _blocksToDownload = new Array<string>()
+    private _lastCheckpoint: Date
     private _isReady = false
 
     public get isReady(): boolean { return this._isReady }
@@ -328,7 +330,7 @@ class Network extends EventEmitter {
         if (message.headers.length == 2000) {
             // TODO Validar bloques recibidos 
             //if (await this._validateHeaders(message.headers)) return
-            this.sendGetHeaders(message.headers.reverse().slice(0, 30).map(blkHdr => blkHdr.hash), this._stoppingHash)
+            this.sendGetHeaders(message.headers.reverse().slice(0, 30).map(b => b.hash), this._stoppingHash)
         } else
             this._stoppingHash = NULL_HASH
 
@@ -388,101 +390,56 @@ class Network extends EventEmitter {
     /**
      * Descarga los bloques por un nodo especificado.
      * @param peer Nodo a realizar la tarea de descarga
-     * @param blocks Bloques a descargar
      */
-    private _downloadBlocksJob(peer: Peer, blocks: Array<string>) {
-        return new Promise<void>(async resolve => {
-            requireNotNull(peer, "El nodo no puede ser nulo")
-            requireNotNull(blocks, "La lista de bloques a descargar no puede ser nulo")
+    private async _createJob(peer: Peer) {
+        requireNotNull(peer, "El nodo no puede ser nulo")
 
-            if (blocks.length == 0)
-                return
+        await Lock.acquire<number>('worker', () => this._workers.push(peer))
 
-            await Lock.acquire<number>('worker', () => this._workers.push(peer))
+        let block: string
 
-            let pendingCount = blocks.length
-            let pending = {}
-            let timers = {}
-            let failed = false
+        while (block = await Lock.acquire('blocks', () => this._blocksToDownload.shift())) {
 
-            const timeoutHandler = async () => {
-                if (!pendingCount || failed)
-                    return
-
-                failed = true
-
-                const pendingBlocks = blocks.filter(hash => pending[hash])
-
-                Logger.warn(`Peer don't response {}, stacking blockhashes {}`,
-                    peer.host,
-                    pendingBlocks.length
-                )
-
-                for (const key in timers)
-                    clearTimeout(timers[key])
-
-                peer.removeAllListeners('block')
-                peer.disconnect()
-
-                await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
-
-                this._assignJob(pendingBlocks)
-
-                resolve()
-            }
-
-            try {
-
-
-                blocks.forEach(value => pending[value] = 1)
+            block = await new Promise<string>((resolve) => {
+                let timeout: NodeJS.Timeout;
 
                 peer.on('block', async (message: { block: Block }) => {
 
                     if (!message) return
 
-                    const hash = message.block.hash
+                    clearTimeout(timeout)
 
-                    clearTimeout(timers[hash])
+                    BtcBlockchain.addBlock(message.block)
 
-                    if (pending[hash]) {
-                        pending[hash] = 0
-                        pendingCount--
-                        BtcBlockchain.addBlock(message.block)
-                    }
+                    peer.removeAllListeners('block')
 
-                    if (!pendingCount) {
-                        peer.removeAllListeners('block')
-                        await Lock.acquire<Array<Peer>>('peer', () => !this._peers.includes(peer) ? this._peers.push(peer) : null)
-
-                        await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
-
-                        resolve()
-                    }
-
+                    resolve()
                 })
 
-                for (const hash of blocks) {
-                    if (failed) throw new Error()
+                peer.sendMessage(this._availableMessages.GetData.forBlock(block))
 
-                    peer.sendMessage(this._availableMessages.GetData.forBlock(hash))
-                    timers[hash] = setTimeout(timeoutHandler, TIMEOUT_WAIT_BLOCKS)
-                }
+                timeout = setTimeout(async () => {
+                    Logger.warn(`Don't response to request {} (GetData)`, peer.host)
+                    peer.removeAllListeners('block')
+                    peer.disconnect()
+
+                    await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
+
+                    resolve(block)
+                }, TIMEOUT_WAIT_BLOCKS)
+            })
+
+            if (block) {
+                await Lock.acquire('blocks', () => this._blocksToDownload = [block, ...this._blocksToDownload])
+                return
             }
-            catch (ex) {
-                Logger.warn(`Peer fail to download ${pendingCount} blocks ${peer.host}`)
-                timeoutHandler()
-            }
-        })
-    }
 
-    /**
-     * Añade al listado de espera de los bloques a descargar.
-     * @param blocks Hashes de los bloques a añadir a la lista de espera.
-     */
-    private async _toStack(blocks: string[]) {
-        await Lock.acquire('blocks', () => this._blocksToDownload = [...blocks, ...this._blocksToDownload])
+        }
 
-        this._continueDownload()
+        Logger.debug('Finalizing job ({})', peer.host)
+
+        await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
+        await Lock.acquire<Array<Peer>>('peer', () => !this._peers.includes(peer) ? this._peers.push(peer) : null)
     }
 
     /**
@@ -491,36 +448,19 @@ class Network extends EventEmitter {
     private async _continueDownload() {
         while (await Lock.acquire('worker', () => this._workers.length) < this._configuration.maxConnections) {
 
-            const hashes = await Lock.acquire('blocks', () => {
-                const blocks = new Array<string>()
-
-                while (blocks.length < MAX_BLOCKS_PER_PEER && this._blocksToDownload.length > 0)
-                    blocks.push(this._blocksToDownload.shift())
-
-                return blocks
-            })
-
-            if (!await this._assignJob(hashes))
+            if (await Lock.acquire('blocks', () => this._blocksToDownload.length) == 0)
                 break
+
+            let peer: Peer
+
+            while (!peer)
+                if (await Lock.acquire('peer', () => this._peers.length) > 0)
+                    peer = await Lock.acquire('peer', () => this._peers.shift())
+                else
+                    await wait(1000)
+
+            this._createJob(peer).then(this._continueDownload.bind(this))
         }
-    }
-
-
-    private async _assignJob(hashes: string[]) {
-        if (hashes.length == 0)
-            return false
-
-        let peer = null
-
-        while (!peer)
-            if (await Lock.acquire('peer', () => this._peers.length) > 0)
-                peer = await Lock.acquire('peer', () => this._peers.shift())
-            else
-                await wait(1000)
-
-        this._downloadBlocksJob(peer, hashes).then(this._continueDownload.bind(this))
-
-        return true
     }
 
     /**
@@ -544,7 +484,7 @@ class Network extends EventEmitter {
             }, 1000)
 
             await BtcBlockchain.initialize()
-            await this._requestBlocks()
+            this._requestBlocks()
         }
 
     }
@@ -556,12 +496,20 @@ class Network extends EventEmitter {
         const { starts, stop } = await BtcBlockchain.getLocators()
         const height = await BtcBlockchain.getLocalHeight()
 
+        this._lastCheckpoint = new Date()
+
         let event = stop
 
         if (event === NULL_HASH)
             event = (((height / 10000) + 1) * 10000).toFixed(0)
 
         BtcBlockchain.on(event, () => {
+            Logger.info('Checkpoint completed in {} from {} to {}',
+                TimeSpan.fromMiliseconds(Date.now() - (this._lastCheckpoint || new Date()).getTime()).toString(),
+                starts[0],
+                stop
+            )
+
             BtcBlockchain.removeAllListeners(event)
             this._requestBlocks()
         })
