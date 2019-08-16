@@ -1,5 +1,16 @@
 #!/bin/bash
 
+function requireCommand() {
+    if ![ -x "$(command -v $1)" ]
+    then 
+        echo "Require be install: $1 "
+        exit 1
+    fi
+}
+
+requireCommand sshpass
+requireCommand ssh
+
 BUILD_TYPE=$1
 VERSION=$(cat cwb_version)
 
@@ -39,10 +50,10 @@ function hasError() {
 CURRENT_PATH=$PWD
 CRYPTOWALLET_PATH=$CURRENT_PATH/cryptowalletbackend
 
-USERNAME=$2
-PASSWORD=$3
-HOSTNAME=$4
-PORT=$5
+USERNAME=$4
+PASSWORD=$5
+HOSTNAME=$2
+PORT=$3
 
 require "$USERNAME" "username"
 require "$PASSWORD" "password"

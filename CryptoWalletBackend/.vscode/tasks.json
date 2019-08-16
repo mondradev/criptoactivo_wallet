@@ -1,0 +1,113 @@
+{
+    // Vea https://go.microsoft.com/fwlink/?LinkId=733558 
+    // para la documentación acerca del formato tasks.json
+    "version": "2.0.0",
+    "tasks": [{
+            "label": "build",
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "problemMatcher": [
+                "$tsc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "watch",
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "option": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "install",
+            "type": "npm",
+            "script": "install"
+        },
+        {
+            "type": "shell",
+            "label": "clean",
+            "windows": {
+                "command": "echo db,build | Foreach-Object { rm $_/* -fo -r }"
+            },
+            "linux": {
+                "command": "rm",
+                "args": [
+                    "-rfv",
+                    "build/*",
+                    "db/*"
+                ]
+            }
+        },
+        {
+            "type": "shell",
+            "label": "publish",
+            "windows": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "'cd bin ; ./publish.sh ${input:BuildType} ${input:Host} ${input:Port} ${input:Username} ${input:Password}'"
+                ]
+            },
+            "linux": {
+                "command": "bin/publish.sh",
+                "args": [
+                    "${input:BuildType}",
+                    "${input:Host}",
+                    "${input:Port}",
+                    "${input:Username}",
+                    "${input:Password}"
+                ]
+            }
+        },
+        {
+            "label": "test",
+            "type": "npm",
+            "script": "test",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        }
+    ],
+    "inputs": [{
+            "id": "BuildType",
+            "description": "Tipo de construcción (build|minor|major)",
+            "default": "build",
+            "type": "pickString",
+            "options": [
+                "build",
+                "minor",
+                "major"
+            ]
+        },
+        {
+            "id": "Username",
+            "description": "Usuario de conexión SSH",
+            "type": "promptString",
+            "default": "innsyssh"
+        },
+        {
+            "id": "Password",
+            "description": "Contraseña de conexión SSH",
+            "type": "promptString",
+        },
+        {
+            "id": "Host",
+            "description": "URL de conexión SSH",
+            "type": "promptString",
+            "default": "innsytech.com"
+        },
+        {
+            "id": "Port",
+            "description": "Puerto para la conexión SSH",
+            "type": "promptString",
+            "default": "22"
+        }
+    ]
+}

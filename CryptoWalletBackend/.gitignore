@@ -1,6 +1,5 @@
-.vscode
 build
 node_modules
 package-lock.json
 bin/cryptowallet_*.tar.gz
-db/bitcoin/*
+db
