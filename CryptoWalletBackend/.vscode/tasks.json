@@ -45,6 +45,25 @@
             }
         },
         {
+            "label": "load config",
+            "type": "shell",
+            "windows": {
+                "command": "cp",
+                "args": [
+                    "config/bitcoin.json",
+                    "build/config/"
+                ]
+            },
+            "linux": {
+                "command": "cp",
+                "args": [
+                    "config/bitcoin.json",
+                    "build/config/"
+
+                ]
+            }
+        },
+        {
             "type": "shell",
             "label": "publish",
             "windows": {
