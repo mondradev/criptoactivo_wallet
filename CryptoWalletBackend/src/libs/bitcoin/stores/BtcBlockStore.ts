@@ -99,13 +99,13 @@ class BlockLevelDb {
         // Import txs, if completed then save block
         const hash = block._getHash()
 
-        const prevHashBlock = Buffer.from(block.header.prevHash).reverse()
+        const prevHashBlock = Buffer.from(block.header.prevHash)
         let prevIdx = null
 
         try {
             prevIdx = BufferHelper.isNull(prevHashBlock) ? null : await blkIndexDb.get(prevHashBlock)
         } catch (ignore) {
-            Logger.warn(`Found orphan block ${hash.toString('hex')}`)
+            Logger.warn(`Found orphan block ${BufferHelper.reverseToHex(hash)}`)
             timer.stop()
 
             return
@@ -157,8 +157,8 @@ class BlockLevelDb {
             .write()
 
 
-        cacheTip = cacheTip ? { hash: Buffer.from(hash).toString('hex'), height, txn: cacheTip.txn + txs.length, time: new Date(block.header.time * 1000) }
-            : { hash: Buffer.from(hash).toString('hex'), height, txn: txs.length, time: new Date(block.header.time * 1000) }
+        cacheTip = cacheTip ? { hash: BufferHelper.reverseToHex(hash), height, txn: cacheTip.txn + txs.length, time: new Date(block.header.time * 1000) }
+            : { hash: BufferHelper.reverseToHex(hash), height, txn: txs.length, time: new Date(block.header.time * 1000) }
 
         await chainStateDb.batch()
             .del('tip')
