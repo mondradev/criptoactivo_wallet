@@ -13,7 +13,7 @@ const utxoIndexDb = level(getDirectory('db/bitcoin/addr/utxo'), { keyEncoding: '
 
 const MAX_CACHE_SIZE = 5000000
 const MB = (1024 * 1024)
-const CACHE_ITEM_SIZE = 37 * 2 + 21
+const CACHE_ITEM_SIZE = 544 // 37 * 2 + 21
 
 const cacheCoin = new Map<string, { address?: Buffer }>()
 
@@ -257,6 +257,7 @@ class AddrIndexLevelDb {
 
     public loadCache() {
         return new Promise<void>((resolve) => {
+            let i: number = 0
             Logger.debug(`Open UTXO data [MemUsage=${(process.memoryUsage().rss / MB).toFixed(2)} MB]`)
             utxoIndexDb.createReadStream({
                 gte: new UTXO(Buffer.alloc(32, 0), 0).toBuffer(),
@@ -265,7 +266,11 @@ class AddrIndexLevelDb {
                 .on('data', (data: { key: Buffer, value: Buffer }) =>
                     cacheCoin.set(data.key.toString('hex', 1), { address: data.value }))
                 .on('end', () => {
-                    Logger.info(`Loaded UTXO cache [Total=${cacheCoin.size}, MemUsage=${(process.memoryUsage().rss / MB).toFixed(2)} MB]`)
+                    Logger.info(`Loaded UTXO cache [Total={} MB({}utxo), MemUsage={} MB]`,
+                        (cacheCoin.size * CACHE_ITEM_SIZE / MB).toFixed(2),
+                        cacheCoin.size,
+                        (process.memoryUsage().rss / MB).toFixed(2)
+                    )
                     resolve()
                 })
         })
