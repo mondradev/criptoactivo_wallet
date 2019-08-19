@@ -8,6 +8,9 @@
         "request": "launch",
         "name": "Start Server",
         "program": "${workspaceFolder}/build/src/server.js",
+        "args": [
+            "--log-level=info"
+        ],
         "outFiles": [
             "${workspaceFolder}/build/**/*.js"
         ]
