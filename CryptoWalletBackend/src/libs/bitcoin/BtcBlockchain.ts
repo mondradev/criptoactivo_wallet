@@ -103,6 +103,8 @@ class Blockchain extends EventEmitter {
 
         this._initialized = true
 
+        Logger.info('Initializing node')
+
         let tip = await Indexers.BlockIndex.getLocalTip()
 
         if (tip.hash === NULL_HASH)
