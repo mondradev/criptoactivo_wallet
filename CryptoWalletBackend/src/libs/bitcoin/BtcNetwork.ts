@@ -16,11 +16,20 @@ const Logger = LogginFactory.getLogger('Bitcoin Network')
 const Lock = new AsyncLock()
 
 const TIMEOUT_WAIT_HEADERS = 3000
-const TIMEOUT_WAIT_BLOCKS = 2000
+const TIMEOUT_WAIT_BLOCKS = 3000
 const TIMEOUT_WAIT_CONNECT = 20000
 const TIMEOUT_WAIT_CONNECT_PEER = 5000
-const MAX_BLOCKS_PER_PEER = 16
-const NULL_HASH = Array(65).join('0');
+const NULL_HASH = Array(65).join('0')
+
+const fnReadMessage: () => void = Peer.prototype['_readMessage']
+
+Peer.prototype['_readMessage'] = function () {
+    try {
+        fnReadMessage.apply(this)
+    } catch (e) {
+        this._onError(e)
+    }
+}
 
 /**
  * Gestiona todas las funciones de la red de Bitcoin.
@@ -77,7 +86,7 @@ class Network extends EventEmitter {
      * @returns {Promise<boolean>} Una promesa con un valor true que indica que se ha conectado el pool.
      */
     public connect(): Promise<boolean> {
-        return new Promise((done) => {
+        return new Promise(async (done) => {
             const timeoutHandler = setTimeout(() => this.emit('ready', false), TIMEOUT_WAIT_CONNECT)
 
             const resolve = (connected: boolean) => {
@@ -91,11 +100,11 @@ class Network extends EventEmitter {
             if (this._connected)
                 resolve(true)
             else {
-                Logger.info('Connecting pool, waiting for peers')
                 this.once('ready', (connected) => resolve(connected))
-            }
 
-            this._discoveringPeers();
+                await this._discoveringPeers()
+                this._fillConnections()
+            }
         })
     }
 
@@ -103,17 +112,27 @@ class Network extends EventEmitter {
      * Resuelve las IP desde las semillas del DNS.
      */
     private async _discoveringPeers() {
+        Logger.info('Discovering peers from DNS')
+
         for (const seed of this._configuration.seeds) {
             const addresses = await this._resolveDns(seed)
 
-            for (const node of addresses) {
-                let connectedPeers = await Lock.acquire<number>('peer', (unlock) => unlock(null, this._connectedPeers))
+            for (const node of addresses)
+                this._availableNodes.push(node)
+        }
+    }
 
-                if (this._configuration.maxConnections > connectedPeers)
-                    await this._connectPeer(node)
-                else
-                    this._availableNodes.push(node)
-            }
+    /**
+     * Rellena las conexiones del pool del nodo.
+     */
+    private async _fillConnections() {
+        Logger.info('Connecting pool, waiting for peers')
+
+        while (!this._disconnecting) {
+            if (this._configuration.maxConnections > await Lock.acquire('peer', () => this._connectedPeers))
+                await this._connectPeer(await Lock.acquire('peer', () => this._availableNodes.shift()))
+            else
+                await wait(1000)
         }
     }
 
@@ -168,7 +187,15 @@ class Network extends EventEmitter {
                         unlock(null, this._connectedPeers)
                     })
 
-                    Logger.info(`Peer connected ${connectedPeers}/${this._configuration.maxConnections} [Version=${peer.version}, Agent=${peer.subversion}, BestHeight=${peer.bestHeight}, Host=${peer.host}]`)
+                    Logger.info(`Peer connected {}/{} [Version={}, Agent={}, BestHeight={}, Host={}]`,
+                        connectedPeers,
+                        this._configuration.maxConnections,
+                        peer.version,
+                        peer.subversion,
+                        peer.bestHeight,
+                        peer.host
+                    )
+
                     this._bestHeight = peer.bestHeight > this._bestHeight ? peer.bestHeight : this._bestHeight
 
                     if (!this._connected)
@@ -182,9 +209,7 @@ class Network extends EventEmitter {
                     unlock()
                 })
 
-                try { peer.connect() } catch (ex) {
-                    peer.disconnect()
-                }
+                peer.connect()
 
                 await wait(100)
 
@@ -245,17 +270,6 @@ class Network extends EventEmitter {
             })
 
             Logger.info(`Peer disconnected ${connectedPeers}/${this._configuration.maxConnections} [Host=${peer.host}]`)
-
-            while (this._connected // Conectado a la red
-                && this._configuration.maxConnections > connectedPeers // No llegar al limite de conexiones
-                && this._availableNodes.length > 0) { // Direcciones de nodos disponibles por conectar
-
-                const IP = this._availableNodes.shift()
-                await this._connectPeer(IP)
-
-                connectedPeers = await Lock.acquire<number>('peer', (unlock) => unlock(null, this._connectedPeers))
-                await wait(100)
-            }
         });
     }
 
@@ -325,16 +339,18 @@ class Network extends EventEmitter {
         if (peer.network.name !== Networks.defaultNetwork.name)
             return
 
-        Logger.debug(`Received ${message.headers.length} block headers [${message.headers[0].hash}] from ${peer.host}`)
+        Logger.info(`Received {} block headers [{}] from {}`, message.headers.length, message.headers[0].hash, peer.host)
+
+        const hashes = message.headers.map(b => b.hash)
 
         if (message.headers.length == 2000) {
             // TODO Validar bloques recibidos 
             //if (await this._validateHeaders(message.headers)) return
-            this.sendGetHeaders(message.headers.reverse().slice(0, 30).map(b => b.hash), this._stoppingHash)
+            this.sendGetHeaders(new Array(...hashes).reverse().slice(0, 30), this._stoppingHash)
         } else
             this._stoppingHash = NULL_HASH
 
-        this._downloadBlocks(message.headers.map(header => header.hash).reverse())
+        this._downloadBlocks(hashes)
     }
 
     /**
@@ -396,11 +412,11 @@ class Network extends EventEmitter {
 
         await Lock.acquire<number>('worker', () => this._workers.push(peer))
 
-        let block: string
+        let blockHash: string
 
-        while (block = await Lock.acquire('blocks', () => this._blocksToDownload.shift())) {
+        while (blockHash = await Lock.acquire('blocks', () => this._blocksToDownload.shift())) {
 
-            block = await new Promise<string>((resolve) => {
+            blockHash = await new Promise<string>(async (resolve) => {
                 let timeout: NodeJS.Timeout;
 
                 peer.on('block', async (message: { block: Block }) => {
@@ -409,14 +425,14 @@ class Network extends EventEmitter {
 
                     clearTimeout(timeout)
 
-                    BtcBlockchain.addBlock(message.block)
+                    await BtcBlockchain.addBlock(message.block)
 
                     peer.removeAllListeners('block')
 
                     resolve()
                 })
 
-                peer.sendMessage(this._availableMessages.GetData.forBlock(block))
+                peer.sendMessage(this._availableMessages.GetData.forBlock(blockHash))
 
                 timeout = setTimeout(async () => {
                     Logger.warn(`Don't response to request {} (GetData)`, peer.host)
@@ -425,12 +441,12 @@ class Network extends EventEmitter {
 
                     await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
 
-                    resolve(block)
+                    resolve(blockHash)
                 }, TIMEOUT_WAIT_BLOCKS)
             })
 
-            if (block) {
-                await Lock.acquire('blocks', () => this._blocksToDownload = [block, ...this._blocksToDownload])
+            if (blockHash) {
+                await Lock.acquire('blocks', () => this._blocksToDownload = [blockHash, ...this._blocksToDownload])
                 return
             }
 
@@ -473,17 +489,27 @@ class Network extends EventEmitter {
         if (await BtcBlockchain.getLocalHeight() == this.bestHeight) {
             // TODO Initialize node
         } else {
-            Logger.debug('Initializing blocks download')
+            await BtcBlockchain.initialize()
+
+            Logger.debug('Starting blocks download')
 
             let lastHeight = await BtcBlockchain.getLocalHeight()
 
             setInterval(async () => {
                 let { hash, height, txn, time } = await BtcBlockchain.getLocalTip()
-                Logger.info(`Height=${height}, Progress=${(height / this.bestHeight * 100).toFixed(2)}, Rate=${height - lastHeight} Orphan=${BtcBlockchain.orphan}, Time=${time.toLocaleString()}, Txn=${txn}, Hash=${hash}`)
+                Logger.info(`Height={}, Progress={}, Rate={} Orphan={}, Time={}, Txn={}, Hash={}, MemUsage={} MB`,
+                    height,
+                    (height / this.bestHeight * 100).toFixed(2),
+                    height - lastHeight,
+                    BtcBlockchain.orphan,
+                    time.toLocaleString(),
+                    txn,
+                    hash,
+                    (process.memoryUsage().rss / 1048576).toFixed(2)
+                )
                 lastHeight = height
             }, 1000)
 
-            await BtcBlockchain.initialize()
             this._requestBlocks()
         }
 
@@ -514,7 +540,7 @@ class Network extends EventEmitter {
             this._requestBlocks()
         })
 
-        Logger.debug(`Request headers from ${starts[0]} to ${stop}`)
+        Logger.info('Request headers from {} to {}', starts[0], stop)
 
         this.sendGetHeaders(starts, stop)
 
