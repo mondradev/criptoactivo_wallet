@@ -5,25 +5,25 @@
     "tasks": [
         {
             "type": "npm",
-            "label": "npm: iniciar",
+            "label": "run",
             "script": "start",
             "problemMatcher": []
         },
         {
             "type": "npm",
-            "label": "npm: instalar todo",
+            "label": "install dependencies",
             "script": "install",
             "problemMatcher": []
         },
         {
             "type": "npm",
-            "label": "npm: prueba",
+            "label": "test",
             "script": "test",
             "problemMatcher": []
         },
         {
             "type": "typescript",
-            "label": "tsc: compilación - tsconfig.json",
+            "label": "build",
             "tsconfig": "tsconfig.json",
             "problemMatcher": [
                 "$tsc"
@@ -32,7 +32,7 @@
         {
             "type": "typescript",
             "tsconfig": "tsconfig.json",
-            "label": "tsc: seguir - tsconfig.json",
+            "label": "watch",
             "option": "watch",
             "problemMatcher": [
                 "$tsc-watch"
@@ -40,7 +40,7 @@
         },
         {
             "type": "npm",
-            "label": "npm: publicar",
+            "label": "publish",
             "script": "publish",
             "problemMatcher": []
         }
