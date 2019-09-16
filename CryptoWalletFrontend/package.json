@@ -4,7 +4,7 @@
   "description": "Sitio web oficial de Cryptowallet",
   "main": "index.js",
   "scripts": {
-    "start": "node node_modules/http-server/bin/http-server web",
+    "start": "node node_modules/http-server/bin/http-server web -o http://127.0.0.1:8080/wallet/index.html",
     "test": "echo \"Error: no test specified\" && exit 1",
     "publish": "bash -c 'cd bin/ ; ./publish.sh build innsyweb 1nn5yT3ch innsytech.com 22'"
   },
