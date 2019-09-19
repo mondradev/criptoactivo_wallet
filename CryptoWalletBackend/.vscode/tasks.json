@@ -2,7 +2,8 @@
     // Vea https://go.microsoft.com/fwlink/?LinkId=733558 
     // para la documentación acerca del formato tasks.json
     "version": "2.0.0",
-    "tasks": [{
+    "tasks": [
+        {
             "label": "build",
             "type": "typescript",
             "tsconfig": "tsconfig.json",
@@ -59,7 +60,6 @@
                 "args": [
                     "config/bitcoin.json",
                     "build/config/"
-
                 ]
             }
         },
