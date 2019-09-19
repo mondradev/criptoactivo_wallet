@@ -16,6 +16,7 @@
     "dns": "^0.2.2",
     "express": "^4.16.4",
     "level": "^5.0.1",
+    "mongodb-client": "0.0.1",
     "queue-fifo": "^0.2.6",
     "typescript-logging": "^0.6.3",
     "yargs": "^13.2.4"

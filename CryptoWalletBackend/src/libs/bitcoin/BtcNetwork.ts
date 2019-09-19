@@ -1,3 +1,7 @@
+import NetworkStatus from './NetworkStatus'
+import NetworkEvents from './NetworkEvents'
+import Constants from './Constants'
+
 import LogginFactory from "../../utils/LogginFactory"
 import { wait } from "../../utils/Extras"
 
@@ -12,14 +16,9 @@ import { requireNotNull } from "../../utils/Preconditions";
 import BtcBlockchain from "./BtcBlockchain";
 import TimeSpan from "../../utils/TimeSpan";
 
-const Logger = LogginFactory.getLogger('Bitcoin Network')
+const ClassName = "Bitcoin Network"
+const Logger = LogginFactory.getLogger(ClassName)
 const Lock = new AsyncLock()
-
-const TIMEOUT_WAIT_HEADERS = 5000
-const TIMEOUT_WAIT_BLOCKS = 5000
-const TIMEOUT_WAIT_CONNECT = 20000
-const TIMEOUT_WAIT_CONNECT_PEER = 5000
-const NULL_HASH = Array(65).join('0')
 
 const fnReadMessage: () => void = Peer.prototype['_readMessage']
 
@@ -43,7 +42,7 @@ class Network extends EventEmitter {
     private _configuration: AssetConfig
     private _availableNodes = new Array<string>()
     private _bestHeight = 0
-    private _stoppingHash = NULL_HASH
+    private _stoppingHash = Constants.NullHash
     private _workers = new Array<Peer>()
     private _blocksToDownload = new Array<string>()
     private _lastCheckpoint: Date
@@ -54,7 +53,7 @@ class Network extends EventEmitter {
     public constructor() {
         super()
 
-        this._configuration = Config.getAsset('bitcoin')
+        this._configuration = Config.getAsset(Constants.Bitcoin)
 
         if (!this._configuration)
             throw new Error(`Require Bitcoin configuration`)
@@ -63,7 +62,7 @@ class Network extends EventEmitter {
 
         this._availableMessages = new Messages({ network: Networks.defaultNetwork })
 
-        this.on('headers', this._headerHandler)
+        this.on(NetworkEvents.Headers, this._headerHandler)
     }
 
     /**
@@ -87,7 +86,8 @@ class Network extends EventEmitter {
      */
     public connect(): Promise<boolean> {
         return new Promise(async (done) => {
-            const timeoutHandler = setTimeout(() => this.emit('ready', false), TIMEOUT_WAIT_CONNECT)
+            const timeoutHandler = setTimeout(() => this.emit('ready', false),
+                Constants.Timeouts.WaitForConnectNet)
 
             const resolve = (connected: boolean) => {
                 this._connected = true
@@ -222,7 +222,7 @@ class Network extends EventEmitter {
                     peer.removeAllListeners('ready')
 
                     unlock()
-                }, TIMEOUT_WAIT_CONNECT_PEER)
+                }, Constants.Timeouts.WaitForConnectPeer)
             })
 
             resolve()
@@ -280,7 +280,7 @@ class Network extends EventEmitter {
      * @returns {Promise<void>} Promesa vacía. 
      */
     public async sendGetHeaders(starts: Array<string>, stop: string): Promise<void> {
-        this._stoppingHash = stop ? stop : NULL_HASH
+        this._stoppingHash = stop ? stop : Constants.NullHash
 
         let completed = false
 
@@ -296,14 +296,14 @@ class Network extends EventEmitter {
                         let timeout = null
 
                         // Evento de recepción de las cabeceras
-                        peer.on('headers', (message: { headers: Array<BlockHeader> }) => {
+                        peer.on(NetworkEvents.Headers, (message: { headers: Array<BlockHeader> }) => {
                             if (!message)
                                 return
 
                             clearTimeout(timeout)
 
-                            peer.removeAllListeners('headers')
-                            this.emit('headers', peer, message)
+                            peer.removeAllListeners(NetworkEvents.Headers)
+                            this.emit(NetworkEvents.Headers, peer, message)
                             resolve(true)
                         })
 
@@ -312,10 +312,10 @@ class Network extends EventEmitter {
 
                         // Temporizador de espera de la respuesta
                         timeout = setTimeout(() => {
-                            peer.removeAllListeners('headers')
+                            peer.removeAllListeners(NetworkEvents.Headers)
                             peer.disconnect()
                             resolve(false)
-                        }, TIMEOUT_WAIT_HEADERS)
+                        }, Constants.Timeouts.WaitForHeaders)
                     }
                 })
 
@@ -328,7 +328,7 @@ class Network extends EventEmitter {
     }
 
     /**
-     * Controlador del evento 'Headers'.
+     * Controlador del evento Headers.
      * @param {Peer} peer Nodo que responde a la petición de 'GetHeaders'.
      * @param {Messages} message Mensaje de respuesta con el vector de encabezados.
      */
@@ -348,7 +348,7 @@ class Network extends EventEmitter {
             //if (await this._validateHeaders(message.headers)) return
             this.sendGetHeaders(new Array(...hashes).reverse().slice(0, 30), this._stoppingHash)
         } else
-            this._stoppingHash = NULL_HASH
+            this._stoppingHash = Constants.NullHash
 
         this._downloadBlocks(hashes)
     }
@@ -442,7 +442,7 @@ class Network extends EventEmitter {
                     await Lock.acquire<Array<Peer>>('worker', () => this._workers = this._workers.includes(peer) ? this._workers.remove(peer) : this._workers)
 
                     resolve(blockHash)
-                }, TIMEOUT_WAIT_BLOCKS)
+                }, Constants.Timeouts.WaitForBlocks)
             })
 
             if (blockHash) {
@@ -526,7 +526,7 @@ class Network extends EventEmitter {
 
         let event = stop
 
-        if (event === NULL_HASH)
+        if (event === Constants.NullHash)
             event = (((height / 10000) + 1) * 10000).toFixed(0)
 
         BtcBlockchain.on(event, () => {

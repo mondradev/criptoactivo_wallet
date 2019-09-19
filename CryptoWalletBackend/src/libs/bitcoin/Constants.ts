@@ -2,7 +2,7 @@
  * Constantes utilizadas en el módulo de Bitcoin.
  */
 const CONSTANTS = {
-    Bitcoin: "Bitcoin",
+    Bitcoin: "bitcoin",
     Timeouts: {
         WaitForHeaders: 5000,
         WaitForBlocks: 5000,
