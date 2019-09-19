@@ -15,8 +15,8 @@ import TimeSpan from "../../utils/TimeSpan";
 const Logger = LogginFactory.getLogger('Bitcoin Network')
 const Lock = new AsyncLock()
 
-const TIMEOUT_WAIT_HEADERS = 3000
-const TIMEOUT_WAIT_BLOCKS = 3000
+const TIMEOUT_WAIT_HEADERS = 5000
+const TIMEOUT_WAIT_BLOCKS = 5000
 const TIMEOUT_WAIT_CONNECT = 20000
 const TIMEOUT_WAIT_CONNECT_PEER = 5000
 const NULL_HASH = Array(65).join('0')
