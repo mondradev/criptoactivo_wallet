@@ -20,15 +20,6 @@ const ClassName = "Bitcoin Network"
 const Logger = LogginFactory.getLogger(ClassName)
 const Lock = new AsyncLock()
 
-const fnReadMessage: () => void = Peer.prototype['_readMessage']
-
-Peer.prototype['_readMessage'] = function () {
-    try {
-        fnReadMessage.apply(this)
-    } catch (e) {
-        this._onError(e)
-    }
-}
 
 /**
  * Gestiona todas las funciones de la red de Bitcoin.
