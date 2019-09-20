@@ -37,7 +37,12 @@ enum NetworkEvents {
     /**
      * Recepción de las transacciones en memoría, sin agregar a un bloque válido.
      */
-    Mempool = 'mempool'
+    Mempool = 'mempool',
+
+    /**
+     * Iniciar procesamiento.
+     */
+    Start = 'start'
 }
 
 export default NetworkEvents

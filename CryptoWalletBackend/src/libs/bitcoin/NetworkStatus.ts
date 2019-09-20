@@ -21,7 +21,11 @@ enum NetworkStatus {
     /**
      * Red sincronizada. Se aceptan conexiones entrantes.
      */
-    Synchronized
+    Synchronized,
+    /**
+     * En proceso de desconexión de los nodos.
+     */
+    Disconnecting
 }
 
 export default NetworkStatus
