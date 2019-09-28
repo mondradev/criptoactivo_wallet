@@ -10,13 +10,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
   <!-- awesone fonts css-->
-  <link href="/css/font-awesome.css" rel="stylesheet" type="text/css">
+  <link href="../css/font-awesome.css" rel="stylesheet" type="text/css">
   <!-- owl carousel css-->
-  <link rel="stylesheet" href="/owl-carousel/assets/owl.carousel.min.css" type="text/css">
+  <link rel="stylesheet" href="../owl-carousel/assets/owl.carousel.min.css" type="text/css">
   <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
   <!-- custom CSS -->
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
   <title>CriptoActivo</title>
   <style>
     .title-brand {
@@ -61,6 +61,41 @@
     #footer-cita {
       margin-top: 50px;
     }
+
+    .price-chart-container {
+      margin: 3em auto;
+    }
+
+    .price-chart-container>* {
+      display: inline-block;
+      margin: 0;
+      margin-inline-start: 0;
+      margin-block-start: 0;
+      padding-block-start: 0;
+      padding-inline-start: 0;
+      vertical-align: top;
+    }
+
+    .price-chart {
+      width: 90%;
+      margin: 0 auto;
+      border-right: 1px solid #9e9e9e;
+      padding: 3em;
+    }
+
+    .asset {
+      display: block;
+      padding: 1em 1.5em;
+    }
+
+    .asset:hover {
+      background-color: #eeeeee
+    }
+
+    .asset>img {
+      width: 56px;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -69,7 +104,7 @@
   <nav class="navbar navbar-expand-lg navbar-light bg-light bg-transparent" id="gtco-main-nav">
     <div class="container">
       <a class="navbar-brand">
-        <img src="/images/icon_wallet.png" width="48" alt="CriptoActivo">
+        <img src="../images/icon_wallet.png" width="48" alt="CriptoActivo">
         <span class="title-brand">Criptoactivo</span>
       </a>
       <button class="navbar-toggler" data-target="#my-nav" onclick="myFunction(this)" data-toggle="collapse"><span
@@ -86,10 +121,13 @@
             criptomonedas a otros sin importar donde se encuentren y sin bancos que te cobren altas comisiones por
             manejar tu propio dinero.<sup>1</sup>
           </p>
+          <a href="https://play.google.com/store/apps/details?id=com.cryptowallet" style="background: none">
+            <img style="width: 200px" src="../images/playstore.svg" alt="Descargar la app" />
+          </a>
         </div>
         <div class="col-md-6">
           <div class="card">
-            <img class="card-img-top img-fluid" src="/images/phones.svg" style="max-width: 600px" alt="">
+            <img class="card-img-top img-fluid" src="../images/phones.svg" style="max-width: 600px" alt="">
           </div>
         </div>
       </div>
@@ -100,7 +138,7 @@
       <div class="row">
         <div class="col-md-6">
           <div class="card">
-            <img class="card-img-top img-fluid" src="/images/requests.svg" style="max-width: 500px; margin: initial"
+            <img class="card-img-top img-fluid" src="../images/requests.svg" style="max-width: 500px; margin: initial"
               alt="">
           </div>
         </div>
@@ -125,7 +163,7 @@
         </div>
         <div class="col-md-8">
           <div class="card">
-            <img class="card-img-top img-fluid" src="/images/payments.svg" style="max-width: 500px; margin: 20px auto"
+            <img class="card-img-top img-fluid" src="../images/payments.svg" style="max-width: 500px; margin: 20px auto"
               alt="">
           </div>
         </div>
@@ -142,13 +180,23 @@
         herramienta permite solicitar un código antes de confirmar el envío de criptomonedas fuera de esta billetera.
       </p>
       <div class="card">
-        <img class="card-img-top img-fluid" src="/images/security.svg" style="max-width: 600px; margin: 10px auto"
+        <img class="card-img-top img-fluid" src="../images/security.svg" style="max-width: 600px; margin: 10px auto"
           alt="">
       </div>
     </div>
   </div>
   <div class="container-fluid" id="captions">
-
+    <div class="container">
+      <h2> <strong> Nuestros criptoactivos disponibles </strong> </h2>
+      <div class="price-chart-container">
+        <div class="price-chart">
+          <canvas id="btcusd"></canvas>
+        </div>
+        <ul id="assets" />
+      </div>
+      <span style="font-size: 0.8em"> <i> Los precios mostrados corresponden al dolar Theter en Binance (binance.com)
+        </i> </span>
+    </div>
   </div>
   <footer class="container-fluid" id="gtco-footer">
     <div class="container">
@@ -177,12 +225,47 @@
 
   <!-- Optional JavaScript -->
   <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-  <script src="/js/jquery-3.3.1.slim.min.js"></script>
-  <script src="/js/popper.min.js"></script>
-  <script src="/js/bootstrap.min.js"></script>
+  <script src="../js/jquery-3.3.1.slim.min.js"></script>
+  <script src="../js/popper.min.js"></script>
+  <script src="../js/bootstrap.min.js"></script>
 
-  <script src="/owl-carousel/owl.carousel.min.js"></script>
-  <script src="/js/main.js"></script>
+  <script src="../owl-carousel/owl.carousel.min.js"></script>
+  <script src="../js/chart.js/Chart.js"></script>
+  <script src="../js/prices-chart.js"></script>
+  <script src="../js/main.js"></script>
+  <script>
+    window.onload = async function () {
+      const context = document.getElementById("btcusd").getContext('2d')
+      const assetsElement = document.getElementById("assets")
+      const assets = await PriceChart.getAssets()
+
+      while (assetsElement.childElementCount > 0)
+        assetsElement.removeChild(assetsElement.lastElementChild)
+
+      assets.forEach(asset => {
+        const component = document.createElement('li')
+        const icon = document.createElement('img')
+
+        icon.src = asset.src
+        icon.alt = asset.name
+
+        component.classList.add('asset')
+        component.appendChild(icon)
+        component.onclick = async () => {
+          const {
+            labels,
+            data
+          } = await PriceChart.getDataSet('GET', asset.url)
+          PriceChart.create(context, data, labels, asset.pair, asset.color)
+        }
+
+        assetsElement.appendChild(component)
+      })
+
+      if (assetsElement.childElementCount > 0)
+        assetsElement.firstElementChild.onclick()
+    }
+  </script>
 </body>
 
 </html>
