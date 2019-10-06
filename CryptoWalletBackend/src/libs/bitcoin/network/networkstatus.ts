@@ -5,27 +5,27 @@ enum NetworkStatus {
     /**
      * Red desconectada, no acepta conexiones entrandes ni salientes.
      */
-    Disconnected,
-    /**
-     * Red intentando conectar, buscando nodos que enlazar.
-     */
-    Connecting,
-    /**
-     * Red conectada, nodos enlazados listo para aceptar peticiones.
-     */
-    Connected,
-    /**
-     * Red en sincronización, descarga iniciar.
-     */
-    Sync,
-    /**
-     * Red sincronizada. Se aceptan conexiones entrantes.
-     */
-    Synchronized,
+    DISCONNECTED,
     /**
      * En proceso de desconexión de los nodos.
      */
-    Disconnecting
+    DISCONNECTING,
+    /**
+     * Red intentando conectar, buscando nodos que enlazar.
+     */
+    CONNECTING,
+    /**
+     * Red conectada, nodos enlazados listo para aceptar peticiones.
+     */
+    CONNECTED,
+    /**
+     * Red en sincronización, descarga iniciar.
+     */
+    SYNC,
+    /**
+     * Red sincronizada. Se aceptan conexiones entrantes.
+     */
+    SYNCHRONIZED
 }
 
 export default NetworkStatus
