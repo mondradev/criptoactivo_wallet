@@ -2,15 +2,15 @@
  * Constantes utilizadas en el módulo de Bitcoin.
  */
 const CONSTANTS = {
-    Bitcoin: "bitcoin",
-    Timeouts: {
-        WaitForHeaders: 5000,
-        WaitForBlocks: 5000,
-        WaitForConnectNet: 20000,
-        WaitForConnectPeer: 5000
+    BITCOIN: "bitcoin",
+    TIMEOUTS: {
+        WAIT_FOR_HEADERS: 5000,
+        WAIT_FOR_BLOCKS: 5000,
+        WAIT_FOR_CONNECT_NET: 20000,
+        WAIT_FOR_CONNECT_PEER: 5000
     },
-    NullHash: Array(65).join('0'),
-    BinNullHash: Buffer.alloc(64, 0)
+    NULL_HASH: Array(65).join('0'),
+    BIN_NULL_HASH: Buffer.alloc(64, 0)
 }
 
 export default CONSTANTS
