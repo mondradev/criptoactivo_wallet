@@ -71,7 +71,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="0dp"
         android:textColor="?attr/colorPendingTx"
-        android:text="@string/status_sample_text"
+        android:text="@string/status_sample_symbol_text"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
 
         app:layout_constraintStart_toEndOf="@+id/mTxHistOperationKind"
