@@ -1,4 +1,4 @@
-import * as Extras from '../src/utils/Extras'
+import * as Extras from '../src/utils'
 import * as yargs from 'yargs'
 import ConfigFile from './wallet.json';
 import Path from 'path'
@@ -11,9 +11,9 @@ export class AssetConfig {
     private _seeds: Array<string>
 
     constructor(config: any) {
-        this._network = config.network || 'mainnet'
-        this._port = config.port
-        this._maxConnections = config.maxConnections || 16
+        this._network = yargs.argv[config.name + 'Network'] || config.network || 'mainnet'
+        this._port = yargs.argv[config.name + 'Port'] || config.port
+        this._maxConnections = yargs.argv[config.name + 'MaxConnections'] || config.maxConnections || 16
         this._seeds = config.seeds || []
     }
 
@@ -56,6 +56,10 @@ class ConfigManager {
             if (asset)
                 configManager._assets[asset.name] = new AssetConfig(asset)
         })
+    }
+
+    public get dbConfig(): any {
+        return ConfigFile.dbConfig
     }
 
 }

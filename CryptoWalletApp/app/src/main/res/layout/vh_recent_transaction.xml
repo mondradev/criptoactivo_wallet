@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    android:layout_width="match_parent"
+    android:layout_height="96dp"
+    android:orientation="vertical">
+
+    <Button
+        style="?attr/iconButtonStyle"
+
+        android:layout_height="40dp"
+        android:layout_width="40dp"
+
+        android:id="@+id/mRecentTxIcon"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/sl_color_onsurface"
+        android:clickable="false"
+        android:focusable="false"
+
+        app:icon="@drawable/ic_receive"
+        app:iconTint="?attr/colorOnPrimary"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/mRecentTxOperationKind"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginStart="16dp"
+        android:alpha="0.87"
+        android:text="@string/operation_kind_sample"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
+
+        app:layout_constraintStart_toEndOf="@id/mRecentTxIcon"
+        app:layout_constraintTop_toTopOf="@+id/mRecentTxIcon" />
+
+    <TextView
+        android:id="@+id/mRecentTxStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="0dp"
+        android:text="@string/status_sample_text"
+        android:textColor="?attr/colorPendingTx"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+
+        app:layout_constraintStart_toEndOf="@+id/mRecentTxOperationKind"
+        app:layout_constraintTop_toTopOf="@+id/mRecentTxOperationKind" />
+
+    <TextView
+        android:id="@+id/mRecentTxFrom"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:ellipsize="middle"
+        android:singleLine="true"
+        android:text="@string/tx_hash_sample"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+
+        app:layout_constraintEnd_toStartOf="@+id/mRecentTxAmount"
+        app:layout_constraintStart_toStartOf="@+id/mRecentTxOperationKind"
+        app:layout_constraintTop_toBottomOf="@+id/mRecentTxOperationKind" />
+
+    <Button
+        android:id="@+id/mRecentTxAmount"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="@string/amount_sample_text"
+
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+
+    <TextView
+        android:id="@+id/mTxHistTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="middle"
+        android:singleLine="true"
+        android:text="@string/datetime_sample_text"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+        app:layout_constraintEnd_toEndOf="@+id/mRecentTxAmount"
+        app:layout_constraintTop_toBottomOf="@+id/mRecentTxAmount" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

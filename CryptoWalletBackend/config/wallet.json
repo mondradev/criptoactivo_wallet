@@ -2,8 +2,14 @@
     "logLevel": "Trace",
 
     "walletApi": {
-        "host": "localhost",
+        "host": "",
         "port": 5000
+    },
+
+    "dbConfig": {
+        "host": "localhost",
+        "port": 27017,
+        "dbName": "criptoactivo"
     },
 
     "assets": [

@@ -1,6 +1,7 @@
 <!--
-  ~ Copyright 2018 InnSy Tech
-  ~ Copyright 2018 Ing. Javier de Jesús Flores Mondragón
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -16,64 +17,30 @@
   -->
 
 <resources>
-    <string name="app_name" translatable="false">CriptoActivo</string>
-    <string name="receive_text">Receive</string>
+    <string name="app_name" translatable="false">Criptoactivo</string>
     <string name="send_text">Send</string>
-    <string name="balance_text">Balance</string>
-    <string name="recents_text">Recents</string>
-    <string name="fee_text">Fee</string>
+    <string name="recents_text">Last transactions</string>
     <string name="received_text">Received</string>
     <string name="sent_text">Sent</string>
-    <string name="see_all_button_text">See all</string>
     <string name="notify_receive">You have receive %s</string>
     <string name="nofity_send">You have send %s</string>
-    <string name="placehold_recipient_address">Recipient address</string>
-    <string name="amount_text">Amount %s</string>
-    <string name="fee_per_kb_text">Fee per KB</string>
-    <string name="remaining_balance_text">Remaining balance</string>
-    <string name="to_text">To</string>
+    <string name="recipient_address_text">Recipient address</string>
     <string name="regular_fee_text">Regular</string>
     <string name="priority_fee_text">Priority</string>
-    <string name="request_payment_text">Request</string>
-    <string name="qrcode_menu_text">Receive payments</string>
-    <string name="balance_sample_text" translatable="false">0.00 BTC</string>
-    <string name="balance_fiat_sample_text" translatable="false">0.00</string>
+    <string name="balance_sample_text" translatable="false">1.0000 BTC</string>
     <string name="empty_recents_text">No transactions yet</string>
-    <string name="btc_description_text" translatable="false">Bitcoin</string>
+    <string name="cryptocurrency_sample_text" translatable="false">Bitcoin</string>
     <string name="operation_kind_sample">Received</string>
     <string name="status_sample_text">(UC)</string>
-    <string name="time_sample_text">today @ 08:00 AM</string>
+    <string name="datetime_sample_text">today @ 08:00 AM</string>
     <string name="amount_sample_text" translatable="false">0.002 BTC</string>
-    <string name="fee_sample_text">Fee: 0.00003 BTC</string>
-    <string name="loading_title_text">Loading</string>
     <string name="today_text">today</string>
     <string name="yesterday_text">yesterday</string>
-    <string name="address_sample" translatable="false">msyfBnf2pTwXc6uTHXH7yKyq5MK1ggq8C8</string>
-    <string name="qrcode_description">QR Reader</string>
     <string name="qr_reader_indications">Place a QR Code</string>
-    <string name="address_error">Invalid address</string>
-    <string name="no_enought_funds">No enought funds</string>
-    <string name="qr_reader_error">QR code is invalid</string>
-    <string name="nofity_propagated">Transaction was propagate</string>
+    <string name="no_enought_funds_error">No enought funds</string>
     <string name="sent_payment_text">You have sent %s</string>
-    <string name="transaction_id" translatable="false">TxID: %s</string>
     <string name="qr_receive_description">QR code used to send payments</string>
-    <string name="copy_to_clipboard_text">Address copied to clipboard</string>
-    <string name="qrcode_refresh_description">Refresh QR code</string>
-    <string name="share_title">Share payment request</string>
-    <string name="request_payment_template">Please send your payment to this address %s</string>
-    <string name="request_payment_template_2">Please send the amount of %s to this address %s</string>
-    <string name="blockchain_downloaded">Blockchain downloaded</string>
-    <string name="history_title">History</string>
-    <string name="commited_sample_text" translatable="false">6+</string>
-    <string name="tx_hash_sample" translatable="false">a1cbbcc70c2565e9730d2a2f62c39573a470de4d596a176ba50ba272e37bb99a</string>
-    <string name="unknown_address">(Unavailable address)</string>
-    <string name="coinbase_address">(Coinbase address)</string>
-    <string name="drawer_open">Open drawer</string>
-    <string name="drawer_close">Close drawer</string>
-    <string name="settings">Settings</string>
-    <string name="backup_funds">Backup</string>
-    <string name="drop_wallet">Delete</string>
+    <string name="backup_text">Backup</string>
     <string name="indications_restore_text">The next 12 words guarantees access to your funds from any other wallet. Keep this information secure by writing it down on a piece of paper.</string>
     <string name="next_word_text">Next</string>
     <string name="start_word_text">Start</string>
@@ -81,119 +48,136 @@
     <string name="testing_word_text">Enter the word %d</string>
     <string name="error_word">Invalid word</string>
     <string name="backup_funds_title">Backup</string>
-    <string name="create_wallet">Create</string>
-    <string name="restore_wallet">Restore</string>
-    <string name="indications_restore_words_text">Please enter your 12 words</string>
     <string name="error_12_words">Verify your 12 words</string>
-    <string name="words_text">12 words</string>
-    <string name="blockchain_status">Blockchain Status</string>
-    <string name="last_block_date_text">Left blocks: %,8d%n</string>
-    <string name="calculate_blocks">Calculating last block</string>
     <string name="darkMode">Dark</string>
     <string name="lightMode">Light</string>
     <string name="general_title_setting">General</string>
-    <string name="about_title_setting">About</string>
-    <string name="network_category_title">Network</string>
+    <string name="about_text">About</string>
     <string name="security_title_setting">Security</string>
-    <string name="use_only_wifi_setting">Blockchain only WI-FI</string>
     <string name="change_pin_setting">Change PIN</string>
-    <string name="fingerprint_setting">Use fingerprint</string>
-    <string name="version_title_setting">Version</string>
-    <string name="requires_authenticate_to_send">Requires authentication to send</string>
-    <string name="pin_hint">PIN</string>
+    <string name="biometric_setting">Use biometric</string>
+    <string name="version_text">Version</string>
+    <string name="commit_pin">Confirm your PIN</string>
+    <string name="not_match_pin_error">Wrong PIN</string>
+    <string name="authenticate_title">Authentication</string>
+    <string name="transaction_title">Transaction</string>
+    <string name="datetime_text">Timestamp</string>
+    <string name="commit_text">Commits</string>
+    <string name="fail_to_delete_error">Couldn\'t delete the wallet</string>
+    <string name="unknown_version">Unknown Version</string>
+    <string name="notify_send">You have send %s</string>
+    <string name="address_title">Addresses</string>
+    <string name="blueMode">Blue</string>
+    <string name="usd_fiat" translatable="false">USD</string>
+    <string name="mxn_fiat" translatable="false">MXN</string>
+    <string name="theme_setting_title">Theme</string>
+    <string name="currency_setting_title">Currency</string>
+    <string name="immediately_text">Immediately</string>
+    <string name="timeout_lock_setting_title">Wait Time</string>
+    <string name="time_seconds_pattern_text">%d sec</string>
+    <string name="time_minute_pattern_text" translatable="false">%d min</string>
+    <string name="disable_text">Disable</string>
+    <string name="biometric_summary">Enable if you want to use the fingerprint to unlock wallet</string>
+    <string name="timeout_lock_summary">Set the time you wait to block the wallet</string>
+    <string name="wrong_word_error">Wrong words: %s</string>
+    <string name="fiat_sample_text" translatable="false">~ $ 0.00 USD</string>
+    <string name="unknown_data_text">(Unavailable data)</string>
+    <string name="two_factor_summary">Two-factor authentication adds an additional layer of security to the send payments process</string>
+    <string name="two_factor_setting_title">Use 2FA</string>
+    <string name="language_setting_title">Language</string>
+    <string name="english_text" translatable="false">English</string>
+    <string name="spanish_text" translatable="false">Español</string>
+
+    <!-- Revision -->
+    <string name="no_language_text">No language</string>
+    <string name="code_hint">Code</string>
+    <string name="send_2fa_caption">Code 2FA</string>
+    <string name="transferred_text">Moved</string>
+
+    <!-- RC version -->
+    <string name="copyright" translatable="false">Criptoactivo © 2020</string>
+    <string name="enter_pin">Please enter your PIN to unlock</string>
+    <string name="new_pin">Please enter a new PIN</string>
+    <string name="create_caption_button">Create</string>
+    <string name="restore_caption_button">Restore</string>
+    <string name="welcome_text">Welcome</string>
+    <string name="welcome_second_line_text">to your cryptocurrencies wallet</string>
+    <string name="terms_text">Terms</string>
+    <string name="agree_caption_button">Agree</string>
+    <string name="terms_content">Terms content</string>
+    <string name="wallet_title">Wallet</string>
+    <string name="operation_title">Operations</string>
+    <string name="history_title">History</string>
+    <string name="settings_title">Settings</string>
+    <string name="indications_restore_words_text">Please enter your 12 words</string>
+    <string name="seed_words_text">12 words</string>
+    <string name="pin_digit" translatable="false">PIN digit</string>
     <string name="pad_1_text" translatable="false">1</string>
     <string name="pad_2_text" translatable="false">2</string>
     <string name="pad_3_text" translatable="false">3</string>
     <string name="pad_4_text" translatable="false">4</string>
-    <string name="pad_8_text" translatable="false">8</string>
-    <string name="pad_9_text" translatable="false">9</string>
+    <string name="pad_5_text" translatable="false">5</string>
     <string name="pad_6_text" translatable="false">6</string>
     <string name="pad_7_text" translatable="false">7</string>
+    <string name="pad_8_text" translatable="false">8</string>
+    <string name="pad_9_text" translatable="false">9</string>
     <string name="pad_0_text" translatable="false">0</string>
-    <string name="pad_5_text" translatable="false">5</string>
-    <string name="backspace_pad" translatable="false">backspace</string>
-    <string name="pin_digit" translatable="false">PIN digit</string>
-    <string name="indications_pin_setup">Enter 4 digits</string>
-    <string name="pin_no_equal">PIN does not match</string>
-    <string name="encrypt_message">Wait while the wallet is encrypted</string>
-    <string name="encrypt_wallet">Encrypting</string>
-    <string name="commit_pin">Confirm your PIN</string>
-    <string name="error_pin">Wrong PIN</string>
-    <string name="authenticate_title">Authentication</string>
-    <string name="validate_pin">Validiting</string>
-    <string name="validate_pin_text">Validiting PIN</string>
-    <string name="enter_pin">Enter your PIN</string>
-    <string name="loading_text">The wallet is loading, wait…</string>
-    <string name="transaction_title">Transaction</string>
-    <string name="inputs_text">From</string>
-    <string name="datetime_text">Timestamp</string>
-    <string name="commit_text">Commits</string>
-    <string name="delete_warn">This option is irreversible. Make sure you have obtained the 12 words to be able to restore later to the deletion of this wallet.</string>
-    <string name="fail_to_delete">Couldn\'t delete the wallet</string>
-    <string name="deleting_text">Deleting wallet, please wait…</string>
-    <string name="deleting_title">Deleting</string>
-    <string name="outputs">To</string>
-    <string name="unknown_version">Unknown Version</string>
-    <string name="notify_send">You have send %s</string>
-    <string name="fingerprint_description">Use fingerprint</string>
-    <string name="require_finger_permission">Fingerprint authentication permission not enabled</string>
-    <string name="no_lock_screen">Lock screen security not enabled in Settings</string>
-    <string name="require_finger_register">Register at least one fingerprint in Settings</string>
-    <string name="fingerprint_indication">Please place your fingertip on the scanner to authenticate</string>
-    <string name="init_pin">Use PIN</string>
-    <string name="address_title">Addresses</string>
-    <string name="select_theme">Theme Selector</string>
-    <string name="blueMode">Blue</string>
-    <string name="usd_fiat" translatable="false">USD</string>
-    <string name="mxn_fiat" translatable="false">MXN</string>
-    <string name="select_currency">Currency Selector</string>
-    <string name="theme_title_setting">Theme</string>
-    <string name="currency_title_setting">Currency</string>
-    <string name="restoring_wallet">Restoring</string>
-    <string name="restoring_message">Wait while the wallet is restored…</string>
-    <string name="insufficient_money">Insufficient money, requires %s</string>
-    <string name="reconnect_title">Reconnect network</string>
-    <string name="empty_address_text">No address available</string>
-    <string name="sending_payment">Wait while sending your payment</string>
-    <string name="hide_data" translatable="false">**********</string>
-    <string name="immediately_text">Immediately</string>
-    <string name="time_lock_text">Wait Time</string>
-    <string name="second_caption">%d sec</string>
-    <string name="minute_caption" translatable="false">%d min</string>
-    <string name="select_time">Select time</string>
-    <string name="disable_caption">Disable</string>
-    <string name="pin_summary">Set o change the PIN of wallet</string>
-    <string name="fingerprint_summary">Enable if you want to use the fingerprint to unlock wallet</string>
-    <string name="onlywifi_summary">Enable if you want to download the blockchian only if wifi connection is active</string>
-    <string name="reconnect_summary">Reconnect the node to the Bitcoin Network</string>
-    <string name="time_lock_summary">Set the time you wait to block the wallet</string>
-    <string name="exit_indications">Press Back again to exit</string>
-    <string name="require_camera_permission">Require camera permission</string>
-    <string name="wrong_word">Wrong words: %s</string>
-    <string name="fiat_sample_text">$ 0.00 %s</string>
-    <string name="progress_blockchain">Sync: %s\ \nDate: %s</string>
-    <string name="unknown_data">(Unavailable data)</string>
-    <string name="bitcoin_blockchain_status">Bitcoin Blockchain Status</string>
-    <string name="two_factor_summary">Two-factor authentication adds an additional layer of security to the send payments process</string>
-    <string name="two_factor_title">Use 2FA</string>
-    <string name="calculate_progress">calculating progress</string>
-    <string name="reconnect_setting_disable">Reconnect network (connecting)</string>
-    <string name="language_dialog_title">Language selector</string>
-    <string name="lenguage_title">Language</string>
-    <string name="english" translatable="false">English</string>
-    <string name="spanish" translatable="false">Español</string>
-    <string name="no_language">No language</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="secret_phrase_text">if can\'t scan the QR code, please use the next secret phrase</string>
-    <string name="code_generated_text">Code generated by app</string>
-    <string name="code_hint">Code</string>
+    <string name="balance_fiat_sample_text" translatable="false">1,000,000.00</string>
+    <string name="fiat_sign" translatable="false">$</string>
+    <string name="error_to_restore_title">Fail to restore</string>
+    <string name="error_to_create_title">Fail to create</string>
+    <string name="error_to_restore_message">An error occurred while restoring the wallet, please try again later</string>
+    <string name="error_to_create_message">An error occurred while creating the new wallet, please try again later</string>
+    <string name="request_money_title">Request money</string>
+    <string name="request_money_description">Please scan this QR code  to send money</string>
+    <string name="share_text">Share</string>
+    <string name="wallet_address_text">Wallet address</string>
+    <string name="address_copy_to_clipboard_text">Address copied to clipboard</string>
+    <string name="share_title">Share request money</string>
+    <string name="bitcoin_text" translatable="false">Bitcoin</string>
+    <string name="usd_text">United States dollar</string>
+    <string name="mxn_text">Mexican peso</string>
+    <string name="backup_summary_text">Get the words used to restore the wallet on other devices</string>
+    <string name="pin_summary">Allows you to replace the wallet authentication PIN</string>
+    <string name="delete_summary">Allows you to delete the wallet. This option is irreversible</string>
+    <string name="configure_2fa_title">Two-Factor Authentication</string>
+    <string name="qrcode_2fa_description">Two-Factor Authentication QR</string>
+    <string name="secret_phrase_summary">if can\'t scan the QR code, please use the next secret phrase</string>
+    <string name="code_generated_text">Code generated by authenticator app</string>
     <string name="register_text">Register</string>
-    <string name="error_2fa_code">Code wrong</string>
-    <string name="configure_2fa">Two-Factor Authentication (2FA)</string>
-    <string name="qrcode_2fa">Two-Factor QR</string>
-    <string name="send_2fa_caption">Code 2FA</string>
-    <string name="transferred_text">Moved</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
+    <string name="secret_phrase_sample" translatable="false">OQB6ZZGYHCPSX4AK</string>
+    <string name="error_msg_auth_code">Authentication code is not valid</string>
+    <string name="secret_phrase_text">Secret phrase</string>
+    <string name="phrase_copy_to_clipboard_text">Secret phrase copied to clipboard</string>
+    <string name="deleting_title">Deleting</string>
+    <string name="delete_text">Delete</string>
+    <string name="delete_warn">This option is irreversible. Make sure you have obtained the 12 words to be able to restore later to the deletion of this wallet.</string>
+    <string name="icon_description">CryptoAsset\'s icon</string>
+    <string name="destination_data_text">Destination data</string>
+    <string name="amount_pattern">Amount %s</string>
+    <string name="fee_type_text">Fee type</string>
+    <string name="fee_by_kb_pattern">%s by KB</string>
+    <string name="total_fee_text">Fee</string>
+    <string name="total_to_pay_text">Amount to pay</string>
+    <string name="pay_text">Pay</string>
+    <string name="error_invalid_address">Invalid address</string>
+    <string name="camera_permission_error">Require camera permission</string>
+    <string name="request_text">Request</string>
+    <string name="qr_from_file_text">Scan from a file</string>
+    <string name="is_dust_error">Amout is dust</string>
+    <string name="max_value_error">The amount cannot be greater than %s</string>
+    <string name="multi_addresses_text">(Multiple addresses)</string>
+    <string name="coinbase_address">(New coins)</string>
+    <string name="tx_hash_sample" translatable="false">a1cbbcc70c2565e9730d2a2f62c39573a470de4d596a176ba50ba272e37bb99a</string>
+    <string name="address_sample" translatable="false">msyfBnf2pTwXc6uTHXH7yKyq5MK1ggq8C8</string>
+    <string name="information_text">Information</string>
+    <string name="id_text" translatable="false">ID</string>
+    <string name="block_text">Block</string>
+    <string name="blockhash_text" translatable="false">Hash</string>
+    <string name="blockhash_sample_text" translatable="false">0000000000000000001139feb52b3eac11284ddbd326f29184c520d430a5c412</string>
+    <string name="blockheight_text">Height</string>
+    <string name="blockheight_sample_text" translatable="false">502,125</string>
+    <string name="commits_sample_text" translatable="false">150</string>
+    <string name="inputs_text">Inputs</string>
+    <string name="outputs_text">Outputs</string>
 </resources>

@@ -1,270 +1,153 @@
-/*
- * Copyright 2019 InnSy Tech
- * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.cryptowallet.app;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.InputFilter;
-import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+
 import com.cryptowallet.R;
-import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.security.Security;
-import com.cryptowallet.security.TimeBasedOneTimePassword;
-import com.cryptowallet.utils.DecimalsFilter;
-import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
+import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
+import com.cryptowallet.app.fragments.CryptoAssetFragment;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.InSufficientBalanceException;
+import com.cryptowallet.utils.inputfilters.DecimalsFilter;
+import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
+import com.cryptowallet.wallet.ITransaction;
+import com.cryptowallet.wallet.ITransactionFee;
+import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletServiceBase;
-import com.cryptowallet.wallet.coinmarket.ExchangeService;
-import com.cryptowallet.wallet.coinmarket.coins.CoinBase;
-import com.cryptowallet.wallet.coinmarket.coins.CoinFactory;
-import com.cryptowallet.wallet.coinmarket.exchangeables.ExchangeableBase;
+import com.cryptowallet.wallet.WalletManager;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.internal.CheckableImageButton;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.common.base.Strings;
 
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.AddressFormatException;
-import org.bitcoinj.core.LegacyAddress;
-import org.bitcoinj.uri.BitcoinURI;
-import org.bitcoinj.uri.BitcoinURIParseException;
+import org.checkerframework.common.value.qual.IntVal;
 
-import java.security.GeneralSecurityException;
-import java.security.KeyException;
+import java.text.NumberFormat;
 import java.util.Objects;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
-import com.cryptowallet.utils.NamedRunnable;
 
 /**
  * Actividad que permite el envío de pagos, también ofrece leer códigos QR que almacenan un URI
  * válido.
  *
- * @author Ing. Javier Flores
- * @version 1.1
+ * @author Ing. Javier Flores (jjflores@innsytech.com)
+ * @version 1.2
  */
-public class SendPaymentsActivity extends ActivityBase
-        implements AdapterView.OnItemSelectedListener {
+public class SendPaymentsActivity extends LockableActivity {
 
     /**
-     * Etiqueta de la clase.
+     * Comisión de envío promedio.
      */
-    private static final String TAG = "SendPayment";
+    private static final int FEE_NORMAL = 0;
 
     /**
-     * Opciones disponibles de comisión.
+     * Comisión de envío rápido.
      */
-    private String[] mFeeOptions;
+    private static final int FEE_FAST = 1;
 
     /**
-     * Indica la cuota que se paga por kilobyte al realizar la transacción.
+     * Comisión personalizada de envío.
      */
-    private CoinBase mFeePerKb;
+    private static final int FEE_CUSTOM = 2;
 
     /**
-     * Indica el monto que se enviará.
+     * Petición de escaneo de código QR.
      */
-    private CoinBase mAmount;
+    private static final int SCAN_QR_REQUEST = 3;
 
     /**
-     * Indica la moneda a enviar.
+     * Petición de permiso de uso de cámara.
      */
-    private SupportedAssets mSelectCoin;
+    private static final int PERMISSION_CAMERA_REQUEST = 4;
 
     /**
-     * Dirección de destino.
+     * Tipo de comisión seleccionada.
      */
-    private String mAddress;
-    /**
-     * Indica si el pago es fuera de la aplicación.
-     */
-    private boolean mOutOfTheApp = true;
-    /**
-     * La dirección que se reconoció como perteneciente a la aplicación.
-     */
-    private String mAddressOnApp;
-
-    private boolean mDisableListener;
+    @IntVal({FEE_NORMAL, FEE_FAST, FEE_CUSTOM})
+    private int mFeeType;
 
     /**
-     * Permite actualizar los campos de mRemainingBalance y mAmount.
+     * Indica si se está visualizando cantidades en dinero fiduciario.
      */
-    private final OnAfterTextChangedListenerBase mUpdateContent = new OnAfterTextChangedListenerBase() {
-
-        /**
-         * Este método es llamado cuando mAmount es modificado.
-         * @param s Cadena que representa la cantidad a enviar.
-         */
-        @Override
-        public void afterTextChanged(Editable s) {
-            fillFiat(s.toString());
-            updateFeeAndRemaining();
-            validateFundsAndAddress(s.toString());
-        }
-
-        private void fillFiat(String src) {
-
-            if (mDisableListener) {
-                mDisableListener = false;
-                return;
-            }
-
-            ExchangeableBase service = ExchangeService.get().getExchange(mSelectCoin);
-
-            SupportedAssets asset =
-                    AppPreference.getSelectedCurrency(SendPaymentsActivity.this);
-
-            String value = service.convertTo(asset, CoinFactory.parse(mSelectCoin, src))
-                    .toPlainString();
-
-            mDisableListener = true;
-            ((EditText) findViewById(R.id.mAmountSendPaymentFiatEdit)).setText(value);
-        }
-    };
-
+    private boolean mIsFiat;
 
     /**
-     * Permite actualizar los campos de mRemainingBalance y mAmount.
+     * Indica si hay un error de saldo.
      */
-    private final OnAfterTextChangedListenerBase mUpdateFiatContent
-            = new OnAfterTextChangedListenerBase() {
-
-        /**
-         * Este método es llamado cuando mAmount es modificado.
-         *
-         * @param s Cadena que representa la cantidad a enviar.
-         */
-        @Override
-        public void afterTextChanged(Editable s) {
-            fillCrypto(s.toString());
-        }
-
-        /**
-         * @param src
-         */
-        private void fillCrypto(String src) {
-            if (mDisableListener) {
-                mDisableListener = false;
-                return;
-            }
-
-            ExchangeableBase service = ExchangeService.get().getExchange(mSelectCoin);
-
-            SupportedAssets asset =
-                    AppPreference.getSelectedCurrency(SendPaymentsActivity.this);
-
-            String value = service.convertFrom(CoinFactory.parse(asset, src)).toPlainString();
-
-            mDisableListener = true;
-            ((EditText) findViewById(R.id.mAmountSendPaymentEdit)).setText(value);
-        }
-
-    };
+    private boolean mHasEnoughtBalanceError;
 
     /**
-     * Obtiene un valor que indica si el pago se hará fuera de la aplicación.
-     *
-     * @param token   Etiqueta con token a validar.
-     * @param asset   Activo a la cual pertenece la dirección.
-     * @param address Dirección destino.
-     * @return Un valor true si el pago es fuera de la billetera.
+     * Indica si hay un error en la dirección.
      */
-    private static boolean isOutOfTheApp(String token, SupportedAssets asset, String address) {
-
-        if (Strings.isNullOrEmpty(token))
-            return true;
-
-        String sha256Token = WalletServiceBase.generatePaymentToken(asset, address);
-
-        return !sha256Token.contentEquals(token);
-    }
+    private boolean mHasValidAddressError;
 
     /**
-     * Valida los fondos y la dirección especificada.
+     * Billetera que realiza el envío.
      */
-    private void validateFundsAndAddress(String amountStr) {
-        TextView mAddressRecipient = findViewById(R.id.mAddressRecipientText);
-        TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
-
-        Button mSendPayment = findViewById(R.id.mSendPayment);
-
-        mSendPayment.setEnabled(false);
-
-        boolean canSend = true;
-
-        if (!validateAddress(mAddressRecipient.getText().toString())) {
-            if (!mAddressRecipient.getText().toString().isEmpty())
-                mAddressRecipient.setError(getString(R.string.address_error));
-            canSend = false;
-        } else {
-            mAddressRecipient.setError(null);
-            mAddress = mAddressRecipient.getText().toString();
-
-            Log.v(TAG, "Dirección elegida: " + mAddress);
-
-            if (!Strings.isNullOrEmpty(mAddressOnApp))
-                mOutOfTheApp = !mAddress.contentEquals(mAddressOnApp);
-        }
-
-        if (Strings.isNullOrEmpty(amountStr))
-            amountStr = "0";
-
-        CoinBase amount = CoinFactory.parse(mSelectCoin, amountStr);
-        CoinBase total = getBalance();
-
-        if (total.substract(amount).substract(mFeePerKb).isNegative()) {
-            mAmountText.setError(getString(R.string.no_enought_funds));
-            canSend = false;
-        } else
-            mAmountText.setError(null);
-
-        if (canSend)
-            mSendPayment.setEnabled(true);
-
-    }
+    private IWallet mWallet;
 
     /**
-     * Valida la dirección especificada para el envío.
-     *
-     * @param addressBase58 Dirección de destino.
+     * Handler del proceso principal.
      */
-    private boolean validateAddress(String addressBase58) {
-        switch (mSelectCoin) {
-            case BTC:
-                return BitcoinService.get().isValidAddress(addressBase58);
-        }
+    private Handler mHandler;
 
-        return false;
-    }
+    /**
+     * Cuadro de texto para cantidad.
+     */
+    private EditText mSendAmountText;
+
+    /**
+     * Cuadro de texto para dirección.
+     */
+    private EditText mSendAddressText;
+
+    /**
+     * Contenedor del cuadro de texto para la dirección.
+     */
+    private TextInputLayout mSendAmountLayout;
+
+    /**
+     * Contenedor del cuadro de texto para la cantidad.
+     */
+    private TextInputLayout mSendAddressLayout;
+
+    /**
+     * Total de comisión a pagar.
+     */
+    private TextView mSendTotalFeeText;
+
+    /**
+     * Saldo actual de la billetera.
+     */
+    private TextView mSendCurrentBalanceText;
+
+    /**
+     * Total a pagar.
+     */
+    private TextView mSendTotalPayText;
+
+    /**
+     * Cuadro de texto para la comisión personalizada.
+     */
+    private EditText mSendFeeCustomText;
+
+    /**
+     * Contenedor del cuadro de texto para la comisión personalizada.
+     */
+    private TextInputLayout mSendFeeCustomLayout;
 
     /**
      * Este método se ejecuta cuando se crea la actividad.
@@ -274,168 +157,337 @@ public class SendPaymentsActivity extends ActivityBase
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_send_payments);
-
-        mSelectCoin = SupportedAssets.valueOf(getIntent()
-                .getStringExtra(ExtrasKey.SELECTED_COIN));
-
-        Objects.requireNonNull(getSupportActionBar()).setDisplayShowHomeEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         Objects.requireNonNull(getSupportActionBar()).setTitle(getString(R.string.send_text));
 
-        mFeeOptions = new String[]{
-                getString(R.string.regular_fee_text),
-                getString(R.string.priority_fee_text)
-        };
+        String assetName = getIntent().getStringExtra(CryptoAssetFragment.ASSET_KEY);
+        SupportedAssets asset = SupportedAssets.valueOf(assetName);
 
-        Spinner mFeeSelector = findViewById(R.id.mFeeSelector);
-        mFeeSelector.setAdapter(new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_list_item_1,
-                mFeeOptions
-        ));
+        mFeeType = FEE_NORMAL;
+        mHandler = new Handler(Looper.getMainLooper());
+        mWallet = WalletManager.get(asset);
 
-        SupportedAssets asset = AppPreference.getSelectedCurrency(this);
+        mSendAmountLayout = this.requireView(R.id.mSendAmount);
+        mSendAmountText = Objects.requireNonNull(mSendAmountLayout.getEditText());
+        mSendAddressLayout = this.requireView(R.id.mSendToAddress);
+        mSendAddressText = Objects.requireNonNull(mSendAddressLayout.getEditText());
+        mSendFeeCustomLayout = this.requireView(R.id.mSendFeeCustom);
+        mSendFeeCustomText = Objects.requireNonNull(mSendFeeCustomLayout.getEditText());
+        mSendCurrentBalanceText = this.requireView(R.id.mSendCurrentBalance);
+        mSendTotalPayText = this.requireView(R.id.mSendTotalPay);
+        mSendTotalFeeText = this.requireView(R.id.mSendTotalFee);
 
-        mFeeSelector.setOnItemSelectedListener(this);
-        onSelectedFee(getString(R.string.regular_fee_text));
+        mSendFeeCustomLayout.setHint(getString(R.string.fee_by_kb_pattern, asset.name()));
+        mSendAmountLayout.setHint(getString(R.string.amount_pattern, asset.name()));
 
-        TextView mRemainingText = findViewById(R.id.mRemainingBalanceText);
-        TextView mBalanceText = findViewById(R.id.mBalanceTextSendPayments);
-        TextView mBalanceFiatText = findViewById(R.id.mBalanceFiatTextSendPayments);
+        mSendAmountLayout.setEndIconOnClickListener(this::onCurrencyChange);
+        mSendAddressLayout.setEndIconOnClickListener(this::onScan);
 
-        mRemainingText.setText(getBalance().substract(mFeePerKb).toStringFriendly());
-        mBalanceText.setText(getBalance().toStringFriendly());
-        mBalanceFiatText.setText(ExchangeService.get().getExchange(mSelectCoin)
-                .convertTo(asset, getBalance()).toStringFriendly());
+        mWallet.addBalanceChangeListener(mHandler::post, this::onBalanceChange);
+        mSendAddressText.addTextChangedListener((IAfterTextChangedListener) this::onAddressChange);
+        mSendAmountText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChange);
 
-        EditText mAddressRecipient = findViewById(R.id.mAddressRecipientText);
-        EditText mAmount = findViewById(R.id.mAmountSendPaymentEdit);
-        EditText mAmountFiat = findViewById(R.id.mAmountSendPaymentFiatEdit);
+        this.<MaterialButtonToggleGroup>requireView(R.id.mSendFeeSelector)
+                .addOnButtonCheckedListener(this::onFeeChange);
 
-        mAddressRecipient.addTextChangedListener(mUpdateContent);
-        mAmount.addTextChangedListener(mUpdateContent);
-        mAmount.setFilters(new InputFilter[]{new DecimalsFilter(16, 8)});
-        mAmountFiat.addTextChangedListener(mUpdateFiatContent);
-        mAmountFiat.setFilters(new InputFilter[]{new DecimalsFilter(16, 2)});
-
-
-        mAmountFiat.setHint(getString(R.string.fiat_sample_text, asset));
-
-        ((TextView) findViewById(R.id.mAmountFiatCaptionText))
-                .setText(getString(R.string.amount_text, asset));
-        ((TextView) findViewById(R.id.mAmountCaptionText))
-                .setText(getString(R.string.amount_text, mSelectCoin));
-
-        if (Strings.isNullOrEmpty(AppPreference.getSecretPhrase(this))) {
-            findViewById(R.id.mSend2faCodeCaption).setVisibility(View.GONE);
-            findViewById(R.id.mSend2faCode).setVisibility(View.GONE);
-        }
+        updateFilters();
+        checkEnoughtBalance();
     }
 
     /**
-     * Obtiene el saldo actual de la billetera.
+     * Este método es llamado cuando se busca escanear un código QR, esto debido a presionar el
+     * botón "qr_scan".
      *
-     * @return El saldo actual.
+     * @param view Botón que invoca el método.
      */
-    private CoinBase getBalance() {
-        switch (mSelectCoin) {
-            case BTC:
-                return BitcoinService.get().getBalance();
-        }
-        return CoinFactory.getZero(mSelectCoin);
-    }
-
-    /**
-     * Este método es llamado cuando se selecciona un tipo de comisión.
-     *
-     * @param fee Comisión seleccionada.
-     */
-    public void onSelectedFee(String fee) {
-        String regular = getString(R.string.regular_fee_text);
-        String priority = getString(R.string.priority_fee_text);
-
-        if (fee.contentEquals(regular))
-            mFeePerKb = CoinFactory.valueOf(mSelectCoin, 10000);
-        else if (fee.contentEquals(priority))
-            mFeePerKb = CoinFactory.valueOf(mSelectCoin, 43000);
-
-        updateFeeAndRemaining();
-        validateFundsAndAddress(
-                ((EditText) findViewById(R.id.mAmountSendPaymentEdit)).getText().toString());
-    }
-
-    /**
-     * Actualiza los valores por comisión y saldo restante.
-     */
-    public void updateFeeAndRemaining() {
-        TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
-        CharSequence amountStr = mAmountText.getText();
-
-        mAmount = CoinFactory.parse(mSelectCoin, amountStr.toString());
-
-        String feePerKb = getFeeForSendOutApp().add(mFeePerKb).toStringFriendly();
-        String remainingBalance =
-                getBalance().substract(mAmount).substract(mFeePerKb).toStringFriendly();
-
-        TextView mRemainingBalance = findViewById(R.id.mRemainingBalanceText);
-        TextView mFeePerKb = findViewById(R.id.mCurrentSelectedFeeText);
-
-        mRemainingBalance.setText(remainingBalance);
-        mFeePerKb.setText(feePerKb);
-    }
-
-    /**
-     * Obtiene la comisión si se hace un envío fuera de la aplicación.
-     *
-     * @return Una comisión de envío.
-     */
-    private CoinBase getFeeForSendOutApp() {
-        if (!Strings.isNullOrEmpty(mAddressOnApp)
-                && !Strings.isNullOrEmpty(mAddress)
-                && mAddress.contentEquals(mAddressOnApp))
-            return CoinFactory.getZero(mSelectCoin);
-
-        return WalletServiceBase.getFeeForSendOutApp(mSelectCoin);
-    }
-
-    /**
-     * Este método es llamado cuando se hace clic al componente mQrReaderIcon.
-     *
-     * @param view Componente que desencadena el evento Click.
-     */
-    public void handlerScanQr(View view) {
+    public void onScan(View view) {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
-            Utils.showSnackbar(findViewById(R.id.mSendPayment),
-                    getString(R.string.require_camera_permission));
-            return;
+                != PackageManager.PERMISSION_GRANTED)
+            Snackbar.make(requireView(R.id.mSendPayButton),
+                    getString(R.string.camera_permission_error),
+                    Snackbar.LENGTH_SHORT
+            ).setAction(R.string.request_text,
+                    v -> ActivityCompat.requestPermissions(this, new String[]{
+                            Manifest.permission.CAMERA
+                    }, PERMISSION_CAMERA_REQUEST)
+            ).show();
+        else
+            startActivityForResult(new Intent(this, ScanQrActivity.class),
+                    SCAN_QR_REQUEST);
+    }
+
+    /**
+     * Obtiene la divisa que se está visualizando en el formulario de envío.
+     *
+     * @return Divisa criptoactivo o fiat.
+     */
+    private SupportedAssets getCurrency() {
+        return mIsFiat ? Preferences.get().getFiat() : mWallet.getAsset();
+    }
+
+    /**
+     * Obtiene el saldo de la billetera expresado en la divisa visualizada en el formulario.
+     *
+     * @return Saldo de la billetera.
+     */
+    private Float getBalance() {
+        return mIsFiat ? mWallet.getFiatBalance() : mWallet.getBalance();
+    }
+
+    /**
+     * Este método es invocado cuando el saldo de la billetera cambia.
+     *
+     * @param ignored El saldo de la billetera (ignorado en este método).
+     */
+    private void onBalanceChange(Float ignored) {
+        updateInfo();
+    }
+
+    /**
+     * Actualiza los valores del saldo y la divisa del envío.
+     */
+    private void updateInfo() {
+        SupportedAssets asset = getCurrency();
+        Float balance = getBalance();
+
+        mSendCurrentBalanceText.setText(asset.toStringFriendly(balance));
+        checkEnoughtBalance();
+    }
+
+    /**
+     * Verifica si el saldo es suficiente para realizar el envío.
+     */
+    private void checkEnoughtBalance() {
+        SupportedAssets asset = getCurrency();
+        Float balance = getBalance();
+        Float amount = Utils.parseFloat(mSendAmountText.getText().toString());
+        Float fee = calculateTotalFee(mSendAddressText.getText().toString(), amount);
+        Float total = amount + fee;
+
+        if (mWallet.isDust(toCryptoAsset(amount)) && toCryptoAsset(amount) > 0)
+            mSendAmountLayout.setError(getString(R.string.is_dust_error));
+        else if (mWallet.getMaxValue() < toCryptoAsset(amount))
+            mSendAmountLayout.setError(getString(R.string.max_value_error,
+                    mWallet.getAsset().toStringFriendly(mWallet.getMaxValue())));
+        else
+            mSendAmountLayout.setError(total > balance
+                    ? getString(R.string.no_enought_funds_error) : null);
+
+        mSendTotalFeeText.setText(asset.toStringFriendly(fee));
+        mSendTotalPayText.setText(asset.toStringFriendly(total));
+
+        mHasEnoughtBalanceError = total > balance;
+
+        canPay();
+    }
+
+    /**
+     * Determina si se cumple con todos los criterios para realizar el pago.
+     */
+    private void canPay() {
+        this.requireView(R.id.mSendPayButton)
+                .setEnabled(!mHasEnoughtBalanceError && !mHasValidAddressError);
+    }
+
+    /**
+     * Este método es invocado cuando cambia la divisa visualiza en el formulario, esto debido que
+     * fue presionado el botón de "cash".
+     *
+     * @param view Botón que invoca el método.
+     */
+    private void onCurrencyChange(View view) {
+        Utils.tryNotThrow(() -> CheckableImageButton.class
+                .getMethod("setChecked", boolean.class).invoke(view, !mIsFiat));
+
+        mSendAmountLayout.setHint(getString(R.string.amount_pattern, getCurrency().name()));
+
+        if (!Strings.isNullOrEmpty(mSendAmountText.getText().toString())) {
+            Float amount = Utils.parseFloat(mSendAmountText.getText().toString());
+            amount = toFiat(toCryptoAsset(amount));
+
+            String amountText = NumberFormat.getNumberInstance().format(amount);
+
+            mSendAmountText.setText(amountText);
+            mSendAmountText.setSelection(amountText.length());
         }
-        Intent intent = new Intent(this, ScanQRActivity.class);
-        startActivityForResult(intent, 0);
+
+        mIsFiat = !mIsFiat;
+
+        updateFilters();
+        updateInfo();
     }
 
     /**
-     * Este método es llamado cuando se selecciona un elemento del <code>Spinner</code>
+     * Convierte el valor expresado en fiat a su valor en criptoactivo.
      *
-     * @param parent   AdapterView en el cual se hizo clic.
-     * @param view     Componente que contiene el AdapterView.
-     * @param position Posición del componente en el adaptador.
-     * @param id       El ID fila del elemento al cual se hizo clic.
+     * @param amount Valor en fiat.
+     * @return Valor en criptoactivo.
      */
-    @Override
-    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        if (position >= 0 && position < mFeeOptions.length)
-            onSelectedFee(mFeeOptions[position]);
+    private Float toCryptoAsset(Float amount) {
+        if (!mIsFiat)
+            return amount;
+
+        return amount / mWallet.getLastPrice();
     }
 
     /**
-     * Este método es llamado cuando no se hace selección del elemento.
+     * Convierte el valor expresado en criptoactivo a su valor en fiat.
      *
-     * @param parent AdapterView en el cual se hizo clic.
+     * @param amount Valor en criptoactivo.
+     * @return Valor en fiat.
+     */
+    private Float toFiat(Float amount) {
+        if (mIsFiat)
+            return amount;
+
+        return amount * mWallet.getLastPrice();
+    }
+
+    /**
+     * Cambia el filtrado de la entrada respecto al tipo de divisa visualizada.
+     */
+    private void updateFilters() {
+        final SupportedAssets asset = mIsFiat ? Preferences.get().getFiat() : mWallet.getAsset();
+        final int size = asset.getSize();
+
+        InputFilter[] filters = {new DecimalsFilter(20, size)};
+        InputFilter[] feeCustomFilters = {new DecimalsFilter(22, size + 2)};
+
+        mSendAmountText.setFilters(filters);
+        mSendFeeCustomText.setFilters(feeCustomFilters);
+    }
+
+    /**
+     * Este método es invocado cuando la dirección de envío es modificada.
+     *
+     * @param address Dirección nueva.
+     */
+    private void onAddressChange(Editable address) {
+        mHasValidAddressError = !mWallet.validateAddress(address.toString());
+
+        if (mHasValidAddressError)
+            mSendAddressLayout.setError(getString(R.string.error_invalid_address));
+        else
+            mSendAddressLayout.setError(null);
+
+        canPay();
+    }
+
+
+    /**
+     * Este método es invocado cuando la cantidad a enviar es modificada.
+     *
+     * @param ignored Cantidad nueva (ignorada en el método).
+     */
+    private void onAmountChange(Editable ignored) {
+        checkEnoughtBalance();
+    }
+
+    /**
+     * Este método es invoca cuando la opción del tipo de comisión es cambiada.
+     *
+     * @param group     Grupo de botones.
+     * @param checkedId Identificador del botón que esta cambiando su estado "checked".
+     * @param isChecked Indica si el botón está seleccionado ("checked").
+     */
+    private void onFeeChange(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
+        if (!isChecked) return;
+
+        mSendFeeCustomLayout.setVisibility(checkedId == R.id.mSendFeeCustomButton
+                ? View.VISIBLE : View.GONE);
+
+        switch (checkedId) {
+            case R.id.mSendFeeNormalButton:
+                mFeeType = FEE_NORMAL;
+                break;
+            case R.id.mSendFeeFastButton:
+                mFeeType = FEE_FAST;
+                break;
+            case R.id.mSendFeeCustomButton:
+                mFeeType = FEE_CUSTOM;
+                break;
+        }
+
+        checkEnoughtBalance();
+    }
+
+    /**
+     * Calcula la comisión de la transacción según el tipo especificado y el peso en KB de los datos.
+     *
+     * @param address Dirección destino del envío.
+     * @param amount  Cantidad a enviar.
+     * @return Comisión por realizar la transacción.
+     */
+    private Float calculateTotalFee(String address, Float amount) {
+        if (Strings.isNullOrEmpty(address))
+            return 0f;
+
+        ITransaction tx = mWallet.createTx(address, amount, getFee());
+
+        if (tx == null)
+            return 0f;
+
+        return tx.getSizeInKB() * getFee();
+    }
+
+    /**
+     * Obtiene la comisión a pagar por la transacción.
+     *
+     * @return Comisión por kilobyte.
+     */
+    private Float getFee() {
+        ITransactionFee fees = mWallet.getFees();
+
+        switch (mFeeType) {
+            case FEE_NORMAL:
+                return fees.getAverage();
+            case FEE_FAST:
+                return fees.getFaster();
+            case FEE_CUSTOM:
+                return Utils.parseFloat(mSendFeeCustomText.toString());
+        }
+
+        return 0f;
+    }
+
+    /**
+     * Se llama a este método cada vez que se selecciona un elemento en su menú de opciones.
+     *
+     * @param item El elemento del menú que fue seleccionado.
+     * @return boolean Un valor true si fue procesado.
      */
     @Override
-    public void onNothingSelected(AdapterView<?> parent) {
-        onSelectedFee(getString(R.string.regular_fee_text));
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        setResult(RESULT_CANCELED);
+        finish();
+
+        return true;
+    }
+
+    /**
+     * Este método es invocado después de responder a una petición de solicitud de permisos
+     * permitiendo capturar la respuesta de cada permiso.
+     *
+     * @param requestCode  Código de la solicitud que ha respondido.
+     * @param permissions  Permisos que fueron solicitados.
+     * @param grantResults Autorización de cada permiso solicitado.
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        if (requestCode == PERMISSION_CAMERA_REQUEST) {
+            if (permissions.length != grantResults.length)
+                return;
+
+            for (int i = 0; i < permissions.length; i++)
+                if (permissions[i].equals(Manifest.permission.CAMERA))
+                    if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                        onScan(null);
+                        return;
+                    }
+        }
     }
 
     /**
@@ -443,101 +495,18 @@ public class SendPaymentsActivity extends ActivityBase
      *
      * @param view Componente el cual desencadeno el evento Click.
      */
-    public void handlerSendPayment(View view) {
-        doPay();
-    }
+    public void onPay(View view) {
+        final String address = mSendAddressText.getText().toString();
+        Float amount = Float.parseFloat(mSendAmountText.getText().toString());
+        Float fee = calculateTotalFee(address, amount);
 
-    /**
-     * Efectua el pago a realizar y finaliza la actividad.
-     */
-    private void doPay() {
-        EditText code2Fa = findViewById(R.id.mSend2faCode);
+        amount = toCryptoAsset(amount);
+        fee = toCryptoAsset(fee);
 
-        if (code2Fa.getVisibility() == View.VISIBLE) {
-            String codeStr = code2Fa.getText().toString();
-
-            if (Strings.isNullOrEmpty(codeStr)) {
-                code2Fa.setError(getString(R.string.error_2fa_code));
-                return;
-            }
-
-            int code = Integer.parseInt(codeStr);
-
-            try {
-                String secret = AppPreference.getSecretPhrase(this);
-                secret = Security.decryptAES(secret);
-
-                boolean valid = TimeBasedOneTimePassword.validateCurrentNumber(
-                        secret,
-                        code,
-                        0
-                );
-
-                if (!valid) {
-                    code2Fa.setError(getString(R.string.error_2fa_code));
-                    return;
-                }
-
-            } catch (GeneralSecurityException ignored) {
-            }
-        }
-
-        final AuthenticateDialog dialog = new AuthenticateDialog()
-                .setMode(AuthenticateDialog.AUTH)
-                .setWallet(BitcoinService.get());
-
-        Executor executor = Executors.newSingleThreadExecutor();
-
-        executor.execute(new NamedRunnable("AuthenticateToPayment") {
-            @Override
-            protected void execute() {
-                try {
-                    switch (mSelectCoin) {
-                        case BTC:
-                            BitcoinService.get().sendPayment(mAddress, mAmount, mFeePerKb,
-                                    mOutOfTheApp, () -> {
-                                        dialog.show(SendPaymentsActivity.this);
-
-                                        byte[] authData = null;
-                                        try {
-                                            authData = dialog.getAuthData();
-                                        } catch (InterruptedException ignored) {
-                                        }
-                                        if (!Utils.isNull(authData))
-                                            dialog.showUIProgress(
-                                                    getString(R.string.sending_payment));
-
-                                        return authData;
-                                    });
-                            break;
-                    }
-
-                    runOnUiThread(() -> {
-                        Intent intent = new Intent();
-                        intent.putExtra(
-                                ExtrasKey.OP_ACTIVITY, ActivitiesOperation.SEND_PAYMENT.name());
-                        intent.putExtra(ExtrasKey.SELECTED_COIN, mSelectCoin.name());
-                        intent.putExtra(ExtrasKey.SEND_AMOUNT, mAmount.getValue());
-                        setResult(Activity.RESULT_OK, intent);
-
-                        finish();
-                    });
-                } catch (InSufficientBalanceException ex) {
-                    String require = ex.getRequireAmount().toStringFriendly();
-
-                    Utils.showSnackbar(findViewById(R.id.mSendPayment),
-                            getString(R.string.insufficient_money, require));
-                } catch (KeyException ex) {
-                    Utils.showSnackbar(findViewById(R.id.mSendPayment),
-                            getString(R.string.error_pin));
-                } finally {
-                    if (dialog.isShowing())
-                        dialog.dismiss();
-                }
-            }
-        });
-
-
+        Preferences.get().authenticate(this, mHandler::post,
+                (IAuthenticationSucceededCallback) authenticationToken -> {
+                    // TODO Show Dialog 2FA and Send Pay {address, amount, fee}
+                });
     }
 
     /**
@@ -550,58 +519,13 @@ public class SendPaymentsActivity extends ActivityBase
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        Button mSendPayment = findViewById(R.id.mSendPayment);
-        TextView mAddressRecipient = findViewById(R.id.mAddressRecipientText);
-        TextView mAmountText = findViewById(R.id.mAmountSendPaymentEdit);
+        super.onActivityResult(requestCode, resultCode, data);
 
-        if (data != null) {
+        if (requestCode != SCAN_QR_REQUEST || resultCode != RESULT_OK || data == null)
+            return;
 
-            if (!data.hasExtra(ExtrasKey.ASSET_DATA_TO_SEND)) {
-                Utils.showSnackbar(mSendPayment, getString(R.string.address_error));
-            } else {
-                try {
-                    String uri = data.getStringExtra(ExtrasKey.ASSET_DATA_TO_SEND);
-
-                    BitcoinURI uriParsed = new BitcoinURI(uri);
-
-                    if (uriParsed.getAddress() != null
-                            && validateAddress(uriParsed.getAddress().toString()))
-                        mAddressRecipient.setText(uriParsed.getAddress().toString());
-
-                    if (uriParsed.getAmount() != null)
-                        mAmountText.setText(uriParsed.getAmount().toPlainString());
-
-                    if (uriParsed.getParameterByName("token") != null) {
-                        mOutOfTheApp = isOutOfTheApp(
-                                uriParsed.getParameterByName("token").toString(),
-                                mSelectCoin,
-                                uriParsed.getAddress().toString()
-                        );
-
-                        if (!mOutOfTheApp) {
-                            mAddressOnApp = uriParsed.getAddress().toString();
-
-                            Log.d(TAG, "Token encontrado: "
-                                    + uriParsed.getParameterByName("token").toString());
-                        }
-                    }
-
-                } catch (BitcoinURIParseException e) {
-
-                    try {
-                        LegacyAddress addressRead = LegacyAddress.fromBase58(
-                                BitcoinService.NETWORK_PARAMS,
-                                data.getStringExtra(ExtrasKey.ASSET_DATA_TO_SEND)
-                        );
-
-                        mAddressRecipient.setText(addressRead.toBase58());
-                    } catch (AddressFormatException ignored) {
-                        Utils.showSnackbar(mSendPayment, getString(R.string.qr_reader_error)
-                                + ": " + data.getStringExtra(ExtrasKey.ASSET_DATA_TO_SEND));
-                    }
-                }
-            }
-            super.onActivityResult(requestCode, resultCode, data);
-        }
+        mSendAddressText.setText(mWallet.getAddressFromUri(data.getData()));
+        mSendAmountText.requestFocus();
     }
+
 }

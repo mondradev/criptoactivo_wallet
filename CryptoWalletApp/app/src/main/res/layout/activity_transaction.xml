@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  ~ Copyright 2019 InnSy Tech
-  ~ Copyright 2019 Ing. Javier de Jesús Flores Mondragón
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -17,208 +18,165 @@
   -->
 
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
     tools:context=".app.TransactionActivity">
 
-    <android.support.constraint.ConstraintLayout
+    <LinearLayout
+        android:layout_margin="24dp"
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-
-        <View
-            android:id="@+id/mTxDividerAddress"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/dividerColor"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxRecipient" />
-
-        <TextView
-            android:id="@+id/mTxID"
-            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginEnd="16dp"
-            android:text="@string/tx_hash_sample"
-            android:textAlignment="center"
-            android:textIsSelectable="true"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:orientation="horizontal">
 
-        <ImageView
-            android:id="@+id/mTxIcon"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/btc_description_text"
-            android:src="@mipmap/img_bitcoin"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxID" />
+            <ImageView
+                android:id="@+id/mTxIcon"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:contentDescription="@string/icon_description"
+                android:src="@mipmap/ic_bitcoin" />
 
-        <TextView
-            android:id="@+id/mTxOperationKind"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="8dp"
-            android:text="@string/operation_kind_sample"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@+id/mTxAmount"
-            app:layout_constraintStart_toEndOf="@+id/mTxIcon"
-            app:layout_constraintTop_toBottomOf="@+id/mTxID" />
+            <LinearLayout
+                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/mTxAmount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceHeadline4"
+                    android:text="@string/amount_sample_text"
+                    android:textColor="?attr/colorReceivedTx" />
+
+                <TextView
+                    android:id="@+id/mTxFiatAmount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceSubtitle1"
+                    android:text="@string/fiat_sample_text" />
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/mTxAmount"
+            android:layout_marginTop="16dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            android:text="@string/amount_sample_text"
-            android:textColor="@color/receive_tx_color"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxID" />
+            android:textAppearance="?attr/textAppearanceSubtitle2"
+            android:textColor="?attr/colorAccent"
+            android:text="@string/information_text" />
 
         <TextView
-            android:id="@+id/mTxFee"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="16dp"
-            android:singleLine="false"
-            android:text="@string/fee_sample_text"
-            android:textAlignment="textEnd"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxAmount" />
-
-        <View
-            android:id="@+id/mTxDividerMain"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/dividerColor"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxFee" />
-
-        <TextView
-            android:id="@+id/mTxFromCaption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:text="@string/inputs_text"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxDividerMain" />
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:text="@string/id_text" />
 
         <TextView
-            android:id="@+id/mTxFrom"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="16dp"
-            android:textIsSelectable="true"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxFromCaption" />
-
-        <TextView
-            android:id="@+id/mTxToCaption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:text="@string/outputs"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxFrom" />
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:text="@string/tx_hash_sample" />
 
         <TextView
-            android:id="@+id/mTxRecipient"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="16dp"
-            android:textIsSelectable="true"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxToCaption" />
-
-        <TextView
-            android:id="@+id/mTxDateCaption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:text="@string/datetime_text"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxDividerAddress" />
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:text="@string/datetime_text" />
 
         <TextView
-            android:id="@+id/mTxDate"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="16dp"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxDateCaption" />
-
-        <TextView
-            android:id="@+id/mTxCommitsCaption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:text="@string/commit_text"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxDate" />
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:text="@string/datetime_sample_text" />
 
         <TextView
-            android:id="@+id/mTxCommits"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="24dp"
-            android:textSize="14sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mTxCommitsCaption" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:text="@string/total_fee_text" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:text="@string/amount_sample_text" />
 
-    </android.support.constraint.ConstraintLayout>
+        <TextView
+            android:layout_marginTop="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceSubtitle2"
+            android:textColor="?attr/colorAccent"
+            android:text="@string/block_text" />
+
+        <TextView
+            android:layout_marginTop="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:text="@string/blockhash_text" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:text="@string/blockhash_sample_text" />
+
+        <TextView
+            android:layout_marginTop="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:text="@string/blockheight_text" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:text="@string/blockheight_sample_text" />
+
+        <TextView
+            android:layout_marginTop="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:text="@string/commit_text" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:text="@string/commits_sample_text" />
+
+        <TextView
+            android:layout_marginTop="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceSubtitle2"
+            android:textColor="?attr/colorAccent"
+            android:text="@string/inputs_text" />
+
+        <TextView
+            android:layout_marginTop="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceSubtitle2"
+            android:textColor="?attr/colorAccent"
+            android:text="@string/outputs_text" />
+    </LinearLayout>
 
 </ScrollView>

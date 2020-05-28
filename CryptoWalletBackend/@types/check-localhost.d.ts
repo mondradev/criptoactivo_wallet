@@ -1,0 +1,1 @@
+export default function checkLocalHost(address: string): Promise<boolean>;
