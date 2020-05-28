@@ -41,10 +41,13 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -283,6 +286,27 @@ public final class Utils {
                 && calendar.get(Calendar.MONTH) == today.get(Calendar.MONTH)
                 && calendar.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH);
 
+    }
+
+    /**
+     * Obtiene la cadena que representa una cantidad de bytes, utilizando sus equivalentes.
+     *
+     * @param size Tamaño a convertir.
+     * @return Una cadena que representa el tamaño.
+     */
+    public static String toSizeFriendlyString(long size) {
+        int index = 0;
+        float newSize = size;
+        final int maxSize = 1024;
+        final List<String> units = Arrays.asList("B", "KB", "MB", "GB", "TB");
+
+        while (newSize > maxSize) {
+            newSize = newSize / maxSize;
+            index++;
+        }
+
+        return String.format("%s %s", NumberFormat.getNumberInstance().format(newSize),
+                units.get(index));
     }
 
     /**
