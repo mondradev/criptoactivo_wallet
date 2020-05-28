@@ -16,7 +16,7 @@
   -->
 
 <resources>
-    <string name="app_name" translatable="false">CryptoWallet</string>
+    <string name="app_name" translatable="false">CriptoActivo</string>
     <string name="receive_text">Receive</string>
     <string name="send_text">Send</string>
     <string name="balance_text">Balance</string>

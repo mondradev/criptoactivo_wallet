@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import okhttp3.internal.NamedRunnable;
+import com.cryptowallet.utils.NamedRunnable;
 
 /**
  * Provee de una estructura base para la implementación de adaptadores para {@link

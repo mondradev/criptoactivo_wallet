@@ -2,20 +2,37 @@
   "name": "cryptowallet-backend",
   "version": "1.0.0",
   "description": "Servidor centralizado de servicios para la billetera CryptoWallet",
-  "main": "main.js",
+  "main": "server.js",
   "scripts": {
-    "test": "node dist/test/syncservice.js"
+    "test": "node node_modules/mocha/bin/mocha -r ts-node/register test/*.test.ts --log-level=info"
   },
   "author": "InnSy Tech",
   "license": "Apache-2.0",
   "dependencies": {
+    "async-lock": "^1.2.0",
     "bitcore-lib": "^0.16.0",
     "bitcore-p2p": "^1.1.1",
-    "mongodb": "^3.1.13",
-    "typescript-logging": "^0.6.3"
+    "crypto": "^1.0.1",
+    "dns": "^0.2.2",
+    "express": "^4.16.4",
+    "level": "^5.0.1",
+    "queue-fifo": "^0.2.6",
+    "typescript-logging": "^0.6.3",
+    "yargs": "^13.2.4"
   },
   "devDependencies": {
-    "@types/mongodb": "^3.1.22",
-    "@types/node": "^11.11.4"
+    "@types/async-lock": "^1.1.1",
+    "@types/chai": "^4.1.7",
+    "@types/chai-as-promised": "^7.1.0",
+    "@types/express": "^4.16.1",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^11.11.4",
+    "@types/yargs": "^13.0.0",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "dts-gen": "^0.5.7",
+    "mocha": "^6.1.4",
+    "pm2": "^3.5.0",
+    "ts-node": "^8.1.0"
   }
 }

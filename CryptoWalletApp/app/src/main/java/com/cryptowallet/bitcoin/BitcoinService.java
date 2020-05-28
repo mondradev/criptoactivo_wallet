@@ -107,7 +107,7 @@ public final class BitcoinService extends WalletServiceBase implements WifiManag
     /**
      * Parametro de red.
      */
-    public static final NetworkParameters NETWORK_PARAMS = TestNet3Params.get();
+    public static final NetworkParameters NETWORK_PARAMS = MainNetParams.get();
 
     /**
      * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la

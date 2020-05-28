@@ -28,6 +28,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.cryptowallet.R;
+import com.cryptowallet.utils.NamedRunnable;
 import com.cryptowallet.utils.OnAfterTextChangedListenerBase;
 import com.cryptowallet.utils.Utils;
 import com.google.common.base.Joiner;
@@ -43,8 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-
-import okhttp3.internal.NamedRunnable;
 
 /**
  * Esta actividad permite la restauraación de la billetera a través de las 12 palabras.

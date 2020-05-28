@@ -1,0 +1,48 @@
+{
+    // Vea https://go.microsoft.com/fwlink/?LinkId=733558 
+    // para la documentación acerca del formato tasks.json
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "label": "run",
+            "script": "start",
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "label": "install dependencies",
+            "script": "install",
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "label": "test",
+            "script": "test",
+            "problemMatcher": []
+        },
+        {
+            "type": "typescript",
+            "label": "build",
+            "tsconfig": "tsconfig.json",
+            "problemMatcher": [
+                "$tsc"
+            ]
+        },
+        {
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "label": "watch",
+            "option": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
+            ]
+        },
+        {
+            "type": "npm",
+            "label": "publish",
+            "script": "publish",
+            "problemMatcher": []
+        }
+    ]
+}
