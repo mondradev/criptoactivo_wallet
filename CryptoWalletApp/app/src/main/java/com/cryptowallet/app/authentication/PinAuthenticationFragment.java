@@ -191,7 +191,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      * @param callback Funciones de llamada de vuelta para recibir las respuestas o validar el PIN
      *                 sin bloquear el fragmento.
      */
-    public static void show(
+    static void show(
             @NonNull FragmentActivity activity,
             @NonNull Executor executor,
             @NonNull PinAuthenticationMode mode,
@@ -311,7 +311,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                     && mAuthenticationToken != null && mPinConfirmation == null))
                 caption.setText(R.string.new_pin);
             else if (mPinConfirmation != null)
-                caption.setText(R.string.commit_pin);
+                caption.setText(R.string.confirm_pin_text);
             else
                 caption.setText(R.string.enter_pin);
 
@@ -387,16 +387,17 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
     }
 
     /**
-     * @param newToken
+     * Esta función es llamada cuando se finaliza la actualización del PIN de autenticación. Esto
+     * invoca el evento "AuthenticationUpdated".
+     *
+     * @param newToken Nuevo token de autenticación.
      */
     private void handleUpdate(byte[] newToken) {
         if (mAuthenticationToken == null)
             return;
 
-        mHandler.post(() -> {
-            mExecutor.execute(() -> mAuthPinCallback
-                    .onAuthenticationUpdated(mAuthenticationToken, newToken));
-        });
+        mHandler.post(() -> mExecutor.execute(() -> mAuthPinCallback
+                .onAuthenticationUpdated(mAuthenticationToken, newToken)));
     }
 
     /**
@@ -560,7 +561,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
             throw new Resources.NotFoundException();
 
         if (mPinConfirmation != null)
-            caption.setText(R.string.commit_pin);
+            caption.setText(R.string.confirm_pin_text);
         else if (mMode == PinAuthenticationMode.REGISTER
                 || (mMode == PinAuthenticationMode.UPDATE && mAuthenticationToken != null))
             caption.setText(R.string.new_pin);
