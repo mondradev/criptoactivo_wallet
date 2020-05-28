@@ -1,5 +1,6 @@
 import Fs from 'fs'
 import Path from 'path'
+import './preconditions'
 
 export function wait(time: number) {
     return new Promise<void>(resolve => {

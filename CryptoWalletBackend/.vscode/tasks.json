@@ -70,7 +70,7 @@
                 "command": "bash",
                 "args": [
                     "-c",
-                    "'cd bin ; ./publish.sh ${input:BuildType} ${input:Host} ${input:Port} ${input:Username} ${input:Password}'"
+                    "'cd bin ; ./publish.sh ${input:BuildType} ${input:Host} ${input:Port} ${input:Username} ${input:KeyFile}'"
                 ]
             },
             "linux": {
@@ -80,7 +80,7 @@
                     "${input:Host}",
                     "${input:Port}",
                     "${input:Username}",
-                    "${input:Password}"
+                    "${input:KeyFile}"
                 ]
             }
         },
@@ -112,9 +112,10 @@
             "default": "innsyssh"
         },
         {
-            "id": "Password",
-            "description": "Contraseña de conexión SSH",
+            "id": "KeyFile",
+            "description": "Ruta relativa del archivo de llave SSH",
             "type": "promptString",
+            "default": "jjflores@innsytech.com.pem"
         },
         {
             "id": "Host",

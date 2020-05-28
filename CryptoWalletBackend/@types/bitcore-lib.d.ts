@@ -413,7 +413,6 @@ declare module "bitcore-lib" {
          * the properties of the BlockHeader
          *
          * @param {*} - A Buffer, JSON string, or Object
-         * @returns {BlockHeader} - An instance of block header
          * @constructor
          */
         constructor(arg: Buffer | string | object);
@@ -441,6 +440,11 @@ declare module "bitcore-lib" {
          * @returns {BlockHeader} - An instance of block header
          */
         public static fromString(str: string): BlockHeader;
+
+        /**
+         * 
+         */
+        public toBuffer(): Buffer
     }
 
     /**
@@ -854,5 +858,25 @@ declare module "bitcore-lib" {
             OP_INVALIDOPCODE: 255
         };
 
+    }
+
+    export namespace encoding {
+        export class BufferWriter {
+            set(obj: { bufs: Array<Buffer> }): BufferWriter
+            toBuffer(): Buffer
+            concat(): Buffer
+            write(buf: Buffer): BufferWriter
+            writeReverse(buf: Buffer): BufferWriter
+            writeUInt8(n: number): BufferWriter
+            writeUInt16BE(n: number): BufferWriter
+            writeUInt16LE(n: number): BufferWriter
+            writeUInt32BE(n: number): BufferWriter
+            writeInt32LE(n: number): BufferWriter
+            writeUInt32LE(n: number): BufferWriter
+            writeUInt64BEBN(bn): BufferWriter
+            writeUInt64LEBN(bn): BufferWriter
+            writeVarintNum(n: number): BufferWriter
+            writeVarintBN(bn): BufferWriter
+        }
     }
 }

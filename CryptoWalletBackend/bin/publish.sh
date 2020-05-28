@@ -1,15 +1,17 @@
 #!/bin/bash
 
 function requireCommand() {
-    if ![ -x "$(command -v $1)" ]
+    if [ "$(command -v $1)" == "" ]
     then 
         echo "Require be install: $1 "
         exit 1
     fi
 }
 
-requireCommand sshpass
+# requireCommand sshpass
 requireCommand ssh
+
+PROJECT_NAME="CriptoActivoServer"
 
 BUILD_TYPE=$1
 VERSION=$(cat cwb_version)
@@ -48,28 +50,38 @@ function hasError() {
 }
 
 CURRENT_PATH=$PWD
-CRYPTOWALLET_PATH=$CURRENT_PATH/cryptowalletbackend
+PROJECT_TEMP_PATH=$CURRENT_PATH/$PROJECT_NAME
 
 USERNAME=$4
-PASSWORD=$5
+KEYFILE=$5
 HOSTNAME=$2
 PORT=$3
 
-require "$USERNAME" "username"
-require "$PASSWORD" "password"
 require "$HOSTNAME" "hostname"
 require "$PORT" "port"
+require "$USERNAME" "username"
+require "$KEYFILE" "sshkey"
+
+if [[ ! -f "$KEYFILE" ]]; then
+    hasError 1 "Ssh key no found: $KEYFILE"
+fi
 
 cd ..
 
-echo "Build CryptoWalletBackend v$VERSION..."
-mkdir $CRYPTOWALLET_PATH &> /dev/null
+echo "Publishing $PROJECT_NAME v$VERSION"
+echo "Creating temp directory..."
+
+if [[ -d  $PROJECT_TEMP_PATH ]]; then
+    rm -rf $PROJECT_TEMP_PATH
+fi
+
+mkdir $PROJECT_TEMP_PATH &> /dev/null
 
 hasError $? "Fail to create temp directory"
 
 echo 'Copying data...'
-cp -r build/* $CRYPTOWALLET_PATH/
-cp package.json $CRYPTOWALLET_PATH/
+cp -r build/{config,src} $PROJECT_TEMP_PATH/
+cp package.json $PROJECT_TEMP_PATH/
 
 hasError $? "Fail to copy data"
 
@@ -77,31 +89,31 @@ cd $CURRENT_PATH
 
 echo 'Compressing build...'
 
-tar -cf "cryptowallet_v${VERSION}.tar.gz" cryptowalletbackend
+tar -cf "${PROJECT_NAME}_v${VERSION}.tar.gz" $PROJECT_NAME
 
 hasError $? "Fail to compress data"
 
 echo 'Delete temps...'
 
-rm -rf $CRYPTOWALLET_PATH/
+rm -rf $PROJECT_TEMP_PATH/
 
 hasError $? "Fail to delete temps"
 
 echo 'Upload files...'
 
-sshpass -p $PASSWORD scp -P $PORT "cryptowallet_v${VERSION}.tar.gz" $USERNAME@$HOSTNAME:
+scp -i $CURRENT_PATH/$KEYFILE -P $PORT "${PROJECT_NAME}_v${VERSION}.tar.gz" $USERNAME@$HOSTNAME:
 
 hasError $? "Fail to upload files"
 
 echo 'Installing...'
 
-sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "tar -xf cryptowallet_v${VERSION}.tar.gz"
+ssh -i $CURRENT_PATH/$KEYFILE -p $PORT $USERNAME@$HOSTNAME "tar -xf ${PROJECT_NAME}_v${VERSION}.tar.gz"
 
 hasError $? "Fail to install on remote"
 
 echo 'Executing...'
 
-sshpass -p $PASSWORD ssh -p $PORT $USERNAME@$HOSTNAME "cd cryptowalletbackend; ./node_modules/pm2/bin/pm2 restart cryptowallet-server"
+ssh -i $CURRENT_PATH/$KEYFILE -p $PORT $USERNAME@$HOSTNAME "cd $PROJECT_NAME; ./killServer ; node src/server.js --log-level=trace &> server.log &"
 
 hasError $? "Fail to execute on remote"
 

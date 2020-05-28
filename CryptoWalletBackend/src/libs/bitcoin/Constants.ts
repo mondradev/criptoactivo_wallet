@@ -1,11 +1,12 @@
 /**
  * Constantes utilizadas en el módulo de Bitcoin.
  */
-const CONSTANTS = {
+const Constants = {
+    DOWNLOAD_SIZE: 1024,
     BITCOIN: "bitcoin",
-    TIMEOUTS: {
-        WAIT_FOR_HEADERS: 5000,
-        WAIT_FOR_BLOCKS: 5000,
+    Timeouts: {
+        WAIT_FOR_HEADERS: 10000,
+        WAIT_FOR_BLOCKS: 20000,
         WAIT_FOR_CONNECT_NET: 20000,
         WAIT_FOR_CONNECT_PEER: 5000
     },
@@ -13,4 +14,4 @@ const CONSTANTS = {
     BIN_NULL_HASH: Buffer.alloc(64, 0)
 }
 
-export default CONSTANTS
+export default Constants

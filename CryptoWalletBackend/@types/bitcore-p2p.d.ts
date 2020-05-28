@@ -1,71 +1,113 @@
 declare module "bitcore-p2p" {
 
-    import { Network } from "bitcore-lib";
+    import { Network, Block, encoding, BlockHeader, Transaction } from "bitcore-lib"
 
-    export class BloomFilter {
-        static BLOOM_UPDATE_ALL: number;
-        static BLOOM_UPDATE_NONE: number;
-        static BLOOM_UPDATE_P2PUBKEY_ONLY: number;
-        static LN2: number;
-        static LN2SQUARED: number;
-        static MAX_BLOOM_FILTER_SIZE: number;
-        static MAX_HASH_FUNCS: number;
-        static MIN_HASH_FUNCS: number;
-        static MurmurHash3(seed: any, data: any): any;
-        static create(elements: any, falsePositiveRate: any, nTweak: any, nFlags: any): any;
-        static fromBuffer(payload: any): any;
-        constructor(arg: any);
-        vData: any;
-        nHashFuncs: any;
-        nTweak: any;
-        nFlags: any;
-        clear(): void;
-        contains(data: any): any;
-        hash(nHashNum: any, vDataToHash: any): any;
-        insert(data: any): any;
-        inspect(): any;
-        toBuffer(): any;
-        toObject(): any;
-    }
     export class Inventory {
-        static TYPE: {
-            BLOCK: number;
-            ERROR: number;
-            FILTERED_BLOCK: number;
-            TX: number;
-        };
-        static TYPE_NAME: string[];
-        static forBlock(hash: any): any;
-        static forFilteredBlock(hash: any): any;
-        static forItem(type: any, hash: any): any;
-        static forTransaction(hash: any): any;
-        static fromBuffer(payload: any): any;
-        static fromBufferReader(br: any): any;
-        constructor(obj: any);
-        type: any;
-        hash: any;
-        toBuffer(): any;
-        toBufferWriter(bw: any): any;
-    }
-    export class Messages {
-        Pong(nonce: Buffer): Messages
-        Ping(): Messages
-        GetAddr(): Messages
-        static MINIMUM_LENGTH: number;
-        static Message(options: any): void;
-        static PAYLOAD_START: number;
-        static builder(options: any): any;
-        constructor(options: any);
-        builder: any;
-        network: any;
-        add(key: any, name: any, Command: any): void;
-        parseBuffer(dataBuffer: any): any;
 
-        GetData: {
-            forBlock: (hash: string) => Messages
+        public static TYPE: {
+            ERROR: number,
+            TX: number,
+            BLOCK: number,
+            FILTERED_BLOCK: number
         }
-        GetHeaders: (params: { starts: Array<string>, stop: string }) => Messages
+
+        public static TYPE_NAME: Array<string>
+
+        public get type(): number
+        public get hash(): Buffer
+
+        public constructor(obj: { type: number, hash: Buffer })
+
+        public toBuffer(): Buffer
+        public toBufferWriter(): encoding.BufferWriter
+
+        public static fromBuffer(payload: Buffer): Inventory
+        public static fromBufferReader(payload: encoding.BufferWriter): Inventory
+        public static forItem(type: number, hash: Buffer): Inventory
+        public static forBlock(hash: Buffer): Inventory
+        public static forFilteredBlock(hash: Buffer): Inventory
+        public static forTransaction(hash: Buffer): Inventory
     }
+
+    export class Message {
+        public toBuffer(): Buffer
+        public serialize(): Buffer
+        public setPayload(payload: Buffer): void
+        public getPayload(): Buffer
+
+        public constructor(options: { command: string, network: Network })
+    }
+
+    class InventoryMessage<T> extends Message {
+        public forTransaction(hash: Buffer): T
+        public forBlock(hash: Buffer): T
+        public forFilteredBlock(hash: Buffer): T
+    }
+
+    export class BlockMessage extends Message {
+        public get block(): Block
+
+        public constructor(arg: Block, options: { network: Network, Block: Function })
+    }
+
+    export class InvMessage extends Message {
+        public get inventory(): Inventory[]
+        public constructor(arg: Array<any>, options: { network: Network })
+    }
+
+    export class GetdataMessage extends Message {
+        public get inventory(): Inventory[]
+        public constructor(arg: Array<Inventory>, options: { network: Network })
+    }
+
+    export class HeaderMessage extends Message {
+        public constructor(arg: BlockHeader[], options: { network: Network, BlockHeader: Function })
+    }
+
+    export class PingMessage extends Message {
+        public constructor(arg: Buffer, options: { network: Network })
+    }
+
+    export class PongMessage extends Message {
+        public constructor(arg: Buffer, options: { network: Network })
+    }
+
+    export class TransactionMessage extends Message {
+        public constructor(arg: Transaction, options: { network: Network, Transaction: Function })
+    }
+
+    export class GetheadersMessage extends Message {
+        public constructor(arg: { starts: string[], stop: string }, options: { network: Network, protocolVersion: number })
+    }
+
+    export class HeadersMessage extends Message {
+        public get headers(): BlockHeader[]
+        public constructor(arg: BlockHeader[], { network: Network, BlockHeader: Function })
+    }
+
+    export class Messages {
+        public constructor(options?: {
+            network?: Network,
+            Block?: Function,
+            BlockHeader?: Function,
+            MerkleBlock?: Function,
+            Transaction?: Function,
+            protocolVersion?: number
+        })
+
+        public parseBuffer(dataBuffer: Buffer): Message
+        public add(key: string, name: string, Command: Function): void
+
+        Ping: (arg?: Buffer, options?: { network: Network }) => PingMessage
+        Pong: (arg?: Buffer, options?: { network: Network }) => PongMessage
+        Transaction: (arg: Transaction, options: { network: Network, Transaction: Function }) => TransactionMessage
+        Block: (arg: Block, options: { network: Network, Block: Function }) => BlockMessage
+        GetData: InventoryMessage<GetdataMessage>
+        Inventory: InventoryMessage<InvMessage>
+        Headers: (arg: BlockHeader[], options: { network: Network, BlockHeader: Function }) => HeaderMessage
+        GetHeaders: (arg: { starts: string[], stop?: string }, options?: { network: Network, protocolVersion: number }) => GetheadersMessage
+    }
+
     export class Peer {
         static MAX_RECEIVE_BUFFER: number;
         static STATUS: {
@@ -89,8 +131,8 @@ declare module "bitcore-p2p" {
         versionSent: any;
         addListener(type: any, listener: any): any;
         connect(): any;
-        disconnect(): any;
-        emit(type: any, args: any): any;
+        disconnect(): Peer;
+        emit(type: any, ...args: any[]): any;
         eventNames(): any;
         getMaxListeners(): any;
         listenerCount(type: any): any;
@@ -103,7 +145,7 @@ declare module "bitcore-p2p" {
         rawListeners(type: any): any;
         removeAllListeners(type: any, ...args: any[]): any;
         removeListener(type: any, listener: any): any;
-        sendMessage(message: any): void;
+        sendMessage(message: Message): void;
         setMaxListeners(n: any): any;
         setProxy(host: any, port: any): any;
     }

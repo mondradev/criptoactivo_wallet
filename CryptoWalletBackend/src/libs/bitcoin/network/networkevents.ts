@@ -1,48 +1,61 @@
 /**
  * Eventos que ocurren en el nodo de la red de bitcoin.
  */
+/**
+ * Eventos que ocurren en el nodo de la red de bitcoin.
+ */
 enum NetworkEvents {
     /**
      * Recepción de encabezados de bloques.
      */
-    Headers = 'headers',
+    HEADERS = 'headers',
     /**
      * Recepción de un bloque.
      */
-    Block = 'block',
+    BLOCK = 'block',
     /**
      * Recepción de una transacción.
      */
-    Tx = 'tx',
-    /**
-     * Recepción de las direcciones de los nodos conectados al remoto.
-     */
-    Addr = 'addr',
+    TX = 'tx',
     /**
      * Conexión a la red lista.
      */
-    Ready = 'ready',
+    READY = 'ready',
     /**
      * Desconexión de algún nodo o de la red.
      */
-    Disconnect = 'disconnect',
+    DISCONNECT = 'disconnect',
     /**
      * Error ocurrido en las funciones del nodo.
      */
-    Error = 'error',
+    ERROR = 'error',
     /**
      * Sincronización completa del nodo.
      */
-    Sync = 'sync',
+    SYNC = 'sync',
     /**
      * Recepción de las transacciones en memoría, sin agregar a un bloque válido.
      */
-    Mempool = 'mempool',
+    MEMPOOL = 'mempool',
+    /**
+     * Recepción de direcciones de nodos activos.
+     */
+    ADDR = 'addr',
 
     /**
-     * Iniciar procesamiento.
+     * Recepción de la petición PING
      */
-    Start = 'start'
+    PONG = 'pong',
+
+    /**
+     * Recepción de los hashes de las transacciones o bloque nuevos
+     */
+    INV = 'inv',
+
+    /**
+     * Recepción de la petición de datos sobre una transacción o bloque
+     */
+    GETDATA = 'getdata'
 }
 
 export default NetworkEvents
