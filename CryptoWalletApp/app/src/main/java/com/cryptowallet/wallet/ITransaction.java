@@ -91,7 +91,7 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Un valor true si la transacción fue confirmada.
      */
-    boolean isCommited();
+    boolean isConfirm();
 
     /**
      * Obtiene el identificador único del bloque padre de esta transacción.
@@ -115,11 +115,11 @@ public interface ITransaction extends Comparable<ITransaction> {
     TransactionState getState();
 
     /**
-     * Obtiene el tamaño de la transacción en kilobytes.
+     * Obtiene el tamaño de la transacción en bytes.
      *
-     * @return Tamaño en kilobytes.
+     * @return Tamaño en bytes.
      */
-    float getSizeInKB();
+    long getSize();
 
     /**
      * Obtiene la billetera que contiene esta transacción.
@@ -144,7 +144,15 @@ public interface ITransaction extends Comparable<ITransaction> {
 
     /**
      * Indica si es una transacción con nuevas monedas.
+     *
      * @return Un true si la transacción es de nuevas monedas.
      */
     boolean isCoinbase();
+
+    /**
+     * Obtiene las confirmaciones de la transacción.
+     *
+     * @return El número de confirmaciones.
+     */
+    long getConfirmations();
 }

@@ -332,7 +332,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Un valor true si la transacción fue confirmada.
      */
     @Override
-    public boolean isCommited() {
+    public boolean isConfirm() {
         return getConfidence().getDepthInBlocks() > MIN_COMMITS;
     }
 
@@ -384,8 +384,8 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Tamaño en kilobytes.
      */
     @Override
-    public float getSizeInKB() {
-        return this.bitcoinSerialize().length / 1024f;
+    public long getSize() {
+        return this.bitcoinSerialize().length;
     }
 
     /**
@@ -432,6 +432,17 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     @Override
     public boolean isCoinbase() {
         return getFromAddress().isEmpty();
+    }
+
+    /**
+     * Obtiene las confirmaciones de la transacción.
+     *
+     * @return El número de confirmaciones.
+     */
+    @Override
+    public long getConfirmations() {
+        // TODO Calculate confirmations
+        return 0;
     }
 
     /**

@@ -292,7 +292,7 @@ public final class TransactionHistoryAdapter
             icon.setImageResource(mItem.getWallet().getIcon());
             iconKind.setIcon(itemView.getContext().getDrawable(getKindIcon()));
             operationKind.setText(getKindLabel());
-            status.setVisibility(mItem.isCommited() ? View.GONE : View.VISIBLE);
+            status.setVisibility(mItem.isConfirm() ? View.GONE : View.VISIBLE);
             from.setText(mItem.isPay() ? getToLabel() : getFromLabel());
             time.setText(Utils.toLocalTimeString(mItem.getTime()));
 
@@ -334,7 +334,7 @@ public final class TransactionHistoryAdapter
          * @return Etiqueta de direcciones de origen.
          */
         private String getFromLabel() {
-            if (mItem.getFromAddress().size() == 0)
+            if (mItem.isCoinbase())
                 return itemView.getContext().getString(R.string.coinbase_address);
 
             return mItem.getFromAddress().size() > 1

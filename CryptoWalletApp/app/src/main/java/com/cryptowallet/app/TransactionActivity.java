@@ -19,6 +19,9 @@
 package com.cryptowallet.app;
 
 import android.os.Bundle;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
@@ -27,8 +30,8 @@ import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletManager;
-import com.google.common.base.Joiner;
 
+import java.text.NumberFormat;
 import java.util.Objects;
 
 /**
@@ -39,6 +42,11 @@ import java.util.Objects;
  * @version 1.2
  */
 public class TransactionActivity extends LockableActivity {
+
+    /**
+     * Simbolo de valor aproximado.
+     */
+    private static final String ALMOST_EQUAL_TO = "≈";
 
     /**
      * Clave de extra para identificador de transacción.
@@ -65,8 +73,8 @@ public class TransactionActivity extends LockableActivity {
 
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowHomeEnabled(true);
 
-        SupportedAssets asset = SupportedAssets.valueOf(getIntent().getStringExtra(ASSET_EXTRA));
-        String id = getIntent().getStringExtra(TX_ID_EXTRA);
+        final SupportedAssets asset = SupportedAssets.valueOf(getIntent().getStringExtra(ASSET_EXTRA));
+        final String id = getIntent().getStringExtra(TX_ID_EXTRA);
 
         ITransaction tx = WalletManager.get(asset).findTransaction(id);
 
@@ -75,10 +83,57 @@ public class TransactionActivity extends LockableActivity {
             return;
         }
 
-        final String fromAddresses = Joiner.on("\n").join(tx.getFromAddress());
-        final String toAddresses = Joiner.on("\n").join(tx.getToAddress());
+        final NumberFormat formatter = NumberFormat.getIntegerInstance();
+        final SupportedAssets fiatAsset = Preferences.get().getFiat();
         final int colorTxKind = Utils.resolveColor(this, tx.isPay()
                 ? R.attr.colorSentTx : R.attr.colorReceivedTx);
+        final int status = tx.getBlockHeight() >= 0 ? tx.isConfirm()
+                ? R.string.confirmed_status_text
+                : R.string.unconfirmed_status_text
+                : R.string.mempool_status_text;
+
+        this.<TextView>requireView(R.id.mTxId).setText(tx.getID());
+        this.<TextView>requireView(R.id.mTxAmount).setText(asset.toStringFriendly(tx.getAmount()));
+        this.<TextView>requireView(R.id.mTxAmount).setTextColor(colorTxKind);
+        this.<TextView>requireView(R.id.mTxFiatAmount).setText(String.format("%s %s",
+                ALMOST_EQUAL_TO, fiatAsset.toStringFriendly(tx.getFiatAmount())));
+        this.<ImageView>requireView(R.id.mTxIcon).setImageResource(tx.getWallet().getIcon());
+        this.<TextView>requireView(R.id.mTxDatetime).setText(Utils.toLocalDatetimeString(
+                tx.getTime(), getString(R.string.today_text), getString(R.string.yesterday_text)));
+        this.<TextView>requireView(R.id.mTxFee).setText(asset.toStringFriendly(tx.getNetworkFee()));
+        this.<TextView>requireView(R.id.mTxSize).setText(Utils.toSizeFriendlyString(tx.getSize()));
+        this.<TextView>requireView(R.id.mTxStatus).setText(status);
+
+        if (tx.getBlockHeight() < 0)
+            this.requireView(R.id.mTxBlockInfo).setVisibility(View.GONE);
+        else {
+
+            this.<TextView>requireView(R.id.mTxBlockHash).setText(tx.getBlockHash());
+            this.<TextView>requireView(R.id.mTxBlockHeight).setText(
+                    formatter.format(tx.getBlockHeight()));
+            this.<TextView>requireView(R.id.mTxConfirmations).setText(
+                    formatter.format(tx.getConfirmations()));
+        }
     }
 
+    /**
+     * Este método es llamado cuando se presiona el botón "Entradas". Se muestra un cuadro de
+     * diálogo que permite visualizar las direcciones origen de donde procede el monto de la
+     * transacción.
+     *
+     * @param view Botón que invoca.
+     */
+    public void onClickedInputs(View view) {
+
+    }
+
+    /**
+     * Este método es llamdo cuando se presiona el botón "Salidas". Se muestra un cuadro de dialogo
+     * que permite visualizar las direcciones destino a donde se envía el monto de la transacción.
+     *
+     * @param view Botón que invoca.
+     */
+    public void onClickedOutputs(View view) {
+
+    }
 }
