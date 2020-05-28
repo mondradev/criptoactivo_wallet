@@ -1,46 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
 <resources>
 
-    <!-- Splash background -->
-    <color name="splashBackgroundColor">#EEEEEE</color>
-
     <!-- Light Theme -->
-    <color name="light_primary">#4caf50</color>
-    <color name="light_darkPrimary">#388E3C</color>
-    <color name="light_accent">#FF9800</color>
-    <color name="light_text_icons">#FFFFFF</color>
-    <color name="light_primary_text">#212121</color>
-    <color name="light_secondary_text">#757575</color>
-    <color name="light_divider">#BDBDBD</color>
-
-    <color name="light_uncommit_tx">#F44336</color>
-    <color name="light_commit_tx">#FFC107</color>
-    <color name="light_pluscommit_tx">#4CAF50</color>
-
-    <color name="light_amount_tx">@color/light_text_icons</color>
-
-    <color name="light_snackbar_bg">#212121</color>
-    <color name="light_background">#EEEEEE</color>
+    <color name="lightPrimary">#4caf50</color>
+    <color name="lightDarkPrimary">#388E3C</color>
+    <color name="lightAccent">#FF9800</color>
+    <color name="lightBackground">#EEEEEE</color>
+    <color name="lightSendTx">#F44336</color>
+    <color name="lightReceiveTx">#4CAF50</color>
+    <color name="lightPendingTx">#F44336</color>
 
     <!-- Dark Theme -->
-    <color name="dark_primary">#D32F2F</color>
-    <color name="dark_darkPrimary">#B71C1C</color>
-    <color name="dark_accent">#009688</color>
-    <color name="dark_text_icons">#FFFFFF</color>
-    <color name="dark_primary_text">#F5F5F5</color>
-    <color name="dark_secondary_text">#757575</color>
-    <color name="dark_divider">#616161</color>
-
-    <color name="dark_uncommit_tx">#F44336</color>
-    <color name="dark_commit_tx">#FFC107</color>
-    <color name="dark_pluscommit_tx">#4CAF50</color>
-
-    <color name="dark_amount_tx">@color/dark_text_icons</color>
-
-    <color name="dark_snackbar_bg">#757575</color>
-    <color name="dark_background">#212121</color>
-
-    <color name="dark_cardBackground">#424242</color>
+    <color name="darkPrimary">#D32F2F</color>
+    <color name="darkDarkPrimary">#B71C1C</color>
+    <color name="darkAccent">#009688</color>
+    <color name="darkBackground">#303030</color>
+    <color name="darkBarBackground">#212121</color>
+    <color name="darkSurface">#424242</color>
 
     <!-- Blue Theme -->
     <color name="blue_primary">#4c2777</color>
@@ -63,8 +57,6 @@
 
     <!-- Send/Receive Colors -->
 
-    <color name="send_tx_color">#F44336</color>
-    <color name="receive_tx_color">#4CAF50</color>
     <color name="transferred_tx_color">#2196F3</color>
 
 </resources>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:layout="@layout/layout_preference_title"
+        android:title="@string/general_title_setting">
+        <ListPreference
+            android:dialogTitle="@string/theme_setting_title"
+            android:key="theme"
+            android:title="@string/theme_setting_title"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:dialogTitle="@string/currency_setting_title"
+            android:key="currency"
+            android:title="@string/currency_setting_title"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:dialogTitle="@string/language_setting_title"
+            android:key="language"
+            android:title="@string/language_setting_title"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/layout_preference_title"
+        android:title="@string/wallet_title">
+        <Preference
+            android:key="backup"
+            android:summary="@string/backup_summary_text"
+            android:title="@string/backup_text"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="delete"
+            android:summary="@string/delete_summary"
+            android:title="@string/delete_text"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/layout_preference_title"
+        android:title="@string/security_title_setting">
+        <Preference
+            android:key="changepin"
+            android:summary="@string/pin_summary"
+            android:title="@string/change_pin_setting"
+            app:iconSpaceReserved="false" />
+        <SwitchPreference
+            android:key="biometric"
+            android:summary="@string/biometric_summary"
+            android:title="@string/biometric_setting"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false" />
+        <ListPreference
+            android:dialogTitle="@string/timeout_lock_setting_title"
+            android:key="locktime"
+            android:summary="@string/timeout_lock_summary"
+            android:title="@string/timeout_lock_setting_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="2factor"
+            android:summary="@string/two_factor_summary"
+            android:title="@string/two_factor_setting_title"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/layout_preference_title"
+        android:title="@string/about_text">
+        <Preference
+            android:key="version"
+            android:summary="@string/unknown_version"
+            android:title="@string/version_text"
+            app:iconSpaceReserved="false" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

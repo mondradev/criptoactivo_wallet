@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  ~ Copyright 2019 InnSy Tech
-  ~ Copyright 2019 Ing. Javier de Jesús Flores Mondragón
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -18,22 +19,13 @@
 
 <resources>
     <declare-styleable name="CustomAttr">
-        <attr name="primaryTextColor" format="color" />
-        <attr name="textAccentColor" format="color" />
-        <attr name="dividerColor" format="color" />
-
-        <attr name="plusCommitTxColor" format="color" />
-        <attr name="commitTxColor" format="color" />
-        <attr name="uncommitTxColor" format="color" />
-
-        <attr name="snackbarColor" format="color" />
-
-        <attr name="textIconsColor" format="color" />
-        <attr name="mainTextColor" format="color" />
-
+        <attr name="pinKeyboardTheme" format="reference" />
+        <attr name="iconButtonStyle" format="reference" />
+        <attr name="toggleIconStyle" format="reference" />
+        <attr name="txEmptyListDrawable" format="reference" />
+        <attr name="colorSentTx" format="color" />
+        <attr name="colorReceivedTx" format="color" />
+        <attr name="colorPendingTx" format="color" />
         <attr name="colorBackground" format="color" />
-        <attr name="textColorSecondary" format="color" />
-
-        <attr name="chipColor" format="color" />
     </declare-styleable>
 </resources>

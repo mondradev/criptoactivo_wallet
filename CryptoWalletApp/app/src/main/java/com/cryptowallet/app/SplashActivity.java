@@ -1,6 +1,7 @@
 /*
- * Copyright 2019 InnSy Tech
- * Copyright 2019 Ing. Javier de Jesús Flores Mondragón
+ * Copyright © 2020. Criptoactivo
+ * Copyright © 2020. InnSy Tech
+ * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,29 +20,47 @@ package com.cryptowallet.app;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+import android.os.Handler;
+import android.util.Log;
+import android.widget.ImageView;
+import android.widget.TextView;
 
-import com.cryptowallet.bitcoin.BitcoinService;
-import com.cryptowallet.wallet.coinmarket.ExchangeService;
+import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import com.cryptowallet.R;
+import com.cryptowallet.assets.bitcoin.wallet.Wallet;
+import com.cryptowallet.services.coinmarket.BitfinexPriceTracker;
+import com.cryptowallet.services.coinmarket.BitsoPriceTracker;
+import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletManager;
+
+import java.util.Objects;
 
 import javax.annotation.Nullable;
 
 /**
- * Actividad de pantallas Splash.
+ * Actividad de la pantalla de arranque de la aplicación. En esta actividad se verifica el estado de
+ * la aplicación y las configuraciones del usuario.
  *
- * @author Ing. Javier Flores
- * @version 1.0
+ * @author Ing. Javier Flores (jjflores@innsytech.com)
+ * @version 2.0
  */
 public final class SplashActivity extends AppCompatActivity {
 
     /**
-     * Indica si el log fue inicializado.
+     * Libro de Bitcoin-PesosMxn Bitso
      */
-    public static boolean mIsInitializeLogger = false;
+    private static final String BOOK_BTC_MXN = "btc_mxn";
+
+    /**
+     * Libro de Bitcoin-USD Bitfinex
+     */
+    private static final String BOOK_BTC_USD = "tBTCUSD";
+
+    /**
+     * Etiqueta de log.
+     */
+    private static final String LOG_TAG = "Splashscreen";
 
     /**
      * Este método es llamado cuando se crea la actividad.
@@ -51,47 +70,54 @@ public final class SplashActivity extends AppCompatActivity {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_splashscreen);
+        Objects.requireNonNull(getSupportActionBar()).hide();
 
-        AppPreference.loadLanguage(this);
+        TextView caption = findViewById(R.id.mSplashCopyright);
+        ImageView icon = findViewById(R.id.mSplashLogo);
 
-        if (!mIsInitializeLogger) {
-            Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-                try {
-                    String dataDir = getApplicationContext().getApplicationInfo().dataDir;
-                    File loggerFile = new File(dataDir, "cryptowallet.log");
+        icon.setImageResource(R.drawable.ic_cryptowallet);
+        caption.setText(R.string.copyright);
 
-                    e.printStackTrace(new PrintStream(loggerFile));
-                    e.printStackTrace();
-                } catch (IOException ignored) {
+        if (savedInstanceState == null)
+            this.setupApp();
 
-                }
-                System.exit(2);
-            });
+        this.initApp();
+    }
 
-            mIsInitializeLogger = true;
-        }
+    /**
+     * Inicializa la aplicación.
+     */
+    private void initApp() {
+        new Handler().postDelayed(() -> {
+            Intent intent;
 
-        if (!ExchangeService.isInitialized())
-            ExchangeService.init(this);
+            if (!WalletManager.any())
+                intent = new Intent(this, WelcomeActivity.class);
+            else {
+                LockableActivity.requireUnlock();
+                intent = new Intent(this, MainActivity.class);
+            }
 
-        ExchangeService.get().reloadMarketPrice();
+            startActivity(intent);
+            finishAfterTransition();
 
-        Intent intent;
+        }, 500);
+    }
 
-        File wallet = new File(getApplicationInfo().dataDir, "wallet.btc");
+    /**
+     * Configura los parametros iniciales de la aplicación.
+     */
+    private void setupApp() {
+        Wallet btcWallet = new Wallet(this);
+        btcWallet.registerPriceTracker(BitfinexPriceTracker.get(BOOK_BTC_USD), SupportedAssets.USD);
+        btcWallet.registerPriceTracker(BitsoPriceTracker.get(BOOK_BTC_MXN), SupportedAssets.MXN);
 
-        if (wallet.exists()) {
-            intent = new Intent(this, BitcoinService.class);
-            startService(intent);
+        WalletManager.registerWallet(btcWallet);
+        LockableActivity.registerMainActivityClass(MainActivity.class);
+        Preferences.create(this).loadLanguage(this);
 
-            intent = new Intent(this, WalletAppActivity.class);
-            intent.putExtra(ExtrasKey.REQ_AUTH, true);
-
-        } else
-            intent = new Intent(this, InitWalletActivity.class);
-
-        startActivity(intent);
-        finish();
+        Log.d(LOG_TAG, "App is ready");
     }
 
 }
