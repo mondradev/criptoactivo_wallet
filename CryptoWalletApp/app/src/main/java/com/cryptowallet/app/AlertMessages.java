@@ -88,4 +88,14 @@ final class AlertMessages {
                 .create()
                 .show();
     }
+
+
+    /**
+     * Muestra una alerta de error al inicializar la billetera.
+     *
+     * @param context Contexto de la aplicación.
+     */
+    static void showCorruptedWalletError(Context context) {
+        showCritalError(context, R.string.error_to_initialize_title, R.string.error_to_initialize_message);
+    }
 }

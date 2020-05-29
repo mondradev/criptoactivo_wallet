@@ -38,7 +38,6 @@
     <string name="yesterday_text">yesterday</string>
     <string name="qr_reader_indications">Place a QR Code</string>
     <string name="no_enought_funds_error">No enought funds</string>
-    <string name="sent_payment_text">You have sent %s</string>
     <string name="qr_receive_description">QR code used to send payments</string>
     <string name="backup_text">Backup</string>
     <string name="indications_restore_text">The next 12 words guarantees access to your funds from any other wallet. Keep this information secure by writing it down on a piece of paper.</string>
@@ -65,7 +64,6 @@
     <string name="confirmations_text">Confirmations</string>
     <string name="fail_to_delete_error">Couldn\'t delete the wallet</string>
     <string name="unknown_version">Unknown Version</string>
-    <string name="notify_send">You have send %s</string>
     <string name="address_title">Addresses</string>
     <string name="blueMode">Blue</string>
     <string name="usd_fiat" translatable="false">USD</string>
@@ -186,4 +184,6 @@
     <string name="mempool_status_text">In mempool</string>
     <string name="confirmed_status_text">Confirmed</string>
     <string name="unconfirmed_status_text">Unconfirmed</string>
+    <string name="error_to_initialize_title">Fail to initialize</string>
+    <string name="error_to_initialize_message">An error occurred while initializing the wallet, please try again later</string>
 </resources>

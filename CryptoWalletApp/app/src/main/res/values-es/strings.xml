@@ -34,7 +34,6 @@
     <string name="yesterday_text">ayer</string>
     <string name="qr_reader_indications">Coloca un código QR</string>
     <string name="no_enought_funds_error">No hay fondos suficientes</string>
-    <string name="sent_payment_text">Has enviado %s</string>
     <string name="qr_receive_description">Código QR usado para solicitar pagos</string>
     <string name="backup_text">Respaldar</string>
     <string name="indications_restore_text">Las siguientes 12 palabras garantiza el acceso a tus fondos de cualquier otra billetera. Mantén segura esta información anotándola en un papel.</string>
@@ -61,7 +60,6 @@
     <string name="confirmations_text">Confirmaciones</string>
     <string name="fail_to_delete_error">No se logró borrar la billetera</string>
     <string name="unknown_version">Versión desconocida</string>
-    <string name="notify_send">Has enviado %s</string>
     <string name="address_title">Direcciones</string>
     <string name="blueMode">Azul</string>
     <string name="theme_setting_title">Tema</string>
@@ -101,10 +99,10 @@
     <string name="settings_title">Ajustes</string>
     <string name="indications_restore_words_text">Por favor ingresa tus 12 palabras</string>
     <string name="seed_words_text">12 palabras</string>
-    <string name="error_to_restore_message">Ocurrió un error al restaurar la billetera, intentelo más tarde</string>
+    <string name="error_to_restore_message">Ocurrió un error al restaurar la billetera, inténtelo más tarde</string>
     <string name="error_to_restore_title">Restauración fallida</string>
     <string name="error_to_create_title">Creación fallida</string>
-    <string name="error_to_create_message">Ocurrió un error al crear la billetera nueva, intentelo más tarde</string>
+    <string name="error_to_create_message">Ocurrió un error al crear la billetera nueva, inténtelo más tarde</string>
     <string name="request_money_title">Solicitud de dinero</string>
     <string name="request_money_description">Por favor escanea este código QR para enviar dinero</string>
     <string name="share_text">Compartir</string>
@@ -152,4 +150,6 @@
     <string name="mempool_status_text">En mempool</string>
     <string name="confirmed_status_text">Confirmada</string>
     <string name="unconfirmed_status_text">Sin confirmar</string>
+    <string name="error_to_initialize_message">Ocurrió un error al inicializar la billetera, inténtelo más tarde</string>
+    <string name="error_to_initialize_title">Inicialización fallida</string>
 </resources>
