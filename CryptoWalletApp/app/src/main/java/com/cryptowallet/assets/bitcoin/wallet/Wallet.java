@@ -27,9 +27,12 @@ import androidx.annotation.Nullable;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
+import com.cryptowallet.assets.bitcoin.services.BitcoinProvider;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.ExecutableConsumer;
+import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.ChainTipInfo;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.ITransactionFee;
 import com.cryptowallet.wallet.IWallet;
@@ -45,6 +48,7 @@ import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.SegwitAddress;
+import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.crypto.KeyCrypter;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
@@ -293,12 +297,34 @@ public class Wallet implements IWallet {
                 configureListeners();
                 updatePriceListeners();
 
+                if (fetchTransactions())
+                    pullTransactions();
+
                 onInitialized.accept(false);
             } catch (IOException | UnreadableWalletException e) {
                 Log.w(LOG_TAG, Objects.requireNonNull(e.getMessage()));
                 onInitialized.accept(true);
             }
         });
+    }
+
+    private void pullTransactions() {
+
+    }
+
+    private boolean fetchTransactions() {
+        return Utils.tryReturnBoolean(() -> {
+            final int height = mWallet.getLastBlockSeenHeight();
+            final Sha256Hash hash = mWallet.getLastBlockSeenHash();
+            final ChainTipInfo chainTipInfo = BitcoinProvider.get(this).getChainTipInfo().get();
+
+            Log.d("Bitcoin Wallet",
+                    String.format("{ height: %d, hash: %s, height(remote): %d, hash(remote): %s }",
+                            height, hash, chainTipInfo.getHeight(), chainTipInfo.getHash()));
+
+            return height < chainTipInfo.getHeight() || hash == null
+                    || hash.toString().equalsIgnoreCase(chainTipInfo.getHash());
+        }, false);
     }
 
     /**
