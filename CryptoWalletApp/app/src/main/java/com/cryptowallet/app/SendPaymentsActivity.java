@@ -519,6 +519,7 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param view Componente el cual desencadeno el evento Click.
      */
     public void onPay(View view) {
+        // TODO Validate can pay
         final String address = mSendAddressText.getText().toString();
         Float amount = Float.parseFloat(mSendAmountText.getText().toString());
         Float fee = calculateTotalFee(address, amount);
