@@ -97,7 +97,7 @@ public class WelcomeActivity extends AppCompatActivity
                                     if (hasError)
                                         AlertMessages.showCreateError(getApplicationContext());
                                     else
-                                        startActivity(new Intent(getBaseContext(),
+                                        startActivity(new Intent(getApplicationContext(),
                                                 MainActivity.class));
                                 }));
     }

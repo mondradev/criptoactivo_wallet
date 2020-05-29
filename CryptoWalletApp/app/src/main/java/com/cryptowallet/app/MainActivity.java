@@ -19,7 +19,6 @@
 package com.cryptowallet.app;
 
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
@@ -27,14 +26,10 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.cryptowallet.R;
-import com.cryptowallet.app.authentication.AuthenticationCallback;
-import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.app.fragments.SettingsFragment;
 import com.cryptowallet.app.fragments.TransactionHistoryFragment;
 import com.cryptowallet.app.fragments.WalletFragment;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
@@ -48,20 +43,10 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends LockableActivity {
 
     /**
-     * Código de una salida por una autenticación fallida o cancelada.
-     */
-    private static final int AUTHENTICATION_FAIL = 1;
-
-    /**
      * Clave que indica que la actividad se está recreando.
      */
     private static final String IS_RECREATING_KEY
             = String.format("%s.IsRecreatingKey", MainActivity.class.getName());
-
-    /**
-     * Instancia de las funciones de respuesta del autenticador.
-     */
-    private IAuthenticationCallback mAuthenticationCallback;
 
     /**
      * Fragmento mostrado actualmente.
@@ -78,56 +63,18 @@ public class MainActivity extends LockableActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (mAuthenticationCallback == null)
-            mAuthenticationCallback = createAuthenticationCallback();
-
         BottomNavigationView bar = findViewById(R.id.mMainBottomNav);
         bar.setOnNavigationItemSelectedListener(this::onNavigationItemSelected);
 
         if (isLockApp())
-            Preferences.get()
-                    .authenticate(this, new Handler()::post, mAuthenticationCallback);
-        else if (savedInstanceState == null || !savedInstanceState.getBoolean(IS_RECREATING_KEY))
+            unlockApp();
+
+        if (savedInstanceState == null || !savedInstanceState.getBoolean(IS_RECREATING_KEY)) {
+            if (savedInstanceState != null)
+                savedInstanceState.remove(IS_RECREATING_KEY);
+
             showFragment(R.id.mMenuWallet);
-    }
-
-    /**
-     * Crea las funciones de vuelta de la autenticación de usuario.
-     *
-     * @return Instancia de las funciones.
-     */
-    private IAuthenticationCallback createAuthenticationCallback() {
-        if (mAuthenticationCallback != null)
-            return mAuthenticationCallback;
-
-        return new AuthenticationCallback() {
-            /**
-             * Este evento surge cuando la autenticación es satisfactoria.
-             *
-             * @param authenticationToken Token de autenticación.
-             */
-            @Override
-            public void onAuthenticationSucceeded(byte[] authenticationToken) {
-                unlockApp();
-                WalletManager.get(SupportedAssets.BTC)
-                        .initialize(authenticationToken,
-                                (hasError) -> showFragment(R.id.mMenuWallet));
-            }
-
-            /**
-             * Este evento surge cuando ocurre un error y se completa la operación del
-             * autenticador.
-             *
-             * @param errorCode Un valor entero que identifica el error.
-             * @param errString Un mensaje de error que puede ser mostrado en la IU.
-             */
-            @Override
-            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                MainActivity.this.moveTaskToBack(true);
-                finishAffinity();
-                System.exit(AUTHENTICATION_FAIL);
-            }
-        };
+        }
     }
 
     /**

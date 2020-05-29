@@ -238,10 +238,9 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
                                     if (hasError)
                                         AlertMessages.showRestoreError(getApplicationContext());
                                     else {
-                                        Intent intent = new Intent(getApplicationContext(),
-                                                MainActivity.class);
                                         finishAffinity();
-                                        startActivity(intent);
+                                        startActivity(new Intent(getApplicationContext(),
+                                                MainActivity.class));
                                     }
                                 }));
     }

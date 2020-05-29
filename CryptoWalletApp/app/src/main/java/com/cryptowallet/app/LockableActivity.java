@@ -26,6 +26,7 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
@@ -70,7 +71,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Clase principal de la billetera.
      */
-    private static Class<? extends LockableActivity> mMainActivity;
+    private static Class<? extends FragmentActivity> mMainActivity;
 
     /**
      * Indica que la aplicación requiere ser bloqueda.
@@ -97,7 +98,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
      *
      * @param clazz Clase de la actividad.
      */
-    public static void registerMainActivityClass(@NonNull Class<? extends LockableActivity> clazz) {
+    public static void registerMainActivityClass(@NonNull Class<? extends FragmentActivity> clazz) {
         mMainActivity = clazz;
     }
 

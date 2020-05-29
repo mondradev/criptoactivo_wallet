@@ -25,9 +25,12 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.authentication.AuthenticationCallback;
+import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.assets.bitcoin.wallet.Wallet;
 import com.cryptowallet.services.coinmarket.BitfinexPriceTracker;
 import com.cryptowallet.services.coinmarket.BitsoPriceTracker;
@@ -48,6 +51,11 @@ import javax.annotation.Nullable;
 public final class SplashActivity extends AppCompatActivity {
 
     /**
+     * Código de una salida por una autenticación fallida o cancelada.
+     */
+    private static final int AUTHENTICATION_FAIL = 1;
+
+    /**
      * Libro de Bitcoin-PesosMxn Bitso
      */
     private static final String BOOK_BTC_MXN = "btc_mxn";
@@ -61,6 +69,12 @@ public final class SplashActivity extends AppCompatActivity {
      * Etiqueta de log.
      */
     private static final String LOG_TAG = "Splashscreen";
+
+
+    /**
+     * Instancia de las funciones de respuesta del autenticador.
+     */
+    private IAuthenticationCallback mAuthenticationCallback;
 
     /**
      * Este método es llamado cuando se crea la actividad.
@@ -89,20 +103,18 @@ public final class SplashActivity extends AppCompatActivity {
      * Inicializa la aplicación.
      */
     private void initApp() {
+        if (mAuthenticationCallback == null)
+            mAuthenticationCallback = createAuthenticationCallback();
+
         new Handler().postDelayed(() -> {
-            Intent intent;
+            if (!WalletManager.any()) {
+                startActivity(new Intent(this, WelcomeActivity.class));
+                finishAfterTransition();
+            } else
+                Preferences.get().authenticate(this, new Handler()::post,
+                        mAuthenticationCallback);
 
-            if (!WalletManager.any())
-                intent = new Intent(this, WelcomeActivity.class);
-            else {
-                LockableActivity.requireUnlock();
-                intent = new Intent(this, MainActivity.class);
-            }
-
-            startActivity(intent);
-            finishAfterTransition();
-
-        }, 500);
+        }, 350);
     }
 
     /**
@@ -114,10 +126,56 @@ public final class SplashActivity extends AppCompatActivity {
         btcWallet.registerPriceTracker(BitsoPriceTracker.get(BOOK_BTC_MXN), SupportedAssets.MXN);
 
         WalletManager.registerWallet(btcWallet);
-        LockableActivity.registerMainActivityClass(MainActivity.class);
+        LockableActivity.registerMainActivityClass(SplashActivity.class);
         Preferences.create(this).loadLanguage(this);
 
         Log.d(LOG_TAG, "App is ready");
     }
+
+
+    /**
+     * Crea las funciones de vuelta de la autenticación de usuario.
+     *
+     * @return Instancia de las funciones.
+     */
+    private IAuthenticationCallback createAuthenticationCallback() {
+        if (mAuthenticationCallback != null)
+            return mAuthenticationCallback;
+
+        return new AuthenticationCallback() {
+            /**
+             * Este evento surge cuando la autenticación es satisfactoria.
+             *
+             * @param authenticationToken Token de autenticación.
+             */
+            @Override
+            public void onAuthenticationSucceeded(byte[] authenticationToken) {
+                WalletManager.get(SupportedAssets.BTC).initialize(authenticationToken,
+                        (hasError) -> {
+                            if (hasError) {
+                                AlertMessages.showCorruptedWalletError(getApplicationContext());
+                                return;
+                            }
+                            startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                            finishAfterTransition();
+                        });
+            }
+
+            /**
+             * Este evento surge cuando ocurre un error y se completa la operación del
+             * autenticador.
+             *
+             * @param errorCode Un valor entero que identifica el error.
+             * @param errString Un mensaje de error que puede ser mostrado en la IU.
+             */
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                moveTaskToBack(true);
+                finishAffinity();
+                System.exit(AUTHENTICATION_FAIL);
+            }
+        };
+    }
+
 
 }
