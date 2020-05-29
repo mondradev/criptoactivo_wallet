@@ -70,7 +70,7 @@
                 "command": "bash",
                 "args": [
                     "-c",
-                    "'cd bin ; ./publish.sh ${input:BuildType} ${input:Host} ${input:Port} ${input:Username} ${input:KeyFile}'"
+                    "'cd bin ; sudo ./publish.sh ${input:BuildType} ${input:Host} ${input:Port} ${input:Username} ${input:KeyFile}'"
                 ]
             },
             "linux": {
