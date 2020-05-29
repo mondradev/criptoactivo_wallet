@@ -2,7 +2,6 @@ import { Blockchain } from "../libs/bitcoin/chain/blockchain"
 import { Network } from "../libs/bitcoin/network"
 import { Router, Request, Response, NextFunction } from "express"
 import { LevelStore } from "../libs/bitcoin/store/leveldb"
-import { Networks } from "bitcore-lib"
 
 import Config from "../../config/index"
 import NetworkStatus from "../libs/bitcoin/network/networkstatus"
