@@ -93,7 +93,7 @@ const router = Router()
 
         Logger.debug("Request received [Op=history, Param={ network: %s }]", network)
 
-        if (addresses.length < 20)
+        if (addresses.length < 42)
             res.status(400).json({ message: "Any address wasn't specified" })
         else if (networkValid.error)
             res.status(networkValid.code).json({ message: networkValid.message })
