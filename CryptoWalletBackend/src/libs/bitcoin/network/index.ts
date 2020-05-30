@@ -103,10 +103,11 @@ export class Network {
         Logger.info('Discovering peers from DNS')
 
         for (const seed of BitcoinConfig.seeds) {
-            const addresses = await this._resolveDns(seed)
+            const resolvedAddresses = await this._resolveDns(seed)
 
-            for (const address of addresses.filter(a => a !== 'localhost'))
-                this._peerAddresses.push(address)
+            for (const address of resolvedAddresses)
+                if (!(await checkLocalHost(address)))
+                    this._peerAddresses.push(address)
         }
     }
 
@@ -284,6 +285,8 @@ export class Network {
 
             peer.removeAllListeners(NetworkEvents.READY)
 
+            this._updateBestheight()
+
             done()
         })
     }
@@ -442,20 +445,23 @@ export class Network {
 
             this._downloadWindow.set(hash, message.block.toBuffer())
 
-            Logger.debug("Received block [Hash=%s, Size=%d, Txn=%d]", message.block.hash, message.block.toBuffer().length, message.block.transactions.length)
+            if (await this._isValidBlock(hash, message.block.header.prevHash, tip, peer)) {
 
-            let time = Date.now() - this._lastReport.time
+                Logger.debug("Received block [Hash=%s, Size=%d, Txn=%d]", message.block.hash, message.block.toBuffer().length, message.block.transactions.length)
 
-            if (time >= 1000) {
+                let time = Date.now() - this._lastReport.time
 
-                time /= 1000
-                let rate = (this._downloadWindow.size - this._lastReport.count) / time
+                if (time >= 1000) {
 
-                this._lastReport.time = Date.now()
-                this._lastReport.count = this._downloadWindow.size
+                    time /= 1000
+                    let rate = (this._downloadWindow.size - this._lastReport.count) / time
 
-                Logger.debug("Downloading %d blk/s (%d/%d) Usage %s MB", rate.toFixed(2), this._downloadWindow.size, this._downloadWindow.size + this._downloadingBlocks.size,
-                    ((process.memoryUsage().rss) / (1024 * 1024)).toFixed(2))
+                    this._lastReport.time = Date.now()
+                    this._lastReport.count = this._downloadWindow.size
+
+                    Logger.debug("Downloading %d blk/s (%d/%d) Usage %s MB", rate.toFixed(2), this._downloadWindow.size, this._downloadWindow.size + this._downloadingBlocks.size,
+                        ((process.memoryUsage().rss) / (1024 * 1024)).toFixed(2))
+                }
             }
 
             if (this._downloadingBlocks.size == 0) {
@@ -466,6 +472,7 @@ export class Network {
 
                 for (const raw of blocks) {
                     const block = Block.fromBuffer(raw)
+
                     if (this._txMempool.size > 0)
                         for (const tx of block.transactions)
                             this._txMempool.delete(tx.hash)
@@ -477,7 +484,7 @@ export class Network {
 
                 const blockTip = await this._chain.getLocalTip()
 
-                if ((await this.getStatus()) == NetworkStatus.SYNCHRONIZED)
+                if (await this.getStatus() == NetworkStatus.SYNCHRONIZED)
                     return
 
                 if (this._pendingBlocks.length > 0)
@@ -487,6 +494,50 @@ export class Network {
             }
 
         })
+    }
+
+    private async _isValidBlock(hash: string, prevHash: Buffer, tip: ChainTip, peer: Peer): Promise<boolean> {
+        if (await this.getStatus() == NetworkStatus.SYNCHRONIZED) {
+            const height = await this._chain.getHeight(prevHash)
+
+            if (height < tip.height) {
+                this._updateBestheight()
+
+                if (height < this._bestHeight) {
+                    peer.disconnect()
+                    this._downloadWindow.delete(hash)
+
+                    return false
+                }
+            }
+        }
+
+        return true
+    }
+
+    private _updateBestheight(): void {
+        const heights = this._outboundPeers.map(peer => peer.bestHeight)
+        const heightVotes: { [index: number]: number } = {}
+
+        for (const height of heights)
+            heightVotes[height] = (heightVotes[height] || 0) + 1
+
+        const bestHeight = Object.entries(heightVotes).reduce((prev, current) => {
+            const currentKey = Number.parseInt(current[0])
+
+            if (current[1] > prev[1])
+                return current
+            else if (prev[1] > current[1])
+                return prev
+            else if (prev[0] > currentKey)
+                return prev
+            else
+                return current
+        }, [0, 0])
+
+        this._bestHeight = bestHeight[0] as number
+
+        Logger.debug("Best height detected: " + this._bestHeight)
     }
 
     private async _downloadPendingBlocks() {

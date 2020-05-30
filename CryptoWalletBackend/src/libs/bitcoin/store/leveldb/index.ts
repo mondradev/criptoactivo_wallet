@@ -98,13 +98,13 @@ export class LevelStore implements IBlockStore {
 
             const hash = await this.getHash(tip.height)
 
-            await this._undoBlock(hash)
+            await this._undoBlock(hash, newHeight)
 
             tip = await this.getLocalTip()
         }
     }
 
-    private async _undoBlock(hash: Buffer) {
+    private async _undoBlock(hash: Buffer, target: number) {
         try {
             const undo = await this._getKey(this._undoDb, hash, Enconding.UndoTxo)
             const dbBatch = this._db.batch()
@@ -127,10 +127,11 @@ export class LevelStore implements IBlockStore {
 
             await this._undoDb.del(Enconding.UndoTxo.key(hash))
 
-            Logger.info("Reorg blockchain { Hash: %s, Height: %d, Txn: %d }",
+            Logger.info("Reorg blockchain { Hash: %s, Height: %d, Txn: %d, Target: %d }",
                 newTip.hash,
                 newTip.height,
-                newTip.txn
+                newTip.txn,
+                target
             )
         } catch (ex) {
             Logger.warn("Can't reorg, undo not found { hash: %s }", hash.toReverseHex())
