@@ -21,29 +21,12 @@ export default class WalletProvider implements IWalletProvider {
 
         const txHistorial = new Array<TxData>()
 
-        while (addresses.length >= 20) {
+        while (addresses.length >= 42) {
+            const address = addresses.substr(0, 42)
+            addresses = addresses.substr(42)
 
-            const address = addresses.substr(0, 20)
-            const addressBuff = BufferHelper.fromHex(address)
-            const addrIndexes = await this.chain.AddrIndex.getIndexesByAddress(addressBuff)
-
-            addresses = addresses.substr(20)
-
-            for (const addrIndex of addrIndexes) {
-                const txIndex = await this.chain.TxIndex.getIndexByHash(addrIndex.txid)
-                const block = await this.chain.getBlock(txIndex.blockHash)
-                const height = await this.chain.getHeight(txIndex.blockHash)
-                const unspent = await this.chain.getUnspentCoins(addrIndex.txid)
-
-                txHistorial.push({
-                    height,
-                    block: addrIndex.blockHash.toReverseHex(),
-                    txid: addrIndex.txid.toReverseHex(),
-                    time: block.header.time,
-                    data: block.transactions[txIndex.index].toString(),
-                    state: unspent.length > 0 ? 'unspent' : 'spent'
-                })
-            }
+            Logger.debug("Address found: " + address)
+            txHistorial.push(...await this.getHistoryByAddress(address, network))
         }
 
         return txHistorial
