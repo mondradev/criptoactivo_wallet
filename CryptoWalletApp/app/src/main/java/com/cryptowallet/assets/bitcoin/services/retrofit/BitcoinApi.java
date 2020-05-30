@@ -71,4 +71,14 @@ public interface BitcoinApi {
     @GET("btc/{network}/txdeps/{txid}")
     Call<List<TxData>> getTxDeps(@Path("network") String network,
                                  @Path("txid") String txid);
+
+    /**
+     * Obtiene las transacciones de las direcciones especificadas.
+     *
+     * @param network   Tipo de red a la cual pertenecen las direcciones. Ej. mainnet o testnet.
+     * @param addresses Direcciones a consultar.
+     * @return Una instancia que gesitona la llamada asíncrona de la API.
+     */
+    @GET("btc/{network}/history/{addresses}")
+    Call<List<TxData>> getHistory(@Path("network") String network, @Path("addresses") String addresses);
 }

@@ -248,7 +248,7 @@ public class BitcoinProvider implements IWalletProvider {
     /**
      * Obtiene las transacciones dependencia de la indicada por el identificador.
      *
-     * @param txid Indentificador de la transacción.
+     * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
     @Override
@@ -277,6 +277,45 @@ public class BitcoinProvider implements IWalletProvider {
             }
 
             return deps;
+        });
+
+        mExecutor.execute(task);
+
+        return task;
+    }
+
+    /**
+     * Obtiene el historial de transacciones de multiples direcciones.
+     *
+     * @param addresses Direcciones a consultar.
+     * @return Un tarea encargada de gestionar la petición.
+     */
+    @Override
+    public ListenableFutureTask<List<ITransaction>> getHistory(byte[] addresses) {
+        final String addressesHex = Hex.toHexString(addresses);
+
+        ListenableFutureTask<List<ITransaction>> task = ListenableFutureTask.create(() -> {
+            List<ITransaction> transactions = new ArrayList<>();
+            try {
+                String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
+                Response<List<TxData>> response = mApi.getHistory(networkName, addressesHex)
+                        .execute();
+
+                if (!response.isSuccessful() || response.body() == null)
+                    return transactions;
+
+                List<TxData> txData = response.body();
+
+                for (TxData data : txData)
+                    transactions.add(Transaction.fromTxData(data, mWallet));
+
+                return transactions;
+            } catch (Exception e) {
+                Log.e(TAG, "Ocurrió un error al realizar la petición al servidor: "
+                        + e.getMessage());
+            }
+
+            return transactions;
         });
 
         mExecutor.execute(task);

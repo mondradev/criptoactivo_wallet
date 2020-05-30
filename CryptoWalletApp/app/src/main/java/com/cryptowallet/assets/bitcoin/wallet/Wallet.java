@@ -309,7 +309,27 @@ public class Wallet implements IWallet {
     }
 
     private void pullTransactions() {
+        Utils.tryNotThrow(() -> {
+            final List<byte[]> addresses = new ArrayList<>();
 
+            while (addresses.size() < 300) {
+                Address address = mWallet.freshReceiveAddress();
+                byte[] hash = address.getHash();
+                if (hash.length != 20)
+                    throw new RuntimeException();
+                addresses.add(hash);
+            }
+
+            byte[] addressesBuff = new byte[addresses.size() * 300];
+            for (int i = 0; i < addresses.size(); i++)
+                System.arraycopy(addresses.get(i), 0,
+                        addressesBuff, i * 20, 20);
+
+            List<ITransaction> history = BitcoinProvider.get(this).getHistory(addressesBuff).get();
+
+            for (ITransaction tx : history)
+                Log.i("Bitcoin Wallet", tx.getID());
+        });
     }
 
     private boolean fetchTransactions() {

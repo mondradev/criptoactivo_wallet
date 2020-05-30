@@ -77,8 +77,16 @@ public interface IWalletProvider {
     /**
      * Obtiene las transacciones dependencia de la indicada por el identificador.
      *
-     * @param txid Indentificador de la transacción.
+     * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
     ListenableFutureTask<List<ITransaction>> getDependencies(byte[] txid);
+
+    /**
+     * Obtiene el historial de transacciones de multiples direcciones.
+     *
+     * @param addresses Direcciones a consultar.
+     * @return Un tarea encargada de gestionar la petición.
+     */
+    ListenableFutureTask<List<ITransaction>> getHistory(byte[] addresses);
 }
