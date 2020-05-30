@@ -56,7 +56,7 @@ public class BitcoinProvider implements IWalletProvider {
     /**
      * Etiqueta de log.
      */
-    private static final String TAG = "Bitcoin-Service";
+    private static final String LOG_TAG = "Bitcoin Provider";
 
     /**
      * URL de la api.
@@ -152,7 +152,7 @@ public class BitcoinProvider implements IWalletProvider {
 
                 return history;
             } catch (Exception e) {
-                Log.e(TAG, "Ocurrió un error al realizar la petición al servidor: "
+                Log.e(LOG_TAG, "Ocurrió un error al realizar la petición al servidor: "
                         + e.getMessage());
             }
 
@@ -184,7 +184,7 @@ public class BitcoinProvider implements IWalletProvider {
 
                 return Transaction.fromTxData(response.body(), mWallet);
             } catch (Exception e) {
-                Log.e(TAG, "Ocurrió un error al realizar la petición al servidor: "
+                Log.e(LOG_TAG, "Ocurrió un error al realizar la petición al servidor: "
                         + e.getMessage());
             }
 
@@ -222,7 +222,7 @@ public class BitcoinProvider implements IWalletProvider {
                         .setStatus(info.getStatus())
                         .build();
             } catch (Exception e) {
-                Log.e(TAG, "Ocurrió un error al realizar la petición al servidor: "
+                Log.e(LOG_TAG, "Ocurrió un error al realizar la petición al servidor: "
                         + e.getMessage());
             }
 
@@ -272,7 +272,7 @@ public class BitcoinProvider implements IWalletProvider {
 
                 return deps;
             } catch (Exception e) {
-                Log.e(TAG, "Ocurrió un error al realizar la petición al servidor: "
+                Log.e(LOG_TAG, "Ocurrió un error al realizar la petición al servidor: "
                         + e.getMessage());
             }
 
@@ -311,7 +311,7 @@ public class BitcoinProvider implements IWalletProvider {
 
                 return transactions;
             } catch (Exception e) {
-                Log.e(TAG, "Ocurrió un error al realizar la petición al servidor: "
+                Log.e(LOG_TAG, "Ocurrió un error al realizar la petición al servidor: "
                         + e.getMessage());
             }
 

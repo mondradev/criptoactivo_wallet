@@ -309,10 +309,11 @@ public class Wallet implements IWallet {
     }
 
     private void pullTransactions() {
+        final int maxAddress = 10;
         Utils.tryNotThrow(() -> {
             final List<byte[]> addresses = new ArrayList<>();
 
-            while (addresses.size() < 300) {
+            while (addresses.size() < maxAddress) {
                 Address address = mWallet.freshReceiveAddress();
                 byte[] hash = address.getHash();
                 if (hash.length != 20)
@@ -320,7 +321,7 @@ public class Wallet implements IWallet {
                 addresses.add(hash);
             }
 
-            byte[] addressesBuff = new byte[addresses.size() * 300];
+            byte[] addressesBuff = new byte[addresses.size() * 20];
             for (int i = 0; i < addresses.size(); i++)
                 System.arraycopy(addresses.get(i), 0,
                         addressesBuff, i * 20, 20);
@@ -328,7 +329,7 @@ public class Wallet implements IWallet {
             List<ITransaction> history = BitcoinProvider.get(this).getHistory(addressesBuff).get();
 
             for (ITransaction tx : history)
-                Log.i("Bitcoin Wallet", tx.getID());
+                Log.i(LOG_TAG, tx.getID());
         });
     }
 
@@ -338,7 +339,7 @@ public class Wallet implements IWallet {
             final Sha256Hash hash = mWallet.getLastBlockSeenHash();
             final ChainTipInfo chainTipInfo = BitcoinProvider.get(this).getChainTipInfo().get();
 
-            Log.d("Bitcoin Wallet",
+            Log.d(LOG_TAG,
                     String.format("{ height: %d, hash: %s, height(remote): %d, hash(remote): %s }",
                             height, hash, chainTipInfo.getHeight(), chainTipInfo.getHash()));
 
