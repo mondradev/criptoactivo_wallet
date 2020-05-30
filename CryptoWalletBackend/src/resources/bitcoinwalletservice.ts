@@ -86,6 +86,23 @@ process.on('SIGBREAK', exitHandler)
 process.on('beforeExit', exitHandler)
 
 const router = Router()
+    .get(URL_BASE + ":network/history/:addresses", async (req: Request, res: Response, next: NextFunction)=> {
+        const addresses: string = req.params.addresses
+        const network: string = req.params.network
+        const networkValid = validateNetwork(network)
+
+        Logger.debug("Request received [Op=history, Param={ network: %s }]", network)
+
+        if (addresses.length < 20)
+            res.status(400).json({ message: "Any address wasn't specified" })
+        else if (networkValid.error)
+            res.status(networkValid.code).json({ message: networkValid.message })
+        else if ((await net.getStatus()) < NetworkStatus.SYNCHRONIZED)
+            res.status(423).json({ message: 'Bitcoin Synchronizing' })
+        else
+            res.status(200).json(await wallet.getHistory(addresses, network))
+
+    })
     .get(URL_BASE + ":network/txhistory/:address", async (req: Request, res: Response, next: NextFunction) => {
         const address: string = req.params.address
         const network: string = req.params.network
@@ -101,7 +118,7 @@ const router = Router()
         else if ((await net.getStatus()) < NetworkStatus.SYNCHRONIZED)
             res.status(423).json({ message: 'Bitcoin Synchronizing' })
         else
-            res.status(200).json(await wallet.getHistorialByAddress(address, network))
+            res.status(200).json(await wallet.getHistoryByAddress(address, network))
     })
     .get(URL_BASE + ':network/chaininfo', async (req: Request, res: Response, next: NextFunction) => {
         const network: string = req.params.network

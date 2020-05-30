@@ -10,7 +10,7 @@ export interface IWalletProvider {
      * @param address Dirección a obtener el historial de transacciones.
      * @param network Tipo de red a consultar.
      */
-    getHistorialByAddress(address: string, network: string): Promise<TxData[]>
+    getHistoryByAddress(address: string, network: string): Promise<TxData[]>
 
     /**
      * Obtiene una transacción del hash especificado.
