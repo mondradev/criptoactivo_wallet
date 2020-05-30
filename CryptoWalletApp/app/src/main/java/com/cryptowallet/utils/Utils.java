@@ -25,6 +25,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.AttrRes;
@@ -204,7 +205,8 @@ public final class Utils {
     public static void tryNotThrow(TryNotThrowCommand command) {
         try {
             command.run();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Log.d("Utils", String.format("Exception avoided: %s", e.getMessage()));
         }
     }
 
@@ -216,7 +218,8 @@ public final class Utils {
     public static boolean tryReturnBoolean(TryReturnCommand<Boolean> command, boolean defaultValue) {
         try {
             return command.execute();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Log.d("Utils", String.format("Exception avoided: %s", e.getMessage()));
         }
 
         return defaultValue;
