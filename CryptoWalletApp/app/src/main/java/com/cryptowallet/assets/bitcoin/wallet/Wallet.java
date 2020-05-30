@@ -315,7 +315,12 @@ public class Wallet implements IWallet {
 
             while (addresses.size() < maxAddress) {
                 Address address = mWallet.freshReceiveAddress();
-                byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) address.getOutputScriptType().id})
+
+                if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
+                    return;
+
+                int version = ((LegacyAddress) address).getVersion();
+                byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) version})
                         + Hex.toHexString(address.getHash()));
 
                 if (hash.length != 21)
