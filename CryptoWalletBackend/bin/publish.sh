@@ -25,7 +25,12 @@ case $BUILD_TYPE in
         VERSION="$((major+1)).0.0"
     ;;
     build)
-        build="$(echo $VERSION | grep -o -E '\w+' | tail -n 1)"
+        build="$(echo $VERSION | grep -o -E '\w+$')"
+
+        if [[ "$build" == "" ]]; then
+            build="$(echo $VERSION | grep -o -E '\w+' | tail -n 1)"
+        fi
+
         VERSION="$(echo $VERSION | grep -o -E '^\w+\.\w+').$((build+1))"
     ;;
     *) 

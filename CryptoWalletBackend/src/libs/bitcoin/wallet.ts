@@ -4,10 +4,16 @@ import BufferHelper from "./../../utils/bufferhelper"
 import { Networks, Transaction } from "bitcore-lib"
 import { Network } from "./network"
 import NetworkStatus from "./network/networkstatus"
+import LoggerFactory from 'log4js'
+import Config from "../../../config"
 
-export default class WalletProvider implements IWalletProvider {
+const Logger = LoggerFactory.getLogger('Bitcoin (Wallet)')
 
-    public constructor(private chain: Blockchain, private network: Network) { }
+export default class WalletProvider implements IWalletProvider {  
+
+    public constructor(private chain: Blockchain, private network: Network) {
+        Logger.level = Config.logLevel
+     }
 
     public async getHistory(addresses: string, network: string): Promise<TxData[]> {
         if (network !== Networks.defaultNetwork.name)
@@ -17,7 +23,8 @@ export default class WalletProvider implements IWalletProvider {
 
         while (addresses.length >= 20) {
 
-            const addressBuff = BufferHelper.fromHex(addresses.substr(0, 20))
+            const address = addresses.substr(0, 20)
+            const addressBuff = BufferHelper.fromHex(address)
             const addrIndexes = await this.chain.AddrIndex.getIndexesByAddress(addressBuff)
 
             addresses = addresses.substr(20)
