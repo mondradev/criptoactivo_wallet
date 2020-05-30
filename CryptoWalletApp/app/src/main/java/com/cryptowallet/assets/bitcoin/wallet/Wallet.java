@@ -315,8 +315,10 @@ public class Wallet implements IWallet {
 
             while (addresses.size() < maxAddress) {
                 Address address = mWallet.freshReceiveAddress();
-                byte[] hash = address.getHash();
-                if (hash.length != 20)
+                byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) address.getOutputScriptType().id})
+                        + Hex.toHexString(address.getHash()));
+
+                if (hash.length != 21)
                     throw new RuntimeException();
                 addresses.add(hash);
             }
