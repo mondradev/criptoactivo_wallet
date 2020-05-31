@@ -37,6 +37,7 @@ import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.ITransactionFee;
 import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.TransactionState;
 import com.cryptowallet.wallet.WalletManager;
 import com.cryptowallet.wallet.exceptions.InSufficientBalanceException;
 
@@ -62,7 +63,9 @@ import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DeterministicSeed;
+import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.UnreadableWalletException;
+import org.bitcoinj.wallet.WalletTransaction;
 import org.bouncycastle.util.encoders.Hex;
 
 import java.io.File;
@@ -124,6 +127,11 @@ public class Wallet implements IWallet {
     private final Executor mExecutor;
 
     /**
+     * Contexto de la librería de BitcoinJ.
+     */
+    private final org.bitcoinj.core.Context mContextLib;
+
+    /**
      * Instancia de la billetera.
      */
     private org.bitcoinj.wallet.Wallet mWallet;
@@ -177,6 +185,7 @@ public class Wallet implements IWallet {
         mWalletFile = new File(context.getApplicationContext().getApplicationInfo().dataDir,
                 WALLET_FILENAME);
 
+        mContextLib = new org.bitcoinj.core.Context(mNetwork);
         mPriceListeners = new HashSet<>();
         mBalanceListeners = new HashSet<>();
         mPriceTrackers = new HashMap<>();
@@ -273,6 +282,8 @@ public class Wallet implements IWallet {
     @Override
     public void initialize(@NonNull byte[] authenticationToken, Consumer<Boolean> onInitialized) {
         mExecutor.execute(() -> {
+            org.bitcoinj.core.Context.propagate(mContextLib);
+
             try {
                 Threading.USER_THREAD = mExecutor;
 
@@ -309,35 +320,93 @@ public class Wallet implements IWallet {
     }
 
     private void pullTransactions() {
-        final int maxAddress = 10;
-        Utils.tryNotThrow(() -> {
-            final List<byte[]> addresses = new ArrayList<>();
+        requestHistoryByAddress(mWallet::freshAddress, KeyChain.KeyPurpose.RECEIVE_FUNDS);
+        requestHistoryByAddress(mWallet::freshAddress, KeyChain.KeyPurpose.CHANGE);
 
-            while (addresses.size() < maxAddress) {
-                Address address = mWallet.freshReceiveAddress();
+        for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(false)) {
+            Log.d(LOG_TAG, "Tx: " + tx.getTxId() + " Value: "
+                    + tx.getOutputSum().toFriendlyString());
+        }
 
-                if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
-                    return;
+        Utils.tryNotThrow(() -> mWallet.saveToFile(mWalletFile));
+    }
 
-                int version = ((LegacyAddress) address).getVersion();
-                byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) version})
-                        + Hex.toHexString(address.getHash()));
+    interface Function<R, T> {
+        R apply(T parameter);
+    }
 
-                if (hash.length != 21)
-                    throw new RuntimeException();
-                addresses.add(hash);
-            }
+    private void requestHistoryByAddress(Function<Address, KeyChain.KeyPurpose> function,
+                                         KeyChain.KeyPurpose purpose) {
+        final int maxRequest = 10;
+        int request = 0;
 
-            byte[] addressesBuff = new byte[addresses.size() * 20];
-            for (int i = 0; i < addresses.size(); i++)
-                System.arraycopy(addresses.get(i), 0,
-                        addressesBuff, i * 20, 20);
+        while (request < maxRequest) {
+            final int maxAddress = 100;
 
-            List<ITransaction> history = BitcoinProvider.get(this).getHistory(addressesBuff).get();
+            Utils.tryNotThrow(() -> {
+                final List<byte[]> addresses = new ArrayList<>();
 
-            for (ITransaction tx : history)
-                Log.i(LOG_TAG, tx.getID());
-        });
+                while (addresses.size() < maxAddress) {
+                    Address address = function.apply(purpose);
+
+                    if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
+                        return;
+
+                    int version = ((LegacyAddress) address).getVersion();
+                    byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) version})
+                            + Hex.toHexString(address.getHash()));
+
+                    if (hash.length != 21)
+                        throw new RuntimeException();
+
+                    addresses.add(hash);
+                }
+
+                byte[] addressesBuff = new byte[addresses.size() * 21];
+                for (int i = 0; i < addresses.size(); i++)
+                    System.arraycopy(addresses.get(i), 0,
+                            addressesBuff, i * 21, 21);
+
+                List<ITransaction> history = BitcoinProvider.get(this).getHistory(addressesBuff)
+                        .get();
+
+                for (ITransaction tx : history) {
+                    Log.i(LOG_TAG, "Tx: " + tx.getID());
+                    addTransaction(tx);
+                }
+
+                Log.d(LOG_TAG, "New balance: " + mWallet.getBalance().toFriendlyString());
+            });
+
+            request++;
+        }
+
+    }
+
+    private void addTransaction(ITransaction tx) {
+        if (!(tx instanceof Transaction))
+            return;
+
+        Transaction btcTx = (Transaction) tx;
+
+        if (!mWallet.isTransactionRelevant(btcTx))
+            Log.w(LOG_TAG, "Tx: " + btcTx.getID() + " is not relevant");
+
+        if (!mWallet.getTransactionPool(getPool(btcTx.getState())).containsKey(btcTx.getTxId()))
+            mWallet.addWalletTransaction(new WalletTransaction(getPool(btcTx.getState()), btcTx));
+    }
+
+    private WalletTransaction.Pool getPool(TransactionState state) {
+        switch (state) {
+            case SPENT:
+                return WalletTransaction.Pool.SPENT;
+            case PENDING:
+                return WalletTransaction.Pool.PENDING;
+            case UNSPENT:
+                return WalletTransaction.Pool.UNSPENT;
+        }
+
+        return WalletTransaction.Pool.DEAD;
     }
 
     private boolean fetchTransactions() {
