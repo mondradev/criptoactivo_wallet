@@ -51,7 +51,7 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Cantidad de la transacción.
      */
-    long getAmount();
+    Float getAmount();
 
     /**
      * Obtiene la lista de direcciones que envian alguna cantidad en la transacción.

@@ -235,16 +235,18 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @see Transaction#assignWallet(TransactionBag)
      */
     @Override
-    public long getAmount() {
+    public Float getAmount() {
+        float unit = (float) Math.pow(10, getCriptoAsset().getSize());
+        
         if (mWallet != null)
-            return getValue(mWallet).value;
+            return getValue(mWallet).value / unit;
 
         long total = 0;
 
         for (TransactionOutput output : this.getOutputs())
             total += output.getValue().value;
 
-        return total;
+        return total / unit;
     }
 
     /**
@@ -407,7 +409,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     public float getFiatAmount() {
         Objects.requireNonNull(mWalletParent, "Wallet wasn't setted");
 
-        final float price =  mWalletParent.getLastPrice();
+        final float price = mWalletParent.getLastPrice();
         final float amount = getAmount();
 
         return price * amount;
@@ -420,8 +422,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public boolean isPay() {
-        // TODO Calculate is pay
-        return false;
+        return this.getValue(mWallet).isNegative();
     }
 
     /**
