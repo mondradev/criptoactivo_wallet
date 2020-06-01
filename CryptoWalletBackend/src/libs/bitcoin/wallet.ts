@@ -113,7 +113,7 @@ export default class WalletProvider implements IWalletProvider {
 
             txHistorial.push({
                 height,
-                block: addrIndex.blockHash.toReverseHex(),
+                block: block.hash,
                 txid: addrIndex.txid.toReverseHex(),
                 time: block.header.time,
                 data: block.transactions[txIndex.index].toString(),
