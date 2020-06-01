@@ -409,6 +409,8 @@ public class Wallet implements IWallet {
         List<byte[]> addressesToRequest
                 = addresses.subList(0, Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST));
 
+        List<Transaction> downloadedTransactions = new ArrayList<>();
+
         for (int requestCount = 0; requestCount < totalRequest; requestCount++) {
             byte[] addressesBuff = new byte[Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST) * 21];
 
@@ -437,8 +439,9 @@ public class Wallet implements IWallet {
                             .getDependencies(((Transaction) tx).getTxId().getReversedBytes()).get();
 
                     connectInputs(btcTx, dependencies);
-
                     addTransaction(btcTx);
+
+                    downloadedTransactions.add(btcTx);
 
                     if (mWallet.getLastBlockSeenHeight() < btcTx.getBlockHeight() && (
                             mWallet.getLastBlockSeenTime() == null
@@ -451,23 +454,25 @@ public class Wallet implements IWallet {
                 }
             });
 
-            addressesToRequest
-                    = addresses.subList(MAX_ADDRESS_PER_REQUEST * requestCount,
-                    MAX_ADDRESS_PER_REQUEST * requestCount
-                            + Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST));
+            int fromIndex = MAX_ADDRESS_PER_REQUEST * (requestCount + 1);
+            int toIndex = fromIndex
+                    + Math.min(addresses.size() - fromIndex, MAX_ADDRESS_PER_REQUEST);
+
+            if (toIndex <= addresses.size())
+                addressesToRequest = addresses.subList(fromIndex, toIndex);
         }
 
         Log.d(LOG_TAG, "New balance: " + mWallet.getBalance().toFriendlyString());
 
-        findOutputsNotAdded();
+        if (downloadedTransactions.size() > 0)
+            findOutputsNotAdded(downloadedTransactions);
     }
 
-    private void findOutputsNotAdded() {
-        Set<org.bitcoinj.core.Transaction> transactions = mWallet.getTransactions(true);
+    private void findOutputsNotAdded(List<Transaction> transactions) {
         Set<Address> addresses = new HashSet<>();
         Set<Address> addressesToRequest = new HashSet<>();
 
-        for (org.bitcoinj.core.Transaction tx : transactions)
+        for (Transaction tx : transactions)
             for (TransactionOutput output : tx.getOutputs())
                 addresses.add(output.getScriptPubKey()
                         .getToAddress(mNetwork, true));
@@ -918,9 +923,13 @@ public class Wallet implements IWallet {
     @Override
     public List<ITransaction> getTransactions() {
         List<ITransaction> txs = new ArrayList<>();
-        for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(true))
-            txs.add(tx instanceof Transaction
-                    ? (ITransaction) tx : Transaction.wrap(tx, this));
+        for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(true)) {
+            Transaction transaction = tx instanceof Transaction
+                    ? (Transaction) tx : Transaction.wrap(tx, this);
+            transaction.assignWallet(mWallet);
+
+            txs.add(transaction);
+        }
         return txs;
     }
 
