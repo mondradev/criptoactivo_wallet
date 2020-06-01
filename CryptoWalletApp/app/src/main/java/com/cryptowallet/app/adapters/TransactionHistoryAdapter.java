@@ -80,6 +80,7 @@ public final class TransactionHistoryAdapter
     public TransactionHistoryAdapter() {
         super(R.layout.vh_transactions_history);
 
+        mShowingFiat = false;
         mOnCurrencyChangeListener = new CopyOnWriteArrayList<>();
     }
 
@@ -263,7 +264,8 @@ public final class TransactionHistoryAdapter
                         : mItem.getCriptoAsset();
 
                 itemView.<Button>findViewById(R.id.mTxHistAmount)
-                        .setText(asset.toPlainText(isFiat ? mItem.getFiatAmount() : mItem.getAmount()));
+                        .setText(asset.toStringFriendly(isFiat
+                                ? mItem.getFiatAmount() : mItem.getAmount()));
             };
         }
 
@@ -291,6 +293,7 @@ public final class TransactionHistoryAdapter
 
             icon.setImageResource(mItem.getWallet().getIcon());
             iconKind.setIcon(itemView.getContext().getDrawable(getKindIcon()));
+            iconKind.setBackgroundColor(getKindColor());
             operationKind.setText(getKindLabel());
             status.setVisibility(mItem.isConfirm() ? View.GONE : View.VISIBLE);
             from.setText(mItem.isPay() ? getToLabel() : getFromLabel());
