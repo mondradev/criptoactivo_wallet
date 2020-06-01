@@ -439,6 +439,15 @@ public class Wallet implements IWallet {
                     connectInputs(btcTx, dependencies);
 
                     addTransaction(btcTx);
+
+                    if (mWallet.getLastBlockSeenHeight() < btcTx.getBlockHeight() && (
+                            mWallet.getLastBlockSeenTime() == null
+                                    || btcTx.getUpdateTime().getTime()
+                                    > mWallet.getLastBlockSeenTime().getTime())) {
+                        mWallet.setLastBlockSeenHeight((int) btcTx.getBlockHeight());
+                        mWallet.setLastBlockSeenHash(Sha256Hash.wrap(btcTx.getBlockHash()));
+                        mWallet.setLastBlockSeenTimeSecs(btcTx.getUpdateTime().getTime());
+                    }
                 }
             });
 
@@ -491,7 +500,6 @@ public class Wallet implements IWallet {
     }
 
     private void addTransaction(Transaction tx) {
-
         if (!mWallet.isTransactionRelevant(tx))
             Log.w(LOG_TAG, "Tx: " + tx.getID() + " is not relevant");
 
@@ -909,8 +917,11 @@ public class Wallet implements IWallet {
      */
     @Override
     public List<ITransaction> getTransactions() {
-        // TODO Create GetTransactions
-        return new ArrayList<>();
+        List<ITransaction> txs = new ArrayList<>();
+        for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(true))
+            txs.add(tx instanceof Transaction
+                    ? (ITransaction) tx : Transaction.wrap(tx, this));
+        return txs;
     }
 
     /**
