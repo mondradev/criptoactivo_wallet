@@ -252,11 +252,11 @@ public class BitcoinProvider implements IWalletProvider {
      * @return Una tarea encargada de gestionar la petición.
      */
     @Override
-    public ListenableFutureTask<List<ITransaction>> getDependencies(byte[] txid) {
+    public ListenableFutureTask<Map<String, ITransaction>> getDependencies(byte[] txid) {
         String txidHex = Hex.toHexString(txid);
 
-        ListenableFutureTask<List<ITransaction>> task = ListenableFutureTask.create(() -> {
-            List<ITransaction> deps = new ArrayList<>();
+        ListenableFutureTask<Map<String, ITransaction>> task = ListenableFutureTask.create(() -> {
+            Map<String, ITransaction> deps = new HashMap<>();
             try {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<List<TxData>> response = mApi.getTxDeps(networkName, txidHex)
@@ -267,8 +267,10 @@ public class BitcoinProvider implements IWalletProvider {
 
                 List<TxData> depsData = response.body();
 
-                for (TxData data : depsData)
-                    deps.add(Transaction.fromTxData(data, mWallet));
+                for (TxData data : depsData) {
+                    Transaction transaction = Transaction.fromTxData(data, mWallet);
+                    deps.put(transaction.getTxId().toString(), transaction);
+                }
 
                 return deps;
             } catch (Exception e) {

@@ -24,6 +24,7 @@ import com.cryptowallet.wallet.SupportedAssets;
 import com.google.common.util.concurrent.ListenableFutureTask;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Define una estructura para la implementación del proveedor de datos de la blockchain de un
@@ -80,7 +81,7 @@ public interface IWalletProvider {
      * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
-    ListenableFutureTask<List<ITransaction>> getDependencies(byte[] txid);
+    ListenableFutureTask<Map<String, ITransaction>> getDependencies(byte[] txid);
 
     /**
      * Obtiene el historial de transacciones de multiples direcciones.
