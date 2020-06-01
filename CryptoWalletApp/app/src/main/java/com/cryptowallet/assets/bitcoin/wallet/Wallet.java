@@ -40,6 +40,7 @@ import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.TransactionState;
 import com.cryptowallet.wallet.WalletManager;
 import com.cryptowallet.wallet.exceptions.InSufficientBalanceException;
+import com.google.common.collect.Lists;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -50,6 +51,8 @@ import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.SegwitAddress;
 import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.TransactionInput;
+import org.bitcoinj.core.TransactionOutPoint;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.crypto.KeyCrypter;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
@@ -320,8 +323,7 @@ public class Wallet implements IWallet {
     }
 
     private void pullTransactions() {
-        requestHistoryByAddress(mWallet::freshAddress, KeyChain.KeyPurpose.RECEIVE_FUNDS);
-        requestHistoryByAddress(mWallet::freshAddress, KeyChain.KeyPurpose.CHANGE);
+        receivedHistoryRequest();
 
         for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(false)) {
             Log.d(LOG_TAG, "Tx: " + tx.getTxId() + " Value: "
@@ -331,69 +333,170 @@ public class Wallet implements IWallet {
         Utils.tryNotThrow(() -> mWallet.saveToFile(mWalletFile));
     }
 
-    interface Function<R, T> {
-        R apply(T parameter);
-    }
+    private static final int MAX_ADDRESS_PER_REQUEST = 100;
+    private static final int MAX_ADDRESS_TO_INITIAL_QUERY = 500;
 
-    private void requestHistoryByAddress(Function<Address, KeyChain.KeyPurpose> function,
-                                         KeyChain.KeyPurpose purpose) {
-        final int maxRequest = 10;
-        int request = 0;
+    private void receivedHistoryRequest() {
+        final int requiredAddresses = Math.max(0, MAX_ADDRESS_TO_INITIAL_QUERY
+                - mWallet.getIssuedReceiveAddresses().size());
 
-        while (request < maxRequest) {
-            final int maxAddress = 100;
+        if (mWallet.getIssuedReceiveAddresses().size() > 0)
+            historyRequestByReceiveAddresses();
 
-            Utils.tryNotThrow(() -> {
-                final List<byte[]> addresses = new ArrayList<>();
-
-                while (addresses.size() < maxAddress) {
-                    Address address = function.apply(purpose);
-
-                    if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
-                        return;
-
-                    int version = ((LegacyAddress) address).getVersion();
-                    byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) version})
-                            + Hex.toHexString(address.getHash()));
-
-                    if (hash.length != 21)
-                        throw new RuntimeException();
-
-                    addresses.add(hash);
-                }
-
-                byte[] addressesBuff = new byte[addresses.size() * 21];
-                for (int i = 0; i < addresses.size(); i++)
-                    System.arraycopy(addresses.get(i), 0,
-                            addressesBuff, i * 21, 21);
-
-                List<ITransaction> history = BitcoinProvider.get(this).getHistory(addressesBuff)
-                        .get();
-
-                for (ITransaction tx : history) {
-                    Log.i(LOG_TAG, "Tx: " + tx.getID());
-                    addTransaction(tx);
-                }
-
-                Log.d(LOG_TAG, "New balance: " + mWallet.getBalance().toFriendlyString());
-            });
-
-            request++;
-        }
-
-    }
-
-    private void addTransaction(ITransaction tx) {
-        if (!(tx instanceof Transaction))
+        if (requiredAddresses == 0)
             return;
 
-        Transaction btcTx = (Transaction) tx;
+        Log.d(LOG_TAG, "History from " + requiredAddresses + " addresses");
 
-        if (!mWallet.isTransactionRelevant(btcTx))
-            Log.w(LOG_TAG, "Tx: " + btcTx.getID() + " is not relevant");
+        final List<byte[]> addresses = new ArrayList<>();
 
-        if (!mWallet.getTransactionPool(getPool(btcTx.getState())).containsKey(btcTx.getTxId()))
-            mWallet.addWalletTransaction(new WalletTransaction(getPool(btcTx.getState()), btcTx));
+        while (addresses.size() < requiredAddresses) {
+            final Address address = mWallet.freshAddress(KeyChain.KeyPurpose.RECEIVE_FUNDS);
+
+            Log.d(LOG_TAG, "Address found: " + address);
+
+            if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
+                return;
+
+            final int version = ((LegacyAddress) address).getVersion();
+            final byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) version})
+                    + Hex.toHexString(address.getHash()));
+
+            if (hash.length != 21)
+                throw new RuntimeException();
+
+            addresses.add(hash);
+        }
+
+        historyRequestByAddresses(addresses);
+
+    }
+
+    private void historyRequestByReceiveAddresses() {
+        List<Address> receiveAddresses = mWallet.getIssuedReceiveAddresses();
+
+        List<byte[]> binAddresses = serializeAddressesList(receiveAddresses);
+
+        historyRequestByAddresses(binAddresses);
+    }
+
+    private List<byte[]> serializeAddressesList(List<Address> receiveAddresses) {
+        List<byte[]> binAddresses = new ArrayList<>();
+
+        for (Address address : receiveAddresses) {
+            if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
+                continue;
+
+            final int version = ((LegacyAddress) address).getVersion();
+            final byte[] hash = Hex.decode(Hex.toHexString(new byte[]{(byte) version})
+                    + Hex.toHexString(address.getHash()));
+
+            if (hash.length != 21)
+                throw new RuntimeException();
+
+            binAddresses.add(hash);
+        }
+
+        return binAddresses;
+    }
+
+    private void historyRequestByAddresses(List<byte[]> addresses) {
+        final int totalRequest = Math.max(1, addresses.size() / MAX_ADDRESS_PER_REQUEST);
+
+        if (addresses.size() == 0)
+            return;
+
+        List<byte[]> addressesToRequest
+                = addresses.subList(0, Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST));
+
+        for (int requestCount = 0; requestCount < totalRequest; requestCount++) {
+            byte[] addressesBuff = new byte[Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST) * 21];
+
+            for (int i = 0; i < addressesToRequest.size(); i++)
+                System.arraycopy(addressesToRequest.get(i), 0, addressesBuff,
+                        i * 21, 21);
+
+            Utils.tryNotThrow(() -> {
+                Log.i(LOG_TAG, "Addresses: " + Hex.toHexString(addressesBuff));
+
+                List<ITransaction> history = BitcoinProvider.get(this)
+                        .getHistory(addressesBuff).get();
+
+                for (ITransaction tx : history) {
+                    if (!(tx instanceof Transaction))
+                        return;
+
+                    Transaction btcTx = (Transaction) tx;
+
+                    if (mWallet.getTransaction(btcTx.getTxId()) != null)
+                        return;
+
+                    Log.i(LOG_TAG, "Tx: " + tx.getID());
+
+                    Map<String, ITransaction> dependencies = BitcoinProvider.get(this)
+                            .getDependencies(((Transaction) tx).getTxId().getReversedBytes()).get();
+
+                    connectInputs(btcTx, dependencies);
+
+                    addTransaction(btcTx);
+                }
+            });
+
+            addressesToRequest
+                    = addresses.subList(MAX_ADDRESS_PER_REQUEST * requestCount,
+                    MAX_ADDRESS_PER_REQUEST * requestCount
+                            + Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST));
+        }
+
+        Log.d(LOG_TAG, "New balance: " + mWallet.getBalance().toFriendlyString());
+
+        findOutputsNotAdded();
+    }
+
+    private void findOutputsNotAdded() {
+        Set<org.bitcoinj.core.Transaction> transactions = mWallet.getTransactions(true);
+        Set<Address> addresses = new HashSet<>();
+        Set<Address> addressesToRequest = new HashSet<>();
+
+        for (org.bitcoinj.core.Transaction tx : transactions)
+            for (TransactionOutput output : tx.getOutputs())
+                addresses.add(output.getScriptPubKey()
+                        .getToAddress(mNetwork, true));
+
+        for (Address address : addresses)
+            if (!mWallet.getIssuedReceiveAddresses().contains(address)
+                    && mWallet.isAddressMine(address))
+                addressesToRequest.add(address);
+
+        if (addressesToRequest.size() > 0)
+            historyRequestByAddresses(serializeAddressesList(Lists.newArrayList(addressesToRequest)));
+    }
+
+    private void connectInputs(Transaction tx, Map<String, ITransaction> dependencies)
+            throws NullPointerException {
+        for (TransactionInput input : tx.getInputs()) {
+            if (input.getConnectedOutput() == null) {
+                final TransactionOutPoint outpoint = input.getOutpoint();
+                final String hash = outpoint.getHash().toString();
+                final long index = outpoint.getIndex();
+
+                Transaction dep = (Transaction) dependencies.get(hash);
+                Objects.requireNonNull(dep);
+                TransactionOutput output = dep.getOutput(index);
+                Objects.requireNonNull(output);
+
+                input.connect(output);
+            }
+        }
+    }
+
+    private void addTransaction(Transaction tx) {
+
+        if (!mWallet.isTransactionRelevant(tx))
+            Log.w(LOG_TAG, "Tx: " + tx.getID() + " is not relevant");
+
+        if (!mWallet.getTransactionPool(getPool(tx.getState())).containsKey(tx.getTxId()))
+            mWallet.addWalletTransaction(new WalletTransaction(getPool(tx.getState()), tx));
     }
 
     private WalletTransaction.Pool getPool(TransactionState state) {
