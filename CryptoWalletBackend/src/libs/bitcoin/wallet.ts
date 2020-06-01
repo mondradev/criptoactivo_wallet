@@ -1,7 +1,7 @@
 import { TxData, IWalletProvider, ChainInfo } from "../../resources/iwalletprovider"
 import { Blockchain } from "./chain/blockchain"
 import BufferHelper from "./../../utils/bufferhelper"
-import { Networks, Transaction } from "bitcore-lib"
+import { Networks, Transaction, Output } from "bitcore-lib"
 import { Network } from "./network"
 import NetworkStatus from "./network/networkstatus"
 import LoggerFactory from 'log4js'
@@ -9,11 +9,11 @@ import Config from "../../../config"
 
 const Logger = LoggerFactory.getLogger('Bitcoin (Wallet)')
 
-export default class WalletProvider implements IWalletProvider {  
+export default class WalletProvider implements IWalletProvider {
 
     public constructor(private chain: Blockchain, private network: Network) {
         Logger.level = Config.logLevel
-     }
+    }
 
     public async getHistory(addresses: string, network: string): Promise<TxData[]> {
         if (network !== Networks.defaultNetwork.name)
@@ -117,11 +117,17 @@ export default class WalletProvider implements IWalletProvider {
                 txid: addrIndex.txid.toReverseHex(),
                 time: block.header.time,
                 data: block.transactions[txIndex.index].toString(),
-                state: unspent.length > 0 ? 'unspent' : 'spent'
+                state: this._getTxState(address, unspent)
             })
         }
 
         return txHistorial
+    }
+
+    private _getTxState(address: string, unspent: { index: number; utxo: Output }[]): "unspent" | "spent" | "pending" {
+        const utxos = unspent.filter(unspent => this.chain.AddrIndex.toAddress(unspent.utxo.script).toHex() == address)
+
+        return utxos.length > 0 ? "unspent" : "spent"
     }
 
     public async broadcastTx(transaction: string, network: string): Promise<boolean> {
