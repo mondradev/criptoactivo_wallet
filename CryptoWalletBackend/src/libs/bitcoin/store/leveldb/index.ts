@@ -1,5 +1,5 @@
 import { IBlockStore, ChainTip } from "../istore";
-import { Block, Transaction, Output } from "bitcore-lib";
+import { Block, Transaction, Output, Networks } from "bitcore-lib";
 import level, { LevelUpChain, LevelUp, AbstractLevelDOWN } from "level";
 import { getDirectory } from "../../../../utils";
 import LoggerFactory from 'log4js'
@@ -11,7 +11,8 @@ import { OutputEntry } from "./outputentry";
 import { Enconding } from "./enconding";
 import { TxIndex } from "./txindex";
 import { AddrIndex } from "./addrindex";
-import { Encoder } from "./encoder";
+import {  getKey } from './dbutils'
+import { BlockGenesis } from "../../consensus";
 
 const Logger = LoggerFactory.getLogger('Bitcoin (LevelStore)')
 
@@ -31,23 +32,13 @@ export class LevelStore implements IBlockStore {
     private _txIndex: TxIndex
     private _addrIndex: AddrIndex
 
-    private async _getKey<TValue>(db: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>, key: Buffer, encoder: Encoder<TValue>) {
-        try {
-            const value = await db.get(encoder.key(key))
-            return encoder.decode(value ? value : BufferHelper.zero())
-        }
-        catch (ex) {
-            return null;
-        }
-    }
-
     private async _getTxn(height: number, prevHeight: number) {
         let tip = this._cacheTip && this._cacheTip.height == prevHeight ? this._cacheTip : null
 
         if (height > 0) {
 
-            if (!tip) tip = await this._getKey(this._db, BufferHelper.numberToBuffer(prevHeight, 4, 'be'), Enconding.Tip)
-            if (!tip) tip = await this._getKey(this._db, null, Enconding.Tip)
+            if (!tip) tip = await getKey(this._db, BufferHelper.numberToBuffer(prevHeight, 4, 'be'), Enconding.Tip)
+            if (!tip) tip = await getKey(this._db, null, Enconding.Tip)
         }
 
         return tip ? tip.txn : 0
@@ -106,12 +97,12 @@ export class LevelStore implements IBlockStore {
 
     private async _undoBlock(hash: Buffer, target: number) {
         try {
-            const undo = await this._getKey(this._undoDb, hash, Enconding.UndoTxo)
+            const undo = await getKey(this._undoDb, hash, Enconding.UndoTxo)
             const dbBatch = this._db.batch()
             const height = await this.getHeight(hash)
             const binHeight = BufferHelper.numberToBuffer(height, 4, "be")
             const binNewHeight = BufferHelper.numberToBuffer(height - 1, 4, "be")
-            const newTip = await this._getKey(this._db, binNewHeight, Enconding.Tip)
+            const newTip = await getKey(this._db, binNewHeight, Enconding.Tip)
 
             for (const output of undo)
                 dbBatch.put(Enconding.CoinTxo.key(output.outpoint), Enconding.CoinTxo.encode(output))
@@ -204,14 +195,14 @@ export class LevelStore implements IBlockStore {
     }
 
     public async getBlock(hash: Buffer): Promise<Block> {
-        return await this._getKey(this._db, hash, Enconding.BlockByHashIdx)
+        return await getKey(this._db, hash, Enconding.BlockByHashIdx)
     }
 
     public async getHash(height: number): Promise<Buffer> {
         if (this._cacheHashByHeight && this._cacheHashByHeight.has(height))
             return this._cacheHashByHeight.get(height)
 
-        return await this._getKey(this._db, BufferHelper.numberToBuffer(height, 4, "be"), Enconding.BlockHashByHeightIdx)
+        return await getKey(this._db, BufferHelper.numberToBuffer(height, 4, "be"), Enconding.BlockHashByHeightIdx)
     }
 
     public async getHeight(hash: Buffer): Promise<number> {
@@ -221,7 +212,7 @@ export class LevelStore implements IBlockStore {
         if (this._cacheHeightByHash && this._cacheHeightByHash.has(hash.toHex()))
             return Enconding.BlockHeightByHashIdx.decode(this._cacheHeightByHash.get(hash.toHex()))
 
-        return await this._getKey(this._db, hash, Enconding.BlockHeightByHashIdx)
+        return await getKey(this._db, hash, Enconding.BlockHeightByHashIdx)
     }
 
     public async connect(): Promise<void> {
@@ -229,6 +220,36 @@ export class LevelStore implements IBlockStore {
 
         if (this._db.isOpen())
             return await this._db.open()
+
+        await this.resync()
+    }
+
+    private async resync() {
+        const bestHeight = 1747136
+        const initialHeight = 65690
+
+        /*
+        this._cacheTip = { hash: Constants.NULL_HASH, height: 0, txn: 0, time: 0 }
+
+        await this.saveBlock(BlockGenesis[Networks.defaultNetwork.name]) */
+
+        this._cacheTip = await getKey(this._db, null, Enconding.Tip)
+
+        Logger.info("Current chain: %d - %s", this._cacheTip.height, this._cacheTip.hash)
+
+        for (let i = initialHeight; i <= bestHeight; i++) {
+            const hash = await this.getHash(i)
+
+            if (hash == null) {
+                Logger.warn("Block no found: %d", i)
+                break
+            }
+
+            const block = await this.getBlock(hash)
+
+            Logger.info("Saving block: %s", block.hash)
+            await this.saveBlock(block)
+        }
     }
 
     public async getLocators(height: number): Promise<string[]> {
@@ -254,7 +275,7 @@ export class LevelStore implements IBlockStore {
             if (this._cacheTip)
                 return this._cacheTip
 
-            this._cacheTip = await this._getKey(this._db, null, Enconding.Tip)
+            this._cacheTip = await getKey(this._db, null, Enconding.Tip)
 
             return this._cacheTip
         } catch (ignore) {
@@ -335,14 +356,14 @@ export class LevelStore implements IBlockStore {
         const hash = await this.getHash(height);
         const binHeight = BufferHelper.numberToBuffer(height, 4, 'be');
         const binNewHeight = BufferHelper.numberToBuffer(height - 1, 4, 'be');
-        const undo = await this._getKey(this._undoDb, hash, Enconding.UndoTxo);
+        const undo = await getKey(this._undoDb, hash, Enconding.UndoTxo);
         const dbBatch = this._db.batch();
 
         if (undo)
             for (const output of undo)
                 dbBatch.put(Enconding.CoinTxo.key(output.outpoint), Enconding.CoinTxo.encode(output));
 
-        const tip = await this._getKey(this._db, binNewHeight, Enconding.Tip);
+        const tip = await getKey(this._db, binNewHeight, Enconding.Tip);
 
         if (tip) {
             dbBatch.del(Enconding.Tip.key(binHeight))

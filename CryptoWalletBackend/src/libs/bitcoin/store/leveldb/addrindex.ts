@@ -24,14 +24,6 @@ export class AddrIndex {
     private _db: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
     private _cacheAddrs: Map<string, Buffer>
 
-    private async get(key: Buffer): Promise<Buffer> {
-        try {
-            return await this._db.get(key)
-        } catch (ignored) {
-            return null
-        }
-    }
-
     /**
      * Obtiene la dirección del script especificado.
      * 
