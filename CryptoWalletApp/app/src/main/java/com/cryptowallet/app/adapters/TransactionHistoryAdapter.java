@@ -36,7 +36,6 @@ import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.google.android.material.button.MaterialButton;
 
 import java.util.Collections;
 import java.util.List;
@@ -257,7 +256,7 @@ public final class TransactionHistoryAdapter
         ViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            itemView.setOnClickListener(this);
+            this.itemView.setOnClickListener(this);
 
             mOnCurrencyChange = isFiat -> {
                 SupportedAssets asset = isFiat ? Preferences.get().getFiat()
@@ -284,25 +283,28 @@ public final class TransactionHistoryAdapter
             mItem = item;
 
             final ImageView icon = itemView.findViewById(R.id.mTxHistIcon);
-            final MaterialButton iconKind = itemView.findViewById(R.id.mTxHistIconMov);
+            final View iconKindBack = itemView.findViewById(R.id.mTxHistIconBack);
+            final View iconKindFore = itemView.findViewById(R.id.mTxHistIconFore);
             final TextView operationKind = itemView.findViewById(R.id.mTxHistOperationKind);
             final TextView status = itemView.findViewById(R.id.mTxHistStatus);
-            final TextView from = itemView.findViewById(R.id.mTxHistId);
+            final TextView id = itemView.findViewById(R.id.mTxHistId);
             final TextView time = itemView.findViewById(R.id.mTxHistTime);
             final Button amout = itemView.findViewById(R.id.mTxHistAmount);
+            final String todayText = itemView.getContext().getString(R.string.today_text);
+            final String yesterdayText = itemView.getContext().getString(R.string.yesterday_text);
 
             icon.setImageResource(mItem.getWallet().getIcon());
-            iconKind.setIcon(itemView.getContext().getDrawable(getKindIcon()));
-            iconKind.setBackgroundColor(getKindColor());
+            iconKindFore.setBackground(itemView.getContext().getDrawable(getKindIcon()));
+            iconKindBack.setBackgroundTintList(ColorStateList.valueOf(getKindColor()));
             operationKind.setText(getKindLabel());
             status.setVisibility(mItem.isConfirm() ? View.GONE : View.VISIBLE);
-            from.setText(mItem.isPay() ? getToLabel() : getFromLabel());
-            time.setText(Utils.toLocalTimeString(mItem.getTime()));
+            id.setText(mItem.getID());
+            time.setText(Utils.toLocalDatetimeString(mItem.getTime(), todayText, yesterdayText));
 
             amout.setBackgroundTintList(ColorStateList.valueOf(getKindColor()));
             amout.setOnClickListener(view -> notifyCurrencyChange());
 
-            mOnCurrencyChange.accept(false);
+            mOnCurrencyChange.accept(mShowingFiat);
         }
 
         /**
@@ -315,34 +317,6 @@ public final class TransactionHistoryAdapter
 
             return Utils.resolveColor(context, mItem.isPay() ? R.attr.colorSentTx
                     : R.attr.colorReceivedTx);
-        }
-
-        /**
-         * Obtiene la etiqueta de las direcciones de destino de la transacción.
-         *
-         * @return Etiqueta de direcciones de destino.
-         */
-        private String getToLabel() {
-            if (mItem.getToAddress().size() == 0)
-                throw new IllegalArgumentException("The destination address list is empty");
-
-            return mItem.getToAddress().size() > 1
-                    ? itemView.getContext().getString(R.string.multi_addresses_text)
-                    : mItem.getToAddress().get(0);
-        }
-
-        /**
-         * Obtiene la etiqueta de las direcciones que envía la transacción.
-         *
-         * @return Etiqueta de direcciones de origen.
-         */
-        private String getFromLabel() {
-            if (mItem.isCoinbase())
-                return itemView.getContext().getString(R.string.coinbase_address);
-
-            return mItem.getFromAddress().size() > 1
-                    ? itemView.getContext().getString(R.string.multi_addresses_text)
-                    : mItem.getFromAddress().get(0);
         }
 
         /**
@@ -375,7 +349,8 @@ public final class TransactionHistoryAdapter
                 return;
 
             // TODO Cambiar la referencia de la actividad.
-            view.getContext().startActivity(new Intent(view.getContext(), TransactionActivity.class)
+            view.getContext().startActivity(
+                    new Intent(itemView.getContext(), TransactionActivity.class)
                     .putExtra(TransactionActivity.TX_ID_EXTRA, mItem.getID())
                     .putExtra(TransactionActivity.ASSET_EXTRA, SupportedAssets.BTC.name()));
         }

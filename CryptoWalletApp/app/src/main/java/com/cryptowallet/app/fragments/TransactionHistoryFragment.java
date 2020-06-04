@@ -101,8 +101,7 @@ public class TransactionHistoryFragment extends Fragment {
         txList.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         mSwipeRefresh = requireView().findViewById(R.id.mTxHistSwipeRefreshTx);
-        mSwipeRefresh.setColorSchemeColors(requireContext().getResources().getColor(
-                R.color.sl_color_onsurface));
+        mSwipeRefresh.setColorSchemeColors(Utils.resolveColor(requireContext(), R.attr.colorOnPrimary));
         mSwipeRefresh.setProgressBackgroundColorSchemeColor(Utils.resolveColor(requireContext(),
                 R.attr.colorAccent));
         mSwipeRefresh.setOnRefreshListener(this::onRefresh);

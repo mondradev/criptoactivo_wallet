@@ -138,9 +138,6 @@ public class MainActivity extends LockableActivity {
                     .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left)
                     .replace(R.id.mMainContainer, fragmentInstance, fragmentInstance.getTag());
 
-            if (mCurrentFragment != null)
-                transaction.addToBackStack(null);
-
             transaction.commit();
 
             mCurrentFragment = fragmentInstance;

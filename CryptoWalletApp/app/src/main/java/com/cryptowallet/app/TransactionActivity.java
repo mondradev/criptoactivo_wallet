@@ -19,10 +19,12 @@
 package com.cryptowallet.app;
 
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.cryptowallet.R;
@@ -114,6 +116,21 @@ public class TransactionActivity extends LockableActivity {
             this.<TextView>requireView(R.id.mTxConfirmations).setText(
                     formatter.format(tx.getConfirmations()));
         }
+    }
+
+
+    /**
+     * Se llama a este método cada vez que se selecciona un elemento en su menú de opciones.
+     *
+     * @param item El elemento del menú que fue seleccionado.
+     * @return boolean Un valor true si fue procesado.
+     */
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        setResult(RESULT_CANCELED);
+        finish();
+
+        return true;
     }
 
     /**

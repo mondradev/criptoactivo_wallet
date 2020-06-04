@@ -56,7 +56,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/amount_sample_text"
-                    android:textAppearance="?attr/textAppearanceHeadline4"
+                    android:textAppearance="?attr/textAppearanceHeadline5"
                     android:textColor="?attr/colorReceivedTx" />
 
                 <TextView
@@ -96,6 +96,7 @@
                 android:id="@+id/mTxId"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textIsSelectable="true"
                 android:text="@string/tx_hash_sample"
                 android:textAppearance="?attr/textAppearanceCaption" />
 
