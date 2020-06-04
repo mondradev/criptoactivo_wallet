@@ -22,22 +22,23 @@ import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.TransactionState;
 
 import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.ProtocolException;
 import org.bitcoinj.core.SegwitAddress;
+import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.TransactionBag;
+import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -60,24 +61,9 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     private TransactionBag mWallet;
 
     /**
-     * Altura del bloque padre.
-     */
-    private long mBlockHeight;
-
-    /**
-     * Hash del bloque padre.
-     */
-    private String mBlockHash;
-
-    /**
-     * Estado de la transacción en la blockchain.
-     */
-    private TransactionState mState;
-
-    /**
      * Billetera que contiene la transacción.
      */
-    private IWallet mWalletParent;
+    private Wallet mWalletParent;
 
     /**
      * Crea una nueva transacción vacía.
@@ -86,7 +72,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     public Transaction(Wallet wallet) {
         super(wallet.getNetwork());
-        init(null, 0, 0, wallet);
+        this.mWalletParent = wallet;
     }
 
     /**
@@ -94,17 +80,13 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      *
      * @param wallet       Billetera que la contiene.
      * @param payloadBytes Datos de la transacción.
-     * @param blockHash    Hash del bloque padre.
-     * @param blockHeight  Altura del bloque padre.
-     * @param blockTime    Fecha y hora del bloque expresada en segundos.
      * @throws ProtocolException En caso que exista un error al generar la transacción a partir de
      *                           los datos especificados.
      */
-    public Transaction(Wallet wallet, byte[] payloadBytes, String blockHash, long blockHeight,
-                       long blockTime)
+    public Transaction(Wallet wallet, byte[] payloadBytes)
             throws ProtocolException {
         super(wallet.getNetwork(), payloadBytes);
-        init(blockHash, blockHeight, blockTime, wallet);
+        this.mWalletParent = wallet;
     }
 
     /**
@@ -117,15 +99,33 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     public static Transaction fromTxData(TxData data, Wallet wallet) {
         final Transaction tx = new Transaction(
                 wallet,
-                data.getDataAsBuffer(),
+                data.getDataAsBuffer()
+        );
+
+        tx.setBlockAppearance(
                 data.getBlock(),
                 data.getHeight(),
                 data.getTime()
         );
 
-        tx.setState(Enum.valueOf(TransactionState.class, data.getState().toUpperCase()));
-
         return tx;
+    }
+
+    /**
+     * Establece la información del bloque en el cual aparece esta transacción.
+     *
+     * @param hash   Hash del bloque.
+     * @param height Altura del bloque.
+     * @param time   Tiempo del bloque.
+     */
+    private void setBlockAppearance(String hash, long height, long time) {
+        if (height < -1)
+            getConfidence().setConfidenceType(TransactionConfidence.ConfidenceType.PENDING);
+        else {
+            setUpdateTime(new Date(time * 1000));
+            addBlockAppearance(Sha256Hash.wrap(hash), 0);
+            getConfidence().setAppearedAtChainHeight((int) height);
+        }
     }
 
     /**
@@ -135,28 +135,22 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Una transacción.
      */
     public static Transaction wrap(org.bitcoinj.core.Transaction tx, Wallet wallet) {
-        return new Transaction(wallet, tx.bitcoinSerialize(), null,
-                0, 0);
-    }
+        Transaction wtx = new Transaction(wallet, tx.bitcoinSerialize());
+        final int height = tx.getConfidence().getAppearedAtChainHeight();
 
-    /**
-     * Inicializa los valores correspondientes al bloque padre.
-     *
-     * @param blockHash   Identificador del bloque.
-     * @param blockHeight Altura del bloque.
-     * @param blockTime   Fecha y hora del bloque.
-     * @param wallet      Billetera que la contiene.
-     */
-    private void init(String blockHash, long blockHeight, long blockTime, Wallet wallet) {
-        this.mBlockHash = blockHash;
-        this.mBlockHeight = blockHeight;
-        this.mState = TransactionState.PENDING;
-        this.mWalletParent = wallet;
+        if (height >= 0) {
+            String hash = null;
+            Map<Sha256Hash, Integer> appearsInHashes = tx.getAppearsInHashes();
 
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(blockTime * 1000);
+            if (appearsInHashes != null && !appearsInHashes.isEmpty())
+                hash = appearsInHashes.keySet().toArray()[0].toString();
 
-        this.setUpdateTime(calendar.getTime());
+            final long time = tx.getUpdateTime().getTime();
+
+            wtx.setBlockAppearance(hash, height, time);
+        }
+
+        return wtx;
     }
 
     /**
@@ -184,27 +178,6 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     }
 
     /**
-     * Conecta las entradas de la transacción con su salida correspondiente contenida en la lista
-     * de transacciones.
-     *
-     * @param dependencies Lista de transacciones de la cual depende esta transacción.
-     */
-    public void fillDependencies(List<ITransaction> dependencies) {
-        for (TransactionInput input : this.getInputs()) {
-            if (input.getConnectedOutput() != null)
-                continue;
-
-            String hash = input.getOutpoint().getHash().toString();
-
-            for (ITransaction dependency : dependencies)
-                if (dependency.getID().equals(hash)
-                        && dependency instanceof org.bitcoinj.core.Transaction)
-                    input.connect((org.bitcoinj.core.Transaction) dependency,
-                            TransactionInput.ConnectMode.DISCONNECT_ON_CONFLICT);
-        }
-    }
-
-    /**
      * Obtiene el cripto-activo que maneja esta transacción.
      *
      * @return Cripto-activo de la transacción.
@@ -219,12 +192,13 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * asignadas correctamente.
      *
      * @return Comisión de la transacción.
-     * @see Transaction#fillDependencies(List)
      * @see Transaction#requireDependencies()
      */
     @Override
     public long getNetworkFee() {
-        return getFee().value;
+        final Coin fee = getFee();
+        if (fee != null) return fee.value;
+        return 0;
     }
 
     /**
@@ -237,9 +211,9 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     @Override
     public Float getAmount() {
         float unit = (float) Math.pow(10, getCriptoAsset().getSize());
-        
+
         if (mWallet != null)
-            return getValue(mWallet).value / unit;
+            return getValue(mWallet).add(getFee()).value / unit;
 
         long total = 0;
 
@@ -254,7 +228,6 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * que todas la dependencias estén asignadas correctamente.
      *
      * @return Lista de direcciones remitentes.
-     * @see Transaction#fillDependencies(List)
      * @see Transaction#requireDependencies()
      */
     @NotNull
@@ -345,7 +318,12 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public String getBlockHash() {
-        return mBlockHash;
+        Map<Sha256Hash, Integer> appearsInHashes = getAppearsInHashes();
+
+        if (appearsInHashes == null) return null;
+        if (appearsInHashes.isEmpty()) return null;
+
+        return appearsInHashes.keySet().toArray()[0].toString();
     }
 
     /**
@@ -355,29 +333,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public long getBlockHeight() {
-        return mBlockHeight;
-    }
-
-    /**
-     * Obtiene el estado de la transacción en la cadena de bloques.
-     *
-     * @return Estado de la transacción.
-     */
-    @Override
-    public TransactionState getState() {
-        return mState;
-    }
-
-    /**
-     * Establece el estado de la transacción.
-     *
-     * @param state Nuevo estado.
-     */
-    public void setState(@NonNull TransactionState state) {
-        if (mState.ordinal() >= state.ordinal())
-            return;
-
-        this.mState = state;
+        return getConfidence().getAppearedAtChainHeight();
     }
 
     /**
@@ -469,5 +425,14 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     @Override
     public int hashCode() {
         return getTxId().hashCode();
+    }
+
+    /**
+     * Crea una copia de la transacción.
+     *
+     * @return Una transacción nueva.
+     */
+    public Transaction copy() {
+        return Transaction.wrap(this, this.mWalletParent);
     }
 }

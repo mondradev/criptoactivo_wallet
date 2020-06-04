@@ -108,13 +108,6 @@ public interface ITransaction extends Comparable<ITransaction> {
     long getBlockHeight();
 
     /**
-     * Obtiene el estado de la transacción en la cadena de bloques.
-     *
-     * @return Estado de la transacción.
-     */
-    TransactionState getState();
-
-    /**
      * Obtiene el tamaño de la transacción en bytes.
      *
      * @return Tamaño en bytes.

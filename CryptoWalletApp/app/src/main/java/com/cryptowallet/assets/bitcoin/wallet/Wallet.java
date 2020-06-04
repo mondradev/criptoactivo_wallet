@@ -37,10 +37,8 @@ import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.ITransactionFee;
 import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.TransactionState;
 import com.cryptowallet.wallet.WalletManager;
 import com.cryptowallet.wallet.exceptions.InSufficientBalanceException;
-import com.google.common.collect.Lists;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -94,9 +92,18 @@ import java.util.concurrent.Executors;
  * @see IWallet
  * @see WalletManager
  * @see SupportedAssets
- * @see com.cryptowallet.services.IWalletProvider
  */
 public class Wallet implements IWallet {
+
+    /**
+     * Direcciones máximas por petición.
+     */
+    private static final int MAX_ADDRESS_PER_REQUEST = 100;
+
+    /**
+     * Cantidad total de direcciones a consultar en la primera sincronización.
+     */
+    private static final int MAX_ADDRESS_TO_INITIAL_QUERY = 500;
 
     /**
      * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
@@ -322,20 +329,29 @@ public class Wallet implements IWallet {
         });
     }
 
+    /**
+     * Solicita las transacciones al servidor.
+     */
     private void pullTransactions() {
-        receivedHistoryRequest();
+        Utils.tryNotThrow(() -> {
+            ChainTipInfo tipInfo = BitcoinProvider.get(this).getChainTipInfo().get();
+            receivedHistoryRequest();
 
-        for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(false)) {
-            Log.d(LOG_TAG, "Tx: " + tx.getTxId() + " Value: "
-                    + tx.getOutputSum().toFriendlyString());
-        }
+            if (tipInfo.getHeight() ==
+                    BitcoinProvider.get(this).getChainTipInfo().get().getHeight()) {
+                mWallet.setLastBlockSeenHash(Sha256Hash.wrap(tipInfo.getHash()));
+                mWallet.setLastBlockSeenHeight(tipInfo.getHeight());
+                mWallet.setLastBlockSeenTimeSecs(tipInfo.getTime().getTime());
 
-        Utils.tryNotThrow(() -> mWallet.saveToFile(mWalletFile));
+                Utils.tryNotThrow(() -> mWallet.saveToFile(mWalletFile));
+            } else
+                pullTransactions();
+        });
     }
 
-    private static final int MAX_ADDRESS_PER_REQUEST = 100;
-    private static final int MAX_ADDRESS_TO_INITIAL_QUERY = 500;
-
+    /**
+     * Solicita el historial de las transacciones que representan envíos a esta billetera.
+     */
     private void receivedHistoryRequest() {
         final int requiredAddresses = Math.max(0, MAX_ADDRESS_TO_INITIAL_QUERY
                 - mWallet.getIssuedReceiveAddresses().size());
@@ -372,6 +388,9 @@ public class Wallet implements IWallet {
 
     }
 
+    /**
+     * Solicita las transacciones de las direcciones previamente derivadas.
+     */
     private void historyRequestByReceiveAddresses() {
         List<Address> receiveAddresses = mWallet.getIssuedReceiveAddresses();
 
@@ -380,10 +399,16 @@ public class Wallet implements IWallet {
         historyRequestByAddresses(binAddresses);
     }
 
-    private List<byte[]> serializeAddressesList(List<Address> receiveAddresses) {
+    /**
+     * Serializa la lista de las direcciones.
+     *
+     * @param addresses Lista de direcciones.
+     * @return Matriz unidimensional de bytes.
+     */
+    private List<byte[]> serializeAddressesList(List<Address> addresses) {
         List<byte[]> binAddresses = new ArrayList<>();
 
-        for (Address address : receiveAddresses) {
+        for (Address address : addresses) {
             if (!(address instanceof LegacyAddress)) // TODO Unsupported segwit
                 continue;
 
@@ -400,6 +425,11 @@ public class Wallet implements IWallet {
         return binAddresses;
     }
 
+    /**
+     * Solicita el historial de transacciones que involucran las direcciones especificadas.
+     *
+     * @param addresses Lista de direcciones.
+     */
     private void historyRequestByAddresses(List<byte[]> addresses) {
         final int totalRequest = Math.max(1, addresses.size() / MAX_ADDRESS_PER_REQUEST);
 
@@ -412,45 +442,36 @@ public class Wallet implements IWallet {
         List<Transaction> downloadedTransactions = new ArrayList<>();
 
         for (int requestCount = 0; requestCount < totalRequest; requestCount++) {
-            byte[] addressesBuff = new byte[Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST) * 21];
+            byte[] addressesBuff
+                    = new byte[Math.min(addresses.size(), MAX_ADDRESS_PER_REQUEST) * 21];
 
             for (int i = 0; i < addressesToRequest.size(); i++)
                 System.arraycopy(addressesToRequest.get(i), 0, addressesBuff,
                         i * 21, 21);
 
             Utils.tryNotThrow(() -> {
-                Log.i(LOG_TAG, "Addresses: " + Hex.toHexString(addressesBuff));
+                Log.d(LOG_TAG, "Addresses: " + Hex.toHexString(addressesBuff));
 
-                List<ITransaction> history = BitcoinProvider.get(this)
+                List<WalletTransaction> history = BitcoinProvider.get(this)
                         .getHistory(addressesBuff).get();
 
-                for (ITransaction tx : history) {
-                    if (!(tx instanceof Transaction))
+                for (WalletTransaction wtx : history) {
+                    Transaction tx = (Transaction) wtx.getTransaction();
+
+                    if (mWallet.getTransaction(wtx.getTransaction().getTxId()) != null)
                         return;
 
-                    Transaction btcTx = (Transaction) tx;
-
-                    if (mWallet.getTransaction(btcTx.getTxId()) != null)
-                        return;
-
-                    Log.i(LOG_TAG, "Tx: " + tx.getID());
+                    Log.d(LOG_TAG, "Downloaded Tx: "
+                            + wtx.getTransaction().getTxId().toString());
 
                     Map<String, ITransaction> dependencies = BitcoinProvider.get(this)
-                            .getDependencies(((Transaction) tx).getTxId().getReversedBytes()).get();
+                            .getDependencies(wtx.getTransaction().getTxId().getReversedBytes())
+                            .get();
 
-                    connectInputs(btcTx, dependencies);
-                    addTransaction(btcTx);
+                    connectInputs(wtx.getTransaction(), dependencies);
+                    addTransaction(wtx.getPool(), tx);
 
-                    downloadedTransactions.add(btcTx);
-
-                    if (mWallet.getLastBlockSeenHeight() < btcTx.getBlockHeight() && (
-                            mWallet.getLastBlockSeenTime() == null
-                                    || btcTx.getUpdateTime().getTime()
-                                    > mWallet.getLastBlockSeenTime().getTime())) {
-                        mWallet.setLastBlockSeenHeight((int) btcTx.getBlockHeight());
-                        mWallet.setLastBlockSeenHash(Sha256Hash.wrap(btcTx.getBlockHash()));
-                        mWallet.setLastBlockSeenTimeSecs(btcTx.getUpdateTime().getTime());
-                    }
+                    downloadedTransactions.add(tx);
                 }
             });
 
@@ -468,9 +489,14 @@ public class Wallet implements IWallet {
             findOutputsNotAdded(downloadedTransactions);
     }
 
+    /**
+     * Solicita los historiales que involucran las salidas de cambio.
+     *
+     * @param transactions Lista de transacciones.
+     */
     private void findOutputsNotAdded(List<Transaction> transactions) {
-        Set<Address> addresses = new HashSet<>();
-        Set<Address> addressesToRequest = new HashSet<>();
+        List<Address> addresses = new ArrayList<>();
+        List<Address> addressesToRequest = new ArrayList<>();
 
         for (Transaction tx : transactions)
             for (TransactionOutput output : tx.getOutputs())
@@ -483,11 +509,19 @@ public class Wallet implements IWallet {
                 addressesToRequest.add(address);
 
         if (addressesToRequest.size() > 0)
-            historyRequestByAddresses(serializeAddressesList(Lists.newArrayList(addressesToRequest)));
+            historyRequestByAddresses(serializeAddressesList(addressesToRequest));
     }
 
-    private void connectInputs(Transaction tx, Map<String, ITransaction> dependencies)
-            throws NullPointerException {
+    /**
+     * Conecta las entrddas con las salidas de las transacciones de dependencia.
+     *
+     * @param tx           Transacción a conectar las entradas.
+     * @param dependencies Lista de transacciones de dependencia.
+     * @throws NullPointerException Si no se encuentra la transacción de dependencia o la salida
+     *                              especificada.
+     */
+    private void connectInputs(org.bitcoinj.core.Transaction tx,
+                               Map<String, ITransaction> dependencies) throws NullPointerException {
         for (TransactionInput input : tx.getInputs()) {
             if (input.getConnectedOutput() == null) {
                 final TransactionOutPoint outpoint = input.getOutpoint();
@@ -496,35 +530,68 @@ public class Wallet implements IWallet {
 
                 Transaction dep = (Transaction) dependencies.get(hash);
                 Objects.requireNonNull(dep);
+
                 TransactionOutput output = dep.getOutput(index);
                 Objects.requireNonNull(output);
+
+                if (mWallet.getTransaction(dep.getTxId()) == null)
+                    mWallet.addWalletTransaction(
+                            new WalletTransaction(WalletTransaction.Pool.SPENT, dep));
 
                 input.connect(output);
             }
         }
     }
 
-    private void addTransaction(Transaction tx) {
-        if (!mWallet.isTransactionRelevant(tx))
-            Log.w(LOG_TAG, "Tx: " + tx.getID() + " is not relevant");
-
-        if (!mWallet.getTransactionPool(getPool(tx.getState())).containsKey(tx.getTxId()))
-            mWallet.addWalletTransaction(new WalletTransaction(getPool(tx.getState()), tx));
+    /**
+     * Agrega la transacción a la billetera.
+     *
+     * @param pool Estado de la transacción.
+     * @param tx   Transacción a agregar.
+     */
+    private void addTransaction(WalletTransaction.Pool pool, Transaction tx) {
+        if (!mWallet.getTransactionPool(pool).containsKey(tx.getTxId()))
+            mWallet.addWalletTransaction(new WalletTransaction(pool, tx));
+        else
+            updateTransactionPool(pool, tx);
     }
 
-    private WalletTransaction.Pool getPool(TransactionState state) {
-        switch (state) {
-            case SPENT:
-                return WalletTransaction.Pool.SPENT;
-            case PENDING:
-                return WalletTransaction.Pool.PENDING;
-            case UNSPENT:
-                return WalletTransaction.Pool.UNSPENT;
-        }
+    /**
+     * Actualiza el estado de la transacción dentro de la billetera.
+     *
+     * @param pool Estado de la transacción.
+     * @param tx   Transacción a actualizar.
+     */
+    private void updateTransactionPool(WalletTransaction.Pool pool, Transaction tx) {
+        if (mWallet.getTransaction(tx.getTxId()) == null)
+            return;
 
-        return WalletTransaction.Pool.DEAD;
+        Map<Sha256Hash, org.bitcoinj.core.Transaction> transactions;
+
+        if ((transactions = mWallet.getTransactionPool(WalletTransaction.Pool.PENDING))
+                .get(tx.getTxId()) != null)
+            transactions.remove(tx.getTxId());
+
+        else if ((transactions = mWallet.getTransactionPool(WalletTransaction.Pool.UNSPENT))
+                .get(tx.getTxId()) != null)
+            transactions.remove(tx.getTxId());
+
+        else if ((transactions = mWallet.getTransactionPool(WalletTransaction.Pool.SPENT))
+                .get(tx.getTxId()) != null)
+            transactions.remove(tx.getTxId());
+
+        else if ((transactions = mWallet.getTransactionPool(WalletTransaction.Pool.PENDING))
+                .get(tx.getTxId()) != null)
+            transactions.remove(tx.getTxId());
+
+        mWallet.getTransactionPool(pool).put(tx.getTxId(), tx);
     }
 
+    /**
+     * Verifica si se requiere extraer las transacciones del servidor.
+     *
+     * @return Un true si se requiere extraer las transacciones.
+     */
     private boolean fetchTransactions() {
         return Utils.tryReturnBoolean(() -> {
             final int height = mWallet.getLastBlockSeenHeight();
@@ -729,7 +796,7 @@ public class Wallet implements IWallet {
      */
     private void completeTx(Transaction tx, Float feeByKB) {
         final List<TransactionOutput> unspents = mWallet.calculateAllSpendCandidates();
-        final Transaction temp = Transaction.wrap(tx, this);
+        final Transaction temp = tx.copy();
         final Address address = mWallet.currentChangeAddress();
 
         Coin value = Coin.ZERO;
@@ -923,13 +990,10 @@ public class Wallet implements IWallet {
     @Override
     public List<ITransaction> getTransactions() {
         List<ITransaction> txs = new ArrayList<>();
-        for (org.bitcoinj.core.Transaction tx : mWallet.getTransactions(true)) {
-            Transaction transaction = tx instanceof Transaction
-                    ? (Transaction) tx : Transaction.wrap(tx, this);
-            transaction.assignWallet(mWallet);
 
-            txs.add(transaction);
-        }
+        for (WalletTransaction tx : mWallet.getWalletTransactions())
+            txs.add(Transaction.wrap(tx.getTransaction(), this));
+
         return txs;
     }
 
@@ -958,7 +1022,14 @@ public class Wallet implements IWallet {
     @Nullable
     @Override
     public ITransaction findTransaction(String hash) {
-        return null;
+        Sha256Hash txid = Sha256Hash.wrap(hash);
+
+        org.bitcoinj.core.Transaction tx = mWallet.getTransaction(txid);
+
+        if (tx == null)
+            return null;
+
+        return Transaction.wrap(tx, this);
     }
 
     /**

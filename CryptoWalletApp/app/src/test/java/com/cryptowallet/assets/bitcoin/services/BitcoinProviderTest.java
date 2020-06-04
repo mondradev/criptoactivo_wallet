@@ -18,18 +18,22 @@
 
 package com.cryptowallet.assets.bitcoin.services;
 
+import android.content.ContextWrapper;
+
 import com.cryptowallet.assets.bitcoin.wallet.Transaction;
-import com.cryptowallet.services.IWalletProvider;
+import com.cryptowallet.assets.bitcoin.wallet.Wallet;
 import com.cryptowallet.wallet.ChainTipInfo;
 import com.cryptowallet.wallet.ITransaction;
 import com.google.common.util.concurrent.ListenableFutureTask;
 
 import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.wallet.WalletTransaction;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -54,7 +58,7 @@ public class BitcoinProviderTest {
     /**
      * Proveedor de billetera.
      */
-    private IWalletProvider mProvider;
+    private BitcoinProvider mProvider;
 
     /**
      * Ejecutor de resultados.
@@ -66,7 +70,7 @@ public class BitcoinProviderTest {
      */
     @Before
     public void setUp() {
-        mProvider = BitcoinProvider.get(TestNet3Params.get());
+        mProvider = BitcoinProvider.get(new Wallet(new ContextWrapper(null)));
         mExecutor = Executors.newSingleThreadExecutor();
     }
 
@@ -77,7 +81,7 @@ public class BitcoinProviderTest {
     public void getHistorialByAddress() throws ExecutionException, InterruptedException {
         final byte[] address = Hex.decode("6ff022a844844d252781139cf40113760e6361688a");
         final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<List<ITransaction>> task
+        final ListenableFutureTask<List<WalletTransaction>> task
                 = mProvider.getHistoryByAddress(address);
 
         task.addListener(onSuccess, mExecutor);
@@ -96,7 +100,7 @@ public class BitcoinProviderTest {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
         final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<ITransaction> task = mProvider.getTransactionByTxID(txid);
+        final ListenableFutureTask<WalletTransaction> task = mProvider.getTransactionByTxID(txid);
 
         task.addListener(onSuccess, mExecutor);
 
@@ -104,7 +108,7 @@ public class BitcoinProviderTest {
 
         assertNotNull(task.get());
         assertEquals("b21d48e744385bfd3cab90c678a538f29cfc029ef2197a8876a645e1b0b2823d",
-                task.get().getID());
+                task.get().getTransaction().getTxId().toString());
     }
 
     /**
@@ -131,7 +135,7 @@ public class BitcoinProviderTest {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
         final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<List<ITransaction>> task = mProvider.getDependencies(txid);
+        final ListenableFutureTask<Map<String, ITransaction>> task = mProvider.getDependencies(txid);
 
         task.addListener(onSuccess, mExecutor);
 
@@ -149,16 +153,16 @@ public class BitcoinProviderTest {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
         final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<ITransaction> task = mProvider.getTransactionByTxID(txid);
+        final ListenableFutureTask<WalletTransaction> task = mProvider.getTransactionByTxID(txid);
 
         task.addListener(onSuccess, mExecutor);
 
         verify(onSuccess, timeout(5000)).run();
         assertNotNull(task.get());
         assertEquals("b21d48e744385bfd3cab90c678a538f29cfc029ef2197a8876a645e1b0b2823d",
-                task.get().getID());
+                task.get().getTransaction().getTxId().toString());
 
-        final ListenableFutureTask<List<ITransaction>> task2 = mProvider.getDependencies(txid);
+        final ListenableFutureTask<Map<String, ITransaction>> task2 = mProvider.getDependencies(txid);
 
         task2.addListener(onSuccess, mExecutor);
 
@@ -166,9 +170,9 @@ public class BitcoinProviderTest {
         assertNotNull(task2.get());
         assertEquals(1, task2.get().size());
 
-        assertTrue(task.get() instanceof Transaction);
+        assertTrue(task.get().getTransaction() instanceof Transaction);
 
-        final Transaction tx = (Transaction) task.get();
+        final Transaction tx = (Transaction) task.get().getTransaction();
         tx.fillDependencies(task2.get());
 
         assertEquals(0, tx.getNetworkFee());

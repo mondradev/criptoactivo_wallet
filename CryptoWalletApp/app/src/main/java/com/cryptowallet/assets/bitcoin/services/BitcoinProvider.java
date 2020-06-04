@@ -25,12 +25,12 @@ import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfo;
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
 import com.cryptowallet.assets.bitcoin.wallet.Transaction;
 import com.cryptowallet.assets.bitcoin.wallet.Wallet;
-import com.cryptowallet.services.IWalletProvider;
 import com.cryptowallet.wallet.ChainTipInfo;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.TransactionState;
 import com.google.common.util.concurrent.ListenableFutureTask;
 
+import org.bitcoinj.wallet.WalletTransaction;
 import org.bouncycastle.util.encoders.Hex;
 
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
  * @version 1.0
  * @see BitcoinApi
  */
-public class BitcoinProvider implements IWalletProvider {
+public class BitcoinProvider {
 
     /**
      * Etiqueta de log.
@@ -64,9 +64,9 @@ public class BitcoinProvider implements IWalletProvider {
     private static final String WEBSERVICE_URL = "http://innsytech.com:5000/api/v1/";
 
     /**
-     * Mapeo de proveedores según los parametros de red.
+     * Instancia del singleton.
      */
-    private static Map<Wallet, IWalletProvider> mMap;
+    private static BitcoinProvider mInstance;
 
     /**
      * Instancia de los servicios de la api.
@@ -104,24 +104,11 @@ public class BitcoinProvider implements IWalletProvider {
      * @param wallet Instancia de la billetera que contendrá las transacciones.
      * @return Un proveedor de billetera.
      */
-    public static IWalletProvider get(Wallet wallet) {
-        if (mMap == null)
-            mMap = new HashMap<>();
+    public static BitcoinProvider get(Wallet wallet) {
+        if (mInstance == null)
+            mInstance = new BitcoinProvider(wallet);
 
-        if (!mMap.containsKey(wallet))
-            mMap.put(wallet, new BitcoinProvider(wallet));
-
-        return mMap.get(wallet);
-    }
-
-    /**
-     * Obtiene el cripto-activo soportado por este proveedor.
-     *
-     * @return El cripto-activo del proveedor.
-     */
-    @Override
-    public SupportedAssets getCriptoAsset() {
-        return SupportedAssets.BTC;
+        return mInstance;
     }
 
     /**
@@ -131,12 +118,11 @@ public class BitcoinProvider implements IWalletProvider {
      * @param address Dirección en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    @Override
-    public ListenableFutureTask<List<ITransaction>> getHistoryByAddress(byte[] address) {
+    public ListenableFutureTask<List<WalletTransaction>> getHistoryByAddress(byte[] address) {
         String addressHex = Hex.toHexString(address);
 
-        ListenableFutureTask<List<ITransaction>> task = ListenableFutureTask.create(() -> {
-            List<ITransaction> history = new ArrayList<>();
+        ListenableFutureTask<List<WalletTransaction>> task = ListenableFutureTask.create(() -> {
+            List<WalletTransaction> history = new ArrayList<>();
             try {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<List<TxData>> response = mApi.getTxHistory(networkName, addressHex)
@@ -148,7 +134,8 @@ public class BitcoinProvider implements IWalletProvider {
                 List<TxData> historyData = response.body();
 
                 for (TxData data : historyData)
-                    history.add(Transaction.fromTxData(data, mWallet));
+                    history.add(new WalletTransaction(parsePool(data.getState()),
+                            Transaction.fromTxData(data, mWallet)));
 
                 return history;
             } catch (Exception e) {
@@ -170,11 +157,10 @@ public class BitcoinProvider implements IWalletProvider {
      * @param txid Identificador de la transacción en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    @Override
-    public ListenableFutureTask<ITransaction> getTransactionByTxID(byte[] txid) {
+    public ListenableFutureTask<WalletTransaction> getTransactionByTxID(byte[] txid) {
         String txidHex = Hex.toHexString(txid);
 
-        ListenableFutureTask<ITransaction> task = ListenableFutureTask.create(() -> {
+        ListenableFutureTask<WalletTransaction> task = ListenableFutureTask.create(() -> {
             try {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<TxData> response = mApi.getTx(networkName, txidHex).execute();
@@ -182,7 +168,8 @@ public class BitcoinProvider implements IWalletProvider {
                 if (!response.isSuccessful() || response.body() == null)
                     return null;
 
-                return Transaction.fromTxData(response.body(), mWallet);
+                return new WalletTransaction(parsePool(response.body().getState()),
+                        Transaction.fromTxData(response.body(), mWallet));
             } catch (Exception e) {
                 Log.e(LOG_TAG, "Ocurrió un error al realizar la petición al servidor: "
                         + e.getMessage());
@@ -201,7 +188,6 @@ public class BitcoinProvider implements IWalletProvider {
      *
      * @return Una tarea encargada de gestionar la petición.
      */
-    @Override
     public ListenableFutureTask<ChainTipInfo> getChainTipInfo() {
         ListenableFutureTask<ChainTipInfo> task = ListenableFutureTask.create(() -> {
             try {
@@ -240,7 +226,6 @@ public class BitcoinProvider implements IWalletProvider {
      * @param transaction Transacción a propagar.
      * @return Una tarea encargada de gestionar la petición.
      */
-    @Override
     public ListenableFutureTask<Boolean> broadcastTx(ITransaction transaction) {
         return null;
     }
@@ -251,7 +236,6 @@ public class BitcoinProvider implements IWalletProvider {
      * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
-    @Override
     public ListenableFutureTask<Map<String, ITransaction>> getDependencies(byte[] txid) {
         String txidHex = Hex.toHexString(txid);
 
@@ -292,12 +276,11 @@ public class BitcoinProvider implements IWalletProvider {
      * @param addresses Direcciones a consultar.
      * @return Un tarea encargada de gestionar la petición.
      */
-    @Override
-    public ListenableFutureTask<List<ITransaction>> getHistory(byte[] addresses) {
+    public ListenableFutureTask<List<WalletTransaction>> getHistory(byte[] addresses) {
         final String addressesHex = Hex.toHexString(addresses);
 
-        ListenableFutureTask<List<ITransaction>> task = ListenableFutureTask.create(() -> {
-            List<ITransaction> transactions = new ArrayList<>();
+        ListenableFutureTask<List<WalletTransaction>> task = ListenableFutureTask.create(() -> {
+            List<WalletTransaction> transactions = new ArrayList<>();
             try {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<List<TxData>> response = mApi.getHistory(networkName, addressesHex)
@@ -309,7 +292,8 @@ public class BitcoinProvider implements IWalletProvider {
                 List<TxData> txData = response.body();
 
                 for (TxData data : txData)
-                    transactions.add(Transaction.fromTxData(data, mWallet));
+                    transactions.add(new WalletTransaction(parsePool(data.getState()),
+                            Transaction.fromTxData(data, mWallet)));
 
                 return transactions;
             } catch (Exception e) {
@@ -323,5 +307,26 @@ public class BitcoinProvider implements IWalletProvider {
         mExecutor.execute(task);
 
         return task;
+    }
+
+    /**
+     * Parsea el estado de la transacción respecto a su dirección.
+     *
+     * @param stateValue Representación en texto del estado de la transacción.
+     * @return Estado de la transacción.
+     */
+    private static WalletTransaction.Pool parsePool(String stateValue) {
+        TransactionState state = Enum.valueOf(TransactionState.class, stateValue);
+
+        switch (state) {
+            case SPENT:
+                return WalletTransaction.Pool.SPENT;
+            case PENDING:
+                return WalletTransaction.Pool.PENDING;
+            case UNSPENT:
+                return WalletTransaction.Pool.UNSPENT;
+        }
+
+        return WalletTransaction.Pool.DEAD;
     }
 }
