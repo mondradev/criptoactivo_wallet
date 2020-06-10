@@ -37,7 +37,7 @@ public final class InSufficientBalanceException extends RuntimeException {
     /**
      * Saldo requerido.
      */
-    private final Float mRequireAmount;
+    private final double mRequireAmount;
 
     /**
      * Crea una nueva excepción de saldo insuficiente.
@@ -45,7 +45,7 @@ public final class InSufficientBalanceException extends RuntimeException {
      * @param asset          Activo que se trató de enviar.
      * @param requireAmount  Saldo requerido.
      */
-    public InSufficientBalanceException(SupportedAssets asset, Float requireAmount) {
+    public InSufficientBalanceException(SupportedAssets asset, double requireAmount) {
         this(asset, requireAmount, null);
     }
 
@@ -57,7 +57,7 @@ public final class InSufficientBalanceException extends RuntimeException {
      * @param requireAmount  Saldo requerido.
      * @param innerException Excepción que causó este error.
      */
-    public InSufficientBalanceException(SupportedAssets asset, Float requireAmount,
+    public InSufficientBalanceException(SupportedAssets asset, double requireAmount,
                                         Exception innerException) {
         super("The wallet doesn't have enough balance", innerException);
         mAsset = asset;
@@ -69,7 +69,7 @@ public final class InSufficientBalanceException extends RuntimeException {
      *
      * @return Saldo requerido.
      */
-    public Float getRequireAmount() {
+    public double getRequireAmount() {
         return mRequireAmount;
     }
 

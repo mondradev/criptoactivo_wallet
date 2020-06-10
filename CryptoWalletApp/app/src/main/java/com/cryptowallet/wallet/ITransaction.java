@@ -44,14 +44,14 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Comisión de la transacción.
      */
-    long getNetworkFee();
+    double getNetworkFee();
 
     /**
      * Obtiene la cantidad gastada en la transacción sin incluir la comisión.
      *
      * @return Cantidad de la transacción.
      */
-    Float getAmount();
+    double getAmount();
 
     /**
      * Obtiene la lista de direcciones que envian alguna cantidad en la transacción.
@@ -126,7 +126,7 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Valor fiat.
      */
-    float getFiatAmount();
+    double getFiatAmount();
 
     /**
      * Indica si la transacción es un pago.

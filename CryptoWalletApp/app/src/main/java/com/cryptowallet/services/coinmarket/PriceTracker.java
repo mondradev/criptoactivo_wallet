@@ -49,7 +49,7 @@ public abstract class PriceTracker {
     /**
      * Lista de escuchas.
      */
-    private final List<ExecutableConsumer<Float>> mListeners;
+    private final List<ExecutableConsumer<Double>> mListeners;
 
     /**
      * Handler para realizar la petición con retraso de 5 minutos.
@@ -59,7 +59,7 @@ public abstract class PriceTracker {
     /**
      * Último precio del seguidor.
      */
-    private float mLastPrice;
+    private double mLastPrice;
 
     /**
      * Crea una nueva instancia del seguidor.
@@ -80,7 +80,7 @@ public abstract class PriceTracker {
      *
      * @return Último precio del par.
      */
-    public float getPrice() {
+    public double getPrice() {
         return this.mLastPrice;
     }
 
@@ -101,7 +101,7 @@ public abstract class PriceTracker {
         if (mListeners.size() == 0)
             return;
 
-        for (ExecutableConsumer<Float> listener : mListeners)
+        for (ExecutableConsumer<Double> listener : mListeners)
             listener.execute(mLastPrice);
 
         mHandler.postDelayed(this::request, DELAY_TIME);
@@ -112,11 +112,11 @@ public abstract class PriceTracker {
      *
      * @param listener Escucha de cambio.
      */
-    public void addChangeListener(Executor executor, Consumer<Float> listener) {
+    public void addChangeListener(Executor executor, Consumer<Double> listener) {
         if (listener == null)
             throw new NullPointerException("Can't add null as listener");
 
-        for (ExecutableConsumer<Float> executableConsumer : mListeners)
+        for (ExecutableConsumer<Double> executableConsumer : mListeners)
             if (executableConsumer.getConsumer().equals(listener))
                 return;
 
@@ -131,11 +131,11 @@ public abstract class PriceTracker {
      *
      * @param listener Escucha a remover.
      */
-    public void removeChangeListener(Consumer<Float> listener) {
+    public void removeChangeListener(Consumer<Double> listener) {
         if (listener == null)
             throw new NullPointerException("Can't add null as listener");
 
-        for (ExecutableConsumer<Float> executableConsumer : mListeners)
+        for (ExecutableConsumer<Double> executableConsumer : mListeners)
             if (executableConsumer.getConsumer().equals(listener)) {
                 mListeners.remove(executableConsumer);
                 break;

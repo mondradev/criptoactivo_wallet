@@ -107,12 +107,12 @@ public class CryptoAssetFragment extends Fragment {
     /**
      * Último precio del activo en el mercado.
      */
-    private Float mLastPrice;
+    private double mLastPrice;
 
     /**
      * Último saldo de la billetera.
      */
-    private Float mBalance;
+    private double mBalance;
 
     /**
      * Handler para manejo de la IU.
@@ -123,8 +123,8 @@ public class CryptoAssetFragment extends Fragment {
      * Crea una nueva instancia del fragmento.
      */
     public CryptoAssetFragment() {
-        mBalance = 0.0f;
-        mLastPrice = 0.0f;
+        mBalance = 0;
+        mLastPrice = 0;
         mHandler = new Handler(Looper.getMainLooper());
     }
 
@@ -236,7 +236,7 @@ public class CryptoAssetFragment extends Fragment {
      *
      * @param price Nuevo precio del activo.
      */
-    private void onPriceChange(Float price) {
+    private void onPriceChange(double price) {
         mLastPrice = price;
 
         updateViews();
@@ -249,7 +249,7 @@ public class CryptoAssetFragment extends Fragment {
         Objects.requireNonNull(mBalance);
         Objects.requireNonNull(mLastPrice);
 
-        float total = mBalance * mLastPrice;
+        double total = mBalance * mLastPrice;
         SupportedAssets mFiatAsset = Preferences.get().getFiat();
         SupportedAssets asset = mWallet.getAsset();
 
@@ -264,7 +264,7 @@ public class CryptoAssetFragment extends Fragment {
      *
      * @param balance Nuevo saldo de la billetera.
      */
-    private void onBalanceChange(Float balance) {
+    private void onBalanceChange(double balance) {
         mBalance = balance;
 
         updateViews();

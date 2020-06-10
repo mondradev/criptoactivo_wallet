@@ -44,7 +44,6 @@ import java.util.Map;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
  * @see IWallet
- * @see com.cryptowallet.services.IWalletProvider
  */
 public abstract class WalletManager {
 
@@ -138,9 +137,9 @@ public abstract class WalletManager {
      *
      * @return Total en fiat.
      */
-    public static Float getBalance() {
+    public static double getBalance() {
         Collection<IWallet> wallets = mWalletServices.values();
-        Float amount = 0.0f;
+        double amount = 0;
 
         for (IWallet wallet : wallets)
             amount += wallet.getFiatBalance();

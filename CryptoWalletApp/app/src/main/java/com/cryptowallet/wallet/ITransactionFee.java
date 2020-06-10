@@ -35,12 +35,12 @@ public interface ITransactionFee {
      *
      * @return Comisión de transacción.
      */
-    Float getAverage();
+    double getAverage();
 
     /**
      * Obtiene la comisión para transacciones rápidas.
      *
      * @return Comisión de transacción.
      */
-    Float getFaster();
+    double getFaster();
 }
