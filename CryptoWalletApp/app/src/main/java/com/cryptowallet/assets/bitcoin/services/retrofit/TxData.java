@@ -71,19 +71,19 @@ public class TxData {
     private Integer mHeight;
 
     /**
-     * Estado de la transacción.
+     * Posición de la transacción en el bloque.
      */
-    @SerializedName("state")
+    @SerializedName("index")
     @Expose
-    private String mState;
+    private Integer mIndex;
 
     /**
-     * Obtiene el estado de la transacción {@link TransactionState}.
+     * Obtiene la posición de la transacción del bloque.
      *
-     * @return Estado de la transacción.
+     * @return Posición del bloque.
      */
-    public String getState() {
-        return mState;
+    public int getBlockIndex() {
+        return mIndex;
     }
 
     /**
