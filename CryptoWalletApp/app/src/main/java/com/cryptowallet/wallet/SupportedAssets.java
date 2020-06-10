@@ -38,28 +38,28 @@ import java.text.NumberFormat;
  * </pre>
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.1
+ * @version 2.2
  */
 public enum SupportedAssets {
     /**
      * Cripto-activo Bitcoin.
      */
-    BTC(8, R.string.bitcoin_text),
+    BTC(100000000, R.string.bitcoin_text),
 
     /**
      * Activo fiduciario Dolar estadounidense.
      */
-    USD(2, R.string.usd_text, true),
+    USD(100, R.string.usd_text, true),
 
     /**
      * Activo fiduciario Peso mexicano.
      */
-    MXN(2, R.string.mxn_text, true);
+    MXN(100, R.string.mxn_text, true);
 
     /**
      * Tamaño de la unidad en su porción más pequeña.
      */
-    private int mSize;
+    private long mUnit;
 
     /**
      * Bandera que indica si es un activo FIAT.
@@ -80,24 +80,24 @@ public enum SupportedAssets {
     /**
      * Crea una nueva instancia del activo.
      *
-     * @param size     Tamaño de la unidad expresada en su porción más pequeña.
+     * @param unit     La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name     Nombre utilizado en la IU.
      * @param fiatSign Signo del activo fiat.
      */
-    SupportedAssets(int size, @StringRes int name, char fiatSign) {
-        this(size, name, true);
+    SupportedAssets(long unit, @StringRes int name, char fiatSign) {
+        this(unit, name, true);
         mSign = fiatSign;
     }
 
     /**
      * Crea una nueva instancia del activo.
      *
-     * @param size   Tamaño de la unidad expresada en su porción más pequeña.
+     * @param unit   La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name   Nombre utilizado en la IU.
      * @param isFiat Indica si el activo es fiduciario.
      */
-    SupportedAssets(int size, @StringRes int name, boolean isFiat) {
-        mSize = size;
+    SupportedAssets(long unit, @StringRes int name, boolean isFiat) {
+        mUnit = unit;
         mName = name;
         mFiat = isFiat;
 
@@ -107,11 +107,11 @@ public enum SupportedAssets {
     /**
      * Crea una nueva instancia del activo.
      *
-     * @param size Tamaño de la unidad expresada en su porción más pequeña.
+     * @param unit La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name Nombre utilizado en la IU.
      */
-    SupportedAssets(int size, @StringRes int name) {
-        this(size, name, false);
+    SupportedAssets(long unit, @StringRes int name) {
+        this(unit, name, false);
     }
 
     /**
@@ -119,8 +119,8 @@ public enum SupportedAssets {
      *
      * @return Tamaño de la unidad.
      */
-    public int getSize() {
-        return this.mSize;
+    public long getUnit() {
+        return this.mUnit;
     }
 
     /**
@@ -157,11 +157,12 @@ public enum SupportedAssets {
      * @param value Valor a formatear.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toStringFriendly(float value) {
+    public String toStringFriendly(double value) {
         DecimalFormat format = new DecimalFormat();
+        final int size = (int) Math.log10(mUnit);
 
-        format.setMinimumFractionDigits(isFiat() ? mSize : Math.min(mSize, 4));
-        format.setMaximumFractionDigits(mSize);
+        format.setMinimumFractionDigits(isFiat() ? size : Math.min(size, 4));
+        format.setMaximumFractionDigits(size);
 
         String money = "";
 
@@ -179,11 +180,12 @@ public enum SupportedAssets {
      * @param value Valor a formatear.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toPlainText(float value) {
+    public String toPlainText(double value) {
         NumberFormat instance = NumberFormat.getInstance();
+        final int size = (int) Math.log10(mUnit);
 
-        instance.setMinimumFractionDigits(isFiat() ? mSize : Math.min(mSize, 4));
-        instance.setMaximumFractionDigits(mSize);
+        instance.setMinimumFractionDigits(isFiat() ? size : Math.min(size, 4));
+        instance.setMaximumFractionDigits(size);
 
         return instance.format(value);
     }
