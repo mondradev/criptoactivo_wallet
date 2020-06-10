@@ -202,11 +202,14 @@ public final class Utils {
      *
      * @param command Comando a ejecutar.
      */
-    public static void tryNotThrow(TryNotThrowCommand command) {
+    public static boolean tryNotThrow(TryNotThrowCommand command) {
         try {
             command.run();
+
+            return true;
         } catch (Exception e) {
             Log.d("Utils", String.format("Exception avoided: %s", e.getMessage()));
+            return false;
         }
     }
 
@@ -310,6 +313,20 @@ public final class Utils {
 
         return String.format("%s %s", NumberFormat.getNumberInstance().format(newSize),
                 units.get(index));
+    }
+
+    /**
+     * Obtiene un nuevo <code>double</code> con el valor representado por la cadena <code>text</code>.
+     *
+     * @param text Cadena que representa el valor de doble precisión a convertir.
+     * @return Un valor double.
+     */
+    public static double parseDouble(@NonNull String text) {
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException ignored) {
+            return 0f;
+        }
     }
 
     /**
