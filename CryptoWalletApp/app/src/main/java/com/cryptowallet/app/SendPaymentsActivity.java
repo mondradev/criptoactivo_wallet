@@ -255,7 +255,7 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @return Saldo de la billetera.
      */
-    private Float getBalance() {
+    private double getBalance() {
         return mIsFiat ? mWallet.getFiatBalance() : mWallet.getBalance();
     }
 
@@ -264,7 +264,7 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @param ignored El saldo de la billetera (ignorado en este método).
      */
-    private void onBalanceChange(Float ignored) {
+    private void onBalanceChange(double ignored) {
         updateInfo();
     }
 
@@ -273,7 +273,7 @@ public class SendPaymentsActivity extends LockableActivity {
      */
     private void updateInfo() {
         SupportedAssets asset = getCurrency();
-        Float balance = getBalance();
+        double balance = getBalance();
 
         mSendCurrentBalanceText.setText(asset.toStringFriendly(balance));
         checkEnoughtBalance();
@@ -284,10 +284,10 @@ public class SendPaymentsActivity extends LockableActivity {
      */
     private void checkEnoughtBalance() {
         SupportedAssets asset = getCurrency();
-        Float balance = getBalance();
-        Float amount = Utils.parseFloat(mSendAmountText.getText().toString());
-        Float fee = calculateTotalFee(mSendAddressText.getText().toString(), amount);
-        Float total = amount + fee;
+        double balance = getBalance();
+        double amount = Utils.parseDouble(mSendAmountText.getText().toString());
+        double fee = calculateTotalFee(mSendAddressText.getText().toString(), amount);
+        double total = amount + fee;
 
         if (mWallet.isDust(toCryptoAsset(amount)) && toCryptoAsset(amount) > 0)
             mSendAmountLayout.setError(getString(R.string.is_dust_error));
@@ -327,7 +327,7 @@ public class SendPaymentsActivity extends LockableActivity {
         mSendAmountLayout.setHint(getString(R.string.amount_pattern, getCurrency().name()));
 
         if (!Strings.isNullOrEmpty(mSendAmountText.getText().toString())) {
-            Float amount = Utils.parseFloat(mSendAmountText.getText().toString());
+            double amount = Utils.parseDouble(mSendAmountText.getText().toString());
             amount = toFiat(toCryptoAsset(amount));
 
             String amountText = NumberFormat.getNumberInstance().format(amount);
@@ -348,7 +348,7 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param amount Valor en fiat.
      * @return Valor en criptoactivo.
      */
-    private Float toCryptoAsset(Float amount) {
+    private double toCryptoAsset(double amount) {
         if (!mIsFiat)
             return amount;
 
@@ -361,7 +361,7 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param amount Valor en criptoactivo.
      * @return Valor en fiat.
      */
-    private Float toFiat(Float amount) {
+    private double toFiat(double amount) {
         if (mIsFiat)
             return amount;
 
@@ -373,7 +373,7 @@ public class SendPaymentsActivity extends LockableActivity {
      */
     private void updateFilters() {
         final SupportedAssets asset = mIsFiat ? Preferences.get().getFiat() : mWallet.getAsset();
-        final int size = asset.getSize();
+        final int size = (int) Math.log10(asset.getUnit());
 
         InputFilter[] filters = {new DecimalsFilter(20, size)};
         InputFilter[] feeCustomFilters = {new DecimalsFilter(22, size + 2)};
@@ -443,14 +443,14 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param amount  Cantidad a enviar.
      * @return Comisión por realizar la transacción.
      */
-    private Float calculateTotalFee(String address, Float amount) {
+    private double calculateTotalFee(String address, double amount) {
         if (Strings.isNullOrEmpty(address))
-            return 0f;
+            return 0;
 
         ITransaction tx = mWallet.createTx(address, amount, getFee());
 
         if (tx == null)
-            return 0f;
+            return 0;
 
         return (tx.getSize() / KB_SIZE) * getFee();
     }
@@ -460,7 +460,7 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @return Comisión por kilobyte.
      */
-    private Float getFee() {
+    private double getFee() {
         ITransactionFee fees = mWallet.getFees();
 
         switch (mFeeType) {
@@ -521,8 +521,8 @@ public class SendPaymentsActivity extends LockableActivity {
     public void onPay(View view) {
         // TODO Validate can pay
         final String address = mSendAddressText.getText().toString();
-        Float amount = Float.parseFloat(mSendAmountText.getText().toString());
-        Float fee = calculateTotalFee(address, amount);
+        double amount = Float.parseFloat(mSendAmountText.getText().toString());
+        double fee = calculateTotalFee(address, amount);
 
         amount = toCryptoAsset(amount);
         fee = toCryptoAsset(fee);

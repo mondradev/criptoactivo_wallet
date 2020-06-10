@@ -36,7 +36,6 @@ import java.util.concurrent.Executor;
  * @version 1.0
  * @see WalletManager
  * @see SupportedAssets
- * @see com.cryptowallet.services.IWalletProvider
  */
 public interface IWallet {
 
@@ -97,42 +96,42 @@ public interface IWallet {
      *
      * @param listener Escucha de precio.
      */
-    void addPriceChangeListener(Executor executor, Consumer<Float> listener);
+    void addPriceChangeListener(Executor executor, Consumer<Double> listener);
 
     /**
      * Agrega un escucha de cambio de saldo.
      *
      * @param listener Escucha de saldo.
      */
-    void addBalanceChangeListener(Executor executor, Consumer<Float> listener);
+    void addBalanceChangeListener(Executor executor, Consumer<Double> listener);
 
     /**
      * Remueve el escucha de cambio de saldo.
      *
      * @param listener Escucha a remover.
      */
-    void removeBalanceChangeListener(Consumer<Float> listener);
+    void removeBalanceChangeListener(Consumer<Double> listener);
 
     /**
      * Remueve el escucha de cambio de precio.
      *
      * @param listener Escucha a remover.
      */
-    void removePriceChangeListener(Consumer<Float> listener);
+    void removePriceChangeListener(Consumer<Double> listener);
 
     /**
      * Obtiene el total del saldo de la billetera.
      *
      * @return Saldo de la billetera.
      */
-    Float getBalance();
+    double getBalance();
 
     /**
      * Obtiene el total del saldo en su precio fiat.
      *
      * @return Saldo de la billetera.
      */
-    Float getFiatBalance();
+    double getFiatBalance();
 
     /**
      * Registra un nuevo seguidor de precio.
@@ -206,7 +205,7 @@ public interface IWallet {
      *
      * @return Último precio.
      */
-    Float getLastPrice();
+    double getLastPrice();
 
     /**
      * Crea una transacción nueva para realizar un pago.
@@ -216,7 +215,7 @@ public interface IWallet {
      * @param feeByKB Comisión por KB.
      * @return Una transacción nueva.
      */
-    ITransaction createTx(String address, Float amount, Float feeByKB);
+    ITransaction createTx(String address, double amount, double feeByKB);
 
     /**
      * Obtiene las comisiones de la red para realizar los envío de transacciones.
@@ -232,14 +231,14 @@ public interface IWallet {
      * @param amount Cantidad a evaluar.
      * @return True si la cantidad es considerada polvo.
      */
-    boolean isDust(Float amount);
+    boolean isDust(double amount);
 
     /**
      * Obtiene la cantidad máxima del activo.
      *
      * @return Cantidad máxima.
      */
-    Float getMaxValue();
+    double getMaxValue();
 
     /**
      * Obtiene las transacciones de la billetera.
