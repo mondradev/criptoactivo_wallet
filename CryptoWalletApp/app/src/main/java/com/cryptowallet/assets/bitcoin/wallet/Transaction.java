@@ -25,7 +25,9 @@ import com.cryptowallet.wallet.SupportedAssets;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.Context;
 import org.bitcoinj.core.LegacyAddress;
+import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.ProtocolException;
 import org.bitcoinj.core.SegwitAddress;
 import org.bitcoinj.core.Sha256Hash;
@@ -40,6 +42,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Representa una transacción de Bitcoin.
@@ -48,7 +51,7 @@ import java.util.Objects;
  * @version 2.0
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class Transaction extends org.bitcoinj.core.Transaction implements ITransaction {
+public class Transaction implements ITransaction {
 
     /**
      * Minimo de confirmación.
@@ -66,13 +69,18 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     private Wallet mWalletParent;
 
     /**
+     * Transacción de Bitcoin.
+     */
+    private final org.bitcoinj.core.Transaction mTx;
+
+    /**
      * Crea una nueva transacción vacía.
      *
      * @param wallet Billetera que la contiene.
      */
     public Transaction(Wallet wallet) {
-        super(wallet.getNetwork());
         this.mWalletParent = wallet;
+        this.mTx = new org.bitcoinj.core.Transaction(wallet.getNetwork());
     }
 
     /**
@@ -85,7 +93,18 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     public Transaction(Wallet wallet, byte[] payloadBytes)
             throws ProtocolException {
-        super(wallet.getNetwork(), payloadBytes);
+        this.mTx = new org.bitcoinj.core.Transaction(wallet.getNetwork(), payloadBytes);
+        this.mWalletParent = wallet;
+    }
+
+    /**
+     * Crea una nueva instancia a partir de una transacción de Bitcoin.
+     *
+     * @param wallet Billetera que la contiene.
+     * @param tx     Transacción de Bitcoin.
+     */
+    private Transaction(Wallet wallet, org.bitcoinj.core.Transaction tx) {
+        this.mTx = tx;
         this.mWalletParent = wallet;
     }
 
@@ -102,10 +121,11 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
                 data.getDataAsBuffer()
         );
 
-        tx.setBlockAppearance(
+        tx.setBlockInfo(
                 data.getBlock(),
                 data.getHeight(),
-                data.getTime()
+                data.getTime() * 1000L,
+                data.getBlockIndex()
         );
 
         return tx;
@@ -117,14 +137,17 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @param hash   Hash del bloque.
      * @param height Altura del bloque.
      * @param time   Tiempo del bloque.
+     * @param index  Posición de la transacción en el bloque.
      */
-    private void setBlockAppearance(String hash, long height, long time) {
-        if (height < -1)
-            getConfidence().setConfidenceType(TransactionConfidence.ConfidenceType.PENDING);
-        else {
-            setUpdateTime(new Date(time * 1000));
-            addBlockAppearance(Sha256Hash.wrap(hash), 0);
-            getConfidence().setAppearedAtChainHeight((int) height);
+    private void setBlockInfo(String hash, long height, long time, int index) {
+        final Context context = new Context(mWalletParent.getNetwork());
+        if (height < -1) {
+            mTx.getConfidence(context)
+                    .setConfidenceType(TransactionConfidence.ConfidenceType.PENDING);
+        } else {
+            mTx.setUpdateTime(new Date(time));
+            mTx.addBlockAppearance(Sha256Hash.wrap(hash), index);
+            mTx.getConfidence(context).setAppearedAtChainHeight((int) height);
         }
     }
 
@@ -135,22 +158,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Una transacción.
      */
     public static Transaction wrap(org.bitcoinj.core.Transaction tx, Wallet wallet) {
-        Transaction wtx = new Transaction(wallet, tx.bitcoinSerialize());
-        final int height = tx.getConfidence().getAppearedAtChainHeight();
-
-        if (height >= 0) {
-            String hash = null;
-            Map<Sha256Hash, Integer> appearsInHashes = tx.getAppearsInHashes();
-
-            if (appearsInHashes != null && !appearsInHashes.isEmpty())
-                hash = appearsInHashes.keySet().toArray()[0].toString();
-
-            final long time = tx.getUpdateTime().getTime();
-
-            wtx.setBlockAppearance(hash, height, time);
-        }
-
-        return wtx;
+        return new Transaction(wallet, tx);
     }
 
     /**
@@ -170,7 +178,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Un valor true si requiere sus dependencias.
      */
     public boolean requireDependencies() {
-        for (TransactionInput input : this.getInputs())
+        for (TransactionInput input : this.mTx.getInputs())
             if (input.getConnectedOutput() == null)
                 return true;
 
@@ -195,10 +203,38 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @see Transaction#requireDependencies()
      */
     @Override
-    public long getNetworkFee() {
-        final Coin fee = getFee();
-        if (fee != null) return fee.value;
+    public double getNetworkFee() {
+        if (!isPay()) return 0;
+
+        final long walletFee = getWalletFee();
+
+        final Coin fee = mTx.getFee();
+
+        if (fee != null)
+            return (double) fee.add(Coin.valueOf(walletFee)).value / getCriptoAsset().getUnit();
+
         return 0;
+    }
+
+    /**
+     * Obtiene la comisión que cobra la billetera.
+     *
+     * @return Comisión en satoshis.
+     */
+    private long getWalletFee() {
+        final Set<TransactionOutput> outputToWalletFee = mWalletParent.getOutputToWalletFee();
+        final NetworkParameters network = mWalletParent.getNetwork();
+        long fee = 0;
+
+        for (TransactionOutput output : this.mTx.getOutputs())
+            for (TransactionOutput feeOutput : outputToWalletFee)
+                if (output.getValue().equals(feeOutput.getValue())
+                        && output.getScriptPubKey().getToAddress(network)
+                        .equals(feeOutput.getScriptPubKey().getToAddress(network)))
+                    if (!feeOutput.isMine(mWallet))
+                        fee += output.getValue().value;
+
+        return fee;
     }
 
     /**
@@ -209,18 +245,24 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @see Transaction#assignWallet(TransactionBag)
      */
     @Override
-    public Float getAmount() {
-        float unit = (float) Math.pow(10, getCriptoAsset().getSize());
+    public double getAmount() {
+        long unit = getCriptoAsset().getUnit();
 
-        if (mWallet != null)
-            return getValue(mWallet).add(getFee()).value / unit;
+        if (mWallet == null) {
+            long total = 0;
 
-        long total = 0;
+            for (TransactionOutput output : this.mTx.getOutputs())
+                total += output.getValue().value;
 
-        for (TransactionOutput output : this.getOutputs())
-            total += output.getValue().value;
+            return (double) total / unit;
+        }
 
-        return total / unit;
+        Coin value = this.mTx.getValue(mWallet);
+
+        if (isPay())
+            value = value.add(Coin.valueOf((long) (getNetworkFee() * unit)));
+
+        return Math.abs((double) value.value / unit);
     }
 
     /**
@@ -235,7 +277,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     public List<String> getFromAddress() {
         List<String> addresses = new ArrayList<>();
 
-        for (TransactionInput input : this.getInputs()) {
+        for (TransactionInput input : this.mTx.getInputs()) {
             if (input.isCoinBase()) {
                 addresses.add("{NewCoins}");
                 continue;
@@ -244,8 +286,8 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
             if (input.getConnectedOutput() == null)
                 continue;
 
-            Address address = input.getConnectedOutput()
-                    .getScriptPubKey().getToAddress(params, true);
+            Address address = input.getConnectedOutput().getScriptPubKey()
+                    .getToAddress(mWalletParent.getNetwork(), true);
 
             if (address instanceof LegacyAddress)
                 addresses.add(((LegacyAddress) address).toBase58());
@@ -266,8 +308,9 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     public List<String> getToAddress() {
         List<String> addresses = new ArrayList<>();
 
-        for (TransactionOutput output : this.getOutputs()) {
-            Address address = output.getScriptPubKey().getToAddress(params, true);
+        for (TransactionOutput output : this.mTx.getOutputs()) {
+            Address address = output.getScriptPubKey()
+                    .getToAddress(mWalletParent.getNetwork(), true);
 
             if (address instanceof LegacyAddress)
                 addresses.add(((LegacyAddress) address).toBase58());
@@ -287,7 +330,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     @NotNull
     @Override
     public Date getTime() {
-        return getUpdateTime();
+        return this.mTx.getUpdateTime();
     }
 
     /**
@@ -298,7 +341,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
     @NotNull
     @Override
     public String getID() {
-        return getTxId().toString();
+        return this.mTx.getTxId().toString();
     }
 
     /**
@@ -308,7 +351,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public boolean isConfirm() {
-        return getConfidence().getDepthInBlocks() > MIN_COMMITS;
+        return this.mTx.getConfidence().getDepthInBlocks() > MIN_COMMITS;
     }
 
     /**
@@ -318,7 +361,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public String getBlockHash() {
-        Map<Sha256Hash, Integer> appearsInHashes = getAppearsInHashes();
+        Map<Sha256Hash, Integer> appearsInHashes = this.mTx.getAppearsInHashes();
 
         if (appearsInHashes == null) return null;
         if (appearsInHashes.isEmpty()) return null;
@@ -333,7 +376,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public long getBlockHeight() {
-        return getConfidence().getAppearedAtChainHeight();
+        return this.mTx.getConfidence().getAppearedAtChainHeight();
     }
 
     /**
@@ -343,7 +386,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public long getSize() {
-        return this.bitcoinSerialize().length;
+        return this.mTx.bitcoinSerialize().length;
     }
 
     /**
@@ -362,11 +405,11 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Valor fiat.
      */
     @Override
-    public float getFiatAmount() {
+    public double getFiatAmount() {
         Objects.requireNonNull(mWalletParent, "Wallet wasn't setted");
 
-        final float price = mWalletParent.getLastPrice();
-        final float amount = getAmount();
+        final double price = mWalletParent.getLastPrice();
+        final double amount = getAmount();
 
         return price * amount;
     }
@@ -378,7 +421,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public boolean isPay() {
-        return this.getValue(mWallet).isNegative();
+        return this.mTx.getValue(mWallet).isNegative();
     }
 
     /**
@@ -398,8 +441,8 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public long getConfirmations() {
-        // TODO Calculate confirmations
-        return 0;
+        return this.mTx.getConfidence(Context.getOrCreate(mWalletParent.getNetwork()))
+                .getDepthInBlocks();
     }
 
     /**
@@ -424,7 +467,7 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      */
     @Override
     public int hashCode() {
-        return getTxId().hashCode();
+        return this.mTx.getTxId().hashCode();
     }
 
     /**
@@ -433,6 +476,48 @@ public class Transaction extends org.bitcoinj.core.Transaction implements ITrans
      * @return Una transacción nueva.
      */
     public Transaction copy() {
-        return Transaction.wrap(this, this.mWalletParent);
+        final Transaction wtx = new Transaction(mWalletParent, mTx.bitcoinSerialize());
+        final Context context = new Context(mWalletParent.getNetwork());
+        final int height = mTx.getConfidence(context).getAppearedAtChainHeight();
+
+        for (TransactionInput input : wtx.mTx.getInputs()) {
+            TransactionOutput output = mTx.getInput(input.getIndex())
+                    .getOutpoint().getConnectedOutput();
+
+            input.connect(new TransactionOutput(
+                    mWalletParent.getNetwork(),
+                    Objects.requireNonNull(output).getParentTransaction(),
+                    output.getValue(),
+                    output.getScriptBytes())
+            );
+        }
+
+        if (height >= 0) {
+            String hash = null;
+            int index = 0;
+            final Map<Sha256Hash, Integer> appearsInHashes = mTx.getAppearsInHashes();
+
+            if (appearsInHashes != null && !appearsInHashes.isEmpty()) {
+                hash = appearsInHashes.keySet().toArray()[0].toString();
+                index = appearsInHashes.values().toArray(new Integer[0])[0];
+            }
+
+            final long time = mTx.getUpdateTime().getTime();
+            final int depth = mTx.getConfidence().getDepthInBlocks();
+
+            wtx.setBlockInfo(hash, height, time, index);
+            wtx.mTx.getConfidence().setDepthInBlocks(depth);
+        }
+
+        return wtx;
+    }
+
+    /**
+     * Obtiene la transacción que decora esta instancia.
+     *
+     * @return Transacción de Bitcoin.
+     */
+    public org.bitcoinj.core.Transaction getTx() {
+        return mTx;
     }
 }
