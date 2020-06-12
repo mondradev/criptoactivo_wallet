@@ -92,7 +92,7 @@ public class TransactionHistoryFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         mExecutor = Executors.newSingleThreadExecutor();
-        mAdapter = new TransactionHistoryAdapter();
+        mAdapter = new TransactionHistoryAdapter(requireActivity());
         mAdapter.setEmptyView(requireView().findViewById(R.id.mTxHistEmptyLayout));
 
         RecyclerView txList = requireView().findViewById(R.id.mTxHistList);

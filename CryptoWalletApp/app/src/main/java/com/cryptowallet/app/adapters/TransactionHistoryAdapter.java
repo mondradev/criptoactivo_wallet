@@ -27,11 +27,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
-import com.cryptowallet.app.TransactionActivity;
+import com.cryptowallet.app.fragments.TransactionFragment;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
@@ -64,6 +65,11 @@ public final class TransactionHistoryAdapter
     private final CopyOnWriteArrayList<Consumer<Boolean>> mOnCurrencyChangeListener;
 
     /**
+     * Actividad que está utilizando el adaptador.
+     */
+    private final FragmentActivity mActivity;
+
+    /**
      * Cantidad de elementos a mostrándose.
      */
     private int mSize = PAGE_SIZE;
@@ -76,9 +82,10 @@ public final class TransactionHistoryAdapter
     /**
      * Inicializa la instancia con una colección vacía.
      */
-    public TransactionHistoryAdapter() {
+    public TransactionHistoryAdapter(@NonNull FragmentActivity activity) {
         super(R.layout.vh_transactions_history);
 
+        mActivity = activity;
         mShowingFiat = false;
         mOnCurrencyChangeListener = new CopyOnWriteArrayList<>();
     }
@@ -299,7 +306,8 @@ public final class TransactionHistoryAdapter
             operationKind.setText(getKindLabel());
             status.setVisibility(mItem.isConfirm() ? View.GONE : View.VISIBLE);
             id.setText(mItem.getID());
-            time.setText(Utils.toLocalDatetimeString(mItem.getTime(), todayText, yesterdayText));
+            time.setText(Utils.toLocalDatetimeString(mItem.getTime(), todayText, yesterdayText)
+                    .replace("@", "\n@"));
 
             amout.setBackgroundTintList(ColorStateList.valueOf(getKindColor()));
             amout.setOnClickListener(view -> notifyCurrencyChange());
@@ -348,11 +356,8 @@ public final class TransactionHistoryAdapter
             if (mItem == null)
                 return;
 
-            // TODO Cambiar la referencia de la actividad.
-            view.getContext().startActivity(
-                    new Intent(itemView.getContext(), TransactionActivity.class)
-                    .putExtra(TransactionActivity.TX_ID_EXTRA, mItem.getID())
-                    .putExtra(TransactionActivity.ASSET_EXTRA, SupportedAssets.BTC.name()));
+            if (mActivity != null)
+                TransactionFragment.show(mActivity, SupportedAssets.BTC, mItem.getID());
         }
     }
 
