@@ -275,7 +275,7 @@ public class SendPaymentsActivity extends LockableActivity {
         SupportedAssets asset = getCurrency();
         double balance = getBalance();
 
-        mSendCurrentBalanceText.setText(asset.toStringFriendly(balance));
+        mSendCurrentBalanceText.setText(asset.toStringFriendly(balance, false));
         checkEnoughtBalance();
     }
 
@@ -298,8 +298,8 @@ public class SendPaymentsActivity extends LockableActivity {
             mSendAmountLayout.setError(total > balance
                     ? getString(R.string.no_enought_funds_error) : null);
 
-        mSendTotalFeeText.setText(asset.toStringFriendly(fee));
-        mSendTotalPayText.setText(asset.toStringFriendly(total));
+        mSendTotalFeeText.setText(asset.toStringFriendly(fee, false));
+        mSendTotalPayText.setText(asset.toStringFriendly(total, false));
 
         mHasEnoughtBalanceError = total > balance;
 

@@ -120,6 +120,20 @@ public class CryptoAssetFragment extends Fragment {
     private Handler mHandler;
 
     /**
+     * Establece la función utilizada para notificar algún cambio en el saldo fiat o cripto.
+     *
+     * @param listener Función de escucha.
+     */
+    public void setOnBalanceUpdate(IOnBalanceUpdate listener) {
+        this.mOnBalanceUpdate = listener;
+    }
+
+    /***
+     * Función que permite notificar que el saldo (fiat y cripto) ha cambiado.
+     */
+    private IOnBalanceUpdate mOnBalanceUpdate;
+
+    /**
      * Crea una nueva instancia del fragmento.
      */
     public CryptoAssetFragment() {
@@ -257,6 +271,9 @@ public class CryptoAssetFragment extends Fragment {
         mPriceView.setText(mFiatAsset.toStringFriendly(mLastPrice));
         mFiatValueView.setText(String.format("%s %s", ALMOST_EQUAL_TO,
                 mFiatAsset.toStringFriendly(total)));
+
+        if (mOnBalanceUpdate != null)
+            this.mOnBalanceUpdate.onUpdate();
     }
 
     /**
@@ -278,5 +295,16 @@ public class CryptoAssetFragment extends Fragment {
     private void expandCard(View view) {
         View layout = mRoot.findViewById(R.id.mCryptoAssetRecentsLayout);
         layout.setVisibility(layout.getVisibility() == View.GONE ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * Provee de una función que notifica que la billetera a cambiado su saldo o precio del activo.
+     */
+    public interface IOnBalanceUpdate {
+
+        /**
+         * Este método es llamado cuando el precio del activo o el saldo ha sido actualizado.
+         */
+        void onUpdate();
     }
 }

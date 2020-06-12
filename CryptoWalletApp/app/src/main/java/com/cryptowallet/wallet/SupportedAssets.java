@@ -21,6 +21,7 @@ package com.cryptowallet.wallet;
 import androidx.annotation.StringRes;
 
 import com.cryptowallet.R;
+import com.google.common.base.Strings;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -158,18 +159,52 @@ public enum SupportedAssets {
      * @return Una cadena que representa la cantidad en la divisa.
      */
     public String toStringFriendly(double value) {
-        DecimalFormat format = new DecimalFormat();
-        final int size = (int) Math.log10(mUnit);
+        return  toStringFriendly(value, true);
+    }
 
-        format.setMinimumFractionDigits(isFiat() ? size : Math.min(size, 4));
-        format.setMaximumFractionDigits(size);
+    /**
+     * Obtiene la representación de una cantidad en la divisa. Ej: 100.0 -> $100.00
+     *
+     * @param value Valor a formatear.
+     * @param reduce  Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
+     * @return Una cadena que representa la cantidad en la divisa.
+     */
+    public String toStringFriendly(double value, boolean reduce) {
+        final DecimalFormat format = new DecimalFormat();
+
+        int minDigits = (int) Math.log10(mUnit);
+        int maxDigits = (int) Math.log10(mUnit);
+        double newValue = value;
+        String unit = "";
+
+        if (reduce) {
+
+            if (newValue >= 10000) {
+                unit = "K";
+                newValue /= 1000;
+            }
+
+            if (newValue >= 10000) {
+                unit = "M";
+                newValue /= 1000;
+            }
+        }
+
+        if (isFiat() || (reduce && !Strings.isNullOrEmpty(unit))) {
+            minDigits = 2;
+            maxDigits = 2;
+        } else
+            minDigits = Math.min(minDigits, 4);
+
+        format.setMinimumFractionDigits(minDigits);
+        format.setMaximumFractionDigits(maxDigits);
 
         String money = "";
 
         if (isFiat())
             money = String.format("%s ", mSign);
 
-        money += String.format("%s %s", format.format(value), this.name());
+        money += String.format("%s%s %s", format.format(newValue), unit, this.name());
 
         return money;
     }
@@ -181,12 +216,45 @@ public enum SupportedAssets {
      * @return Una cadena que representa la cantidad en la divisa.
      */
     public String toPlainText(double value) {
-        NumberFormat instance = NumberFormat.getInstance();
-        final int size = (int) Math.log10(mUnit);
+        return  toPlainText(value, true);
+    }
 
-        instance.setMinimumFractionDigits(isFiat() ? size : Math.min(size, 4));
-        instance.setMaximumFractionDigits(size);
+    /**
+     * Obtiene la representación de la cantidad formateada con el número de digitos máximos.
+     *
+     * @param value Valor a formatear.
+     * @param reduce  Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
+     * @return Una cadena que representa la cantidad en la divisa.
+     */
+    public String toPlainText(double value, boolean reduce) {
+        final NumberFormat instance = NumberFormat.getInstance();
 
-        return instance.format(value);
+        int minDigits = (int) Math.log10(mUnit);
+        int maxDigits = (int) Math.log10(mUnit);
+        double newValue = value;
+        String unit = "";
+
+        if (reduce) {
+            if (newValue >= 10000) {
+                unit = "K";
+                newValue /= 1000;
+            }
+
+            if (newValue >= 10000) {
+                unit = "M";
+                newValue /= 1000;
+            }
+        }
+
+        if (isFiat() || (!Strings.isNullOrEmpty(unit) && reduce)) {
+            minDigits = 2;
+            maxDigits = 2;
+        } else
+            minDigits = Math.min(minDigits, 4);
+
+        instance.setMinimumFractionDigits(minDigits);
+        instance.setMaximumFractionDigits(maxDigits);
+
+        return String.format("%s%s", instance.format(newValue), unit);
     }
 }

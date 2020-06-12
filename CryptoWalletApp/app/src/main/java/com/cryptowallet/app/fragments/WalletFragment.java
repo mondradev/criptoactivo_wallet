@@ -46,6 +46,11 @@ import com.cryptowallet.wallet.WalletManager;
 public class WalletFragment extends Fragment {
 
     /**
+     * Escucha del cambio del saldo en alguna billetera.
+     */
+    private CryptoAssetFragment.IOnBalanceUpdate mOnBalanceUpdateListener;
+
+    /**
      * Este método es llamado cuando se requiere crear la vista del fragmento.
      *
      * @param inflater           Inflador de XML.
@@ -70,23 +75,27 @@ public class WalletFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        LinearLayout container = view.findViewById(R.id.mWalletAssetsContainer);
+        final SupportedAssets fiat = Preferences.get().getFiat();
+        final LinearLayout container = view.findViewById(R.id.mWalletAssetsContainer);
+        final TextView fiatBalance = view.findViewById(R.id.mWalletFiatBalance);
+        final TextView fiatSign = view.findViewById(R.id.mWalletFiatSign);
+        final TextView fiatName = view.findViewById(R.id.mWalletFiatName);
+
         container.removeAllViews();
+
+        mOnBalanceUpdateListener = () -> fiatBalance
+                .setText(fiat.toPlainText(WalletManager.getBalance()));
 
         WalletManager.forEachAsset((asset) -> {
             String fragmentTag = CryptoAssetFragment.class.getSimpleName() + asset.name();
             CryptoAssetFragment assetView = CryptoAssetFragment.newInstance(asset);
+            assetView.setOnBalanceUpdate(this.mOnBalanceUpdateListener);
 
             getParentFragmentManager()
                     .beginTransaction()
                     .add(container.getId(), assetView, fragmentTag)
                     .commit();
         });
-
-        TextView fiatBalance = view.findViewById(R.id.mWalletFiatBalance);
-        TextView fiatSign = view.findViewById(R.id.mWalletFiatSign);
-        TextView fiatName = view.findViewById(R.id.mWalletFiatName);
-        SupportedAssets fiat = Preferences.get().getFiat();
 
         fiatSign.setText(fiat.getSign());
         fiatName.setText(fiat.name());

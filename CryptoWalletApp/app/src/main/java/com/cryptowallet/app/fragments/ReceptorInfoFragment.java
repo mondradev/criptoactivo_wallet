@@ -94,7 +94,7 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
     /**
      * Clave del parametro activo.
      */
-    private static final String ASSET_KEY
+    private static final String ASSET_EXTRA
             = String.format("%s.AssetKey", ReceptorInfoFragment.class.getName());
 
     /**
@@ -110,7 +110,7 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
      */
     static void show(@NonNull FragmentActivity activity, @NonNull SupportedAssets asset) {
         Bundle parameters = new Bundle();
-        parameters.putCharSequence(ASSET_KEY, asset.name());
+        parameters.putCharSequence(ASSET_EXTRA, asset.name());
 
         ReceptorInfoFragment fragment = new ReceptorInfoFragment();
         fragment.setArguments(parameters);
@@ -127,7 +127,7 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
         super.onCreate(savedInstanceState);
 
         mWallet = WalletManager.get(
-                SupportedAssets.valueOf(requireArguments().getString(ASSET_KEY)));
+                SupportedAssets.valueOf(requireArguments().getString(ASSET_EXTRA)));
     }
 
     /**
