@@ -20,32 +20,20 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="m">
 
-        <service
-            android:name=".assets.bitcoin.BitcoinApi"
-            android:exported="false"
-            android:icon="@mipmap/ic_bitcoin" />
-
-        <activity
-            android:name=".app.TransactionActivity"
-            android:screenOrientation="fullSensor">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".old.TransactionHistoryActivity" />
-        </activity>
         <activity
             android:name=".old.AddressViewerActivity"
             android:screenOrientation="fullSensor">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".old.WalletAppActivity" />
+                android:value=".app.MainActivity" />
         </activity>
         <activity
             android:name=".app.ScanQrActivity"
-            android:parentActivityName=".old.SendPaymentsActivity"
+            android:parentActivityName=".app.SendPaymentsActivity"
             android:screenOrientation="fullSensor">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".old.SendPaymentsActivity" />
+                android:value=".app.SendPaymentsActivity" />
         </activity>
 
 
@@ -103,7 +91,6 @@
                 android:value=".app.WelcomeActivity" />
         </activity>
         <activity android:name=".app.SendPaymentsActivity" />
-        <activity android:name="SendPaymentsActivity" />
     </application>
 
 </manifest>
