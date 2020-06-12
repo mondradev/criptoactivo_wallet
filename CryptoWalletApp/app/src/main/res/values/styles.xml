@@ -90,7 +90,7 @@
         <item name="cornerRadius">100dp</item>
     </style>
 
-    <!-- Dark Theme -->
+    <!-- Dark Theme (TODO Dark theme style) -->
     <style name="AppTheme.Dark" parent="AppTheme">
         <item name="colorPrimary">@color/darkPrimary</item>
         <item name="colorPrimaryDark">@color/darkDarkPrimary</item>
@@ -99,7 +99,7 @@
         <item name="colorSurface">@color/darkSurface</item>
     </style>
 
-    <!-- Blue Theme -->
+    <!-- Blue Theme (TODO Blue theme  style) -->
     <style name="AppTheme.Blue" parent="AppTheme">
         <item name="android:windowBackground">@color/blue_background</item>
         <item name="colorPrimary">@color/blue_primary</item>

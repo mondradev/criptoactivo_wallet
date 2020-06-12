@@ -33,7 +33,7 @@
     <string name="operation_kind_sample">Received</string>
     <string name="status_sample_symbol_text">(UC)</string>
     <string name="datetime_sample_text">today @ 08:00 AM</string>
-    <string name="amount_sample_text" translatable="false">20,999,999.99999999 BTC</string>
+    <string name="amount_sample_text" translatable="false">20.99M BTC</string>
     <string name="today_text">today</string>
     <string name="yesterday_text">yesterday</string>
     <string name="qr_reader_indications">Place a QR Code</string>
@@ -179,7 +179,7 @@
     <string name="inputs_text">Inputs</string>
     <string name="outputs_text">Outputs</string>
     <string name="size_text">Size</string>
-    <string name="size_sample_text" translatable="false">197 bytes</string>
+    <string name="size_sample_text" translatable="false">197 B</string>
     <string name="status_text">Status</string>
     <string name="mempool_status_text">In mempool</string>
     <string name="confirmed_status_text">Confirmed</string>

@@ -28,7 +28,7 @@
     <color name="lightReceiveTx">#4CAF50</color>
     <color name="lightPendingTx">#F44336</color>
 
-    <!-- Dark Theme -->
+    <!-- Dark Theme (TODO Dark theme colors) -->
     <color name="darkPrimary">#D32F2F</color>
     <color name="darkDarkPrimary">#B71C1C</color>
     <color name="darkAccent">#009688</color>
@@ -36,7 +36,7 @@
     <color name="darkBarBackground">#212121</color>
     <color name="darkSurface">#424242</color>
 
-    <!-- Blue Theme -->
+    <!-- Blue Theme (TODO Blue Theme colors) -->
     <color name="blue_primary">#4c2777</color>
     <color name="blue_darkPrimary">#1E004a</color>
     <color name="blue_accent">#473f95</color>
@@ -44,19 +44,13 @@
     <color name="blue_primary_text">#F5F5F5</color>
     <color name="blue_secondary_text">#1565C0</color>
     <color name="blue_divider">#1565C0</color>
-
     <color name="blue_uncommit_tx">#EF9A9A</color>
     <color name="blue_commit_tx">#FFC107</color>
     <color name="blue_pluscommit_tx">#4CAF50</color>
-
     <color name="blue_amount_tx">@color/blue_text_icons</color>
-
     <color name="blue_snackbar_bg">#473f95</color>
     <color name="blue_background">#192b60</color>
     <color name="blue_cardBackground">#3f71c0</color>
-
-    <!-- Send/Receive Colors -->
-
     <color name="transferred_tx_color">#2196F3</color>
 
 </resources>
