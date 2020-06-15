@@ -16,202 +16,236 @@
   ~ limitations under the License.
   -->
 
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingStart="24dp"
+    android:orientation="vertical"
     android:paddingTop="24dp"
-    android:paddingEnd="24dp"
-    android:paddingBottom="24dp"
     android:theme="?attr/bottomSheetDialogTheme">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/mTxIcon"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="@string/icon_description"
+            android:src="@mipmap/ic_bitcoin" />
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/mTxIcon"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:contentDescription="@string/icon_description"
-                android:src="@mipmap/ic_bitcoin" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/mTxAmount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/amount_sample_text"
-                    android:textAppearance="?attr/textAppearanceHeadline5"
-                    android:textColor="?attr/colorReceivedTx" />
-
-                <TextView
-                    android:id="@+id/mTxFiatAmount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/fiat_sample_text"
-                    android:textAppearance="?attr/textAppearanceSubtitle1" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_weight="1"
+            android:gravity="end"
             android:orientation="vertical">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/summary_text"
-                android:textAppearance="?attr/textAppearanceSubtitle2"
-                android:textColor="?attr/colorAccent" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/id_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxId"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tx_hash_sample"
-                android:textAppearance="?attr/textAppearanceCaption"
-                android:textIsSelectable="true" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/datetime_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxDatetime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/datetime_sample_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/total_fee_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxFee"
+                android:id="@+id/mTxAmount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/amount_sample_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
+                android:textAppearance="?attr/textAppearanceHeadline5"
+                android:textColor="?attr/colorReceivedTx" />
 
             <TextView
+                android:id="@+id/mTxFiatAmount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/size_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxSize"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/size_sample_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/status_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/mempool_status_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/mTxBlockInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/block_text"
-                android:textAppearance="?attr/textAppearanceSubtitle2"
-                android:textColor="?attr/colorAccent" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/blockhash_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxBlockHash"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/blockhash_sample_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/blockheight_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxBlockHeight"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/blockheight_sample_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/confirmations_text"
-                android:textAppearance="?attr/textAppearanceBody2" />
-
-            <TextView
-                android:id="@+id/mTxConfirmations"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/confirmations_sample_text"
-                android:textAppearance="?attr/textAppearanceCaption" />
+                android:text="@string/fiat_sample_text"
+                android:textAppearance="?attr/textAppearanceSubtitle1" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-</ScrollView>
+    <androidx.core.widget.NestedScrollView
+        android:layout_marginTop="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="24dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/summary_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2"
+                    android:textColor="?attr/colorAccent" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/id_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxId"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tx_hash_sample"
+                    android:textAppearance="?attr/textAppearanceBody2"
+                    android:textIsSelectable="true" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/datetime_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxDatetime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/datetime_sample_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/total_fee_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxFee"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/amount_sample_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/from_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxFrom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/address_sample"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/to_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxTo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/address_sample"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/status_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/mempool_status_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/size_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/size_sample_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/mTxBlockInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/block_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2"
+                    android:textColor="?attr/colorAccent" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/blockhash_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxBlockHash"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/blockhash_sample_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/blockheight_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxBlockHeight"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/blockheight_sample_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/confirmations_text"
+                    android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                <TextView
+                    android:id="@+id/mTxConfirmations"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/confirmations_sample_text"
+                    android:textAppearance="?attr/textAppearanceBody2" />
+
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>
