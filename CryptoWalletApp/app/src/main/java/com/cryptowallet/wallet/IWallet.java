@@ -106,6 +106,20 @@ public interface IWallet {
     void addBalanceChangeListener(Executor executor, Consumer<Double> listener);
 
     /**
+     * Agrega un escucha de recepción de una nueva transacción.
+     *
+     * @param listener Escucha de nuevas transacciones.
+     */
+    void addNewTransactionListener(Executor executor, Consumer<ITransaction> listener);
+
+    /**
+     * Remueve el escucha de recepción de una nueva transacción.
+     *
+     * @param listener Escucha a remover.
+     */
+    void removeNewTransactionListener(Consumer<ITransaction> listener);
+
+    /**
      * Remueve el escucha de cambio de saldo.
      *
      * @param listener Escucha a remover.

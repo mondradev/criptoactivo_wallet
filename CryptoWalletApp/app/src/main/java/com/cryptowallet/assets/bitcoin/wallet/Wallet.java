@@ -51,6 +51,7 @@ import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.SegwitAddress;
 import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutPoint;
@@ -85,6 +86,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -128,7 +130,7 @@ public class Wallet implements IWallet {
     /**
      * Comparador de transacciones, más antigua a más reciente.
      */
-    public static final Comparator<Transaction> TX_OLD_TO_NEW = (left, right) -> {
+    private static final Comparator<TxDecorator> TX_OLD_TO_NEW = (left, right) -> {
         final int timeCompare = left.getTime().compareTo(right.getTime());
         final int heightCompare = Long.compare(left.getBlockHeight(), right.getBlockHeight());
         final Map<Sha256Hash, Integer> appearsInHashesLeft = left.getTx().getAppearsInHashes();
@@ -153,12 +155,12 @@ public class Wallet implements IWallet {
     /**
      * Comparador de transacciones, más reciente a más antigua.
      */
-    public static final Comparator<ITransaction> TX_NEW_TO_OLD = (left, right) -> {
-        if (!(left instanceof Transaction) || !(right instanceof Transaction))
+    private static final Comparator<ITransaction> TX_NEW_TO_OLD = (left, right) -> {
+        if (!(left instanceof TxDecorator) || !(right instanceof TxDecorator))
             return left.getTime().compareTo(right.getTime());
 
-        Transaction nLeft = (Transaction) left;
-        Transaction nRight = (Transaction) right;
+        TxDecorator nLeft = (TxDecorator) left;
+        TxDecorator nRight = (TxDecorator) right;
 
         return -TX_OLD_TO_NEW.compare(nLeft, nRight);
     };
@@ -211,12 +213,17 @@ public class Wallet implements IWallet {
     /**
      * Conjunto de escuchas del precio.
      */
-    private Set<ExecutableConsumer<Double>> mPriceListeners;
+    private CopyOnWriteArraySet<ExecutableConsumer<Double>> mPriceListeners;
 
     /**
      * Conjunto de escuchas del saldo.
      */
-    private Set<ExecutableConsumer<Double>> mBalanceListeners;
+    private CopyOnWriteArraySet<ExecutableConsumer<Double>> mBalanceListeners;
+
+    /**
+     * Conjunto de escuchas de transacciones nuevas.
+     */
+    private CopyOnWriteArraySet<ExecutableConsumer<ITransaction>> mNewTransactionListeners;
 
     /**
      * Mapa de seguidores de precio.
@@ -238,8 +245,9 @@ public class Wallet implements IWallet {
                 WALLET_FILENAME);
 
         mContextLib = new org.bitcoinj.core.Context(mNetwork);
-        mPriceListeners = new HashSet<>();
-        mBalanceListeners = new HashSet<>();
+        mPriceListeners = new CopyOnWriteArraySet<>();
+        mBalanceListeners = new CopyOnWriteArraySet<>();
+        mNewTransactionListeners = new CopyOnWriteArraySet<>();
         mPriceTrackers = new HashMap<>();
         mExecutor = Executors.newSingleThreadExecutor();
         mPriceListener = price -> {
@@ -250,6 +258,8 @@ public class Wallet implements IWallet {
 
             for (ExecutableConsumer<Double> listener : mPriceListeners)
                 listener.execute(price);
+
+            notifyBalanceChange();
         };
 
         if (mNetwork.equals(TestNet3Params.get())) {
@@ -334,7 +344,7 @@ public class Wallet implements IWallet {
     @Override
     public void initialize(@NonNull byte[] authenticationToken, Consumer<Boolean> onInitialized) {
         mExecutor.execute(() -> {
-            Thread.currentThread().setName("Bitcoin Wallet initialize");
+            Thread.currentThread().setName("Bitcoin Wallet");
 
             org.bitcoinj.core.Context.propagate(mContextLib);
 
@@ -359,6 +369,15 @@ public class Wallet implements IWallet {
                     mWallet.saveToFile(mWalletFile);
                 }
 
+                configureListeners();
+                updatePriceListeners();
+
+                mInitialized = true;
+
+                onInitialized.accept(false);
+
+                for (TransactionOutput output : mWallet.getUnspents())
+                    Log.v(LOG_TAG, "UTXO: " + output.getOutPointFor());
 
                 int issuedExternalKeys = mWallet.getActiveKeyChain().getIssuedExternalKeys();
                 if (issuedExternalKeys < MAX_ADDRESS_TO_INITIAL_QUERY)
@@ -370,18 +389,8 @@ public class Wallet implements IWallet {
                     mWallet.freshKeys(KeyChain.KeyPurpose.CHANGE,
                             MAX_ADDRESS_TO_INITIAL_QUERY - issuedInternalKeys);
 
-                mInitialized = true;
-
-                configureListeners();
-                updatePriceListeners();
-
-                for (TransactionOutput output : mWallet.getUnspents())
-                    Log.v(LOG_TAG, "UTXO: " + output.getOutPointFor());
-
                 if (fetchTransactions())
                     pullTransactions();
-
-                onInitialized.accept(false);
             } catch (IOException | UnreadableWalletException e) {
                 Log.w(LOG_TAG, Objects.requireNonNull(e.getMessage()));
                 onInitialized.accept(true);
@@ -445,7 +454,7 @@ public class Wallet implements IWallet {
     private void receivedHistoryRequest() {
         final int requiredAddresses = Math.max(0, MAX_ADDRESS_TO_INITIAL_QUERY
                 - mWallet.getIssuedReceiveAddresses().size());
-        final Map<String, Transaction> downloadedTransactions = new HashMap<>();
+        final Map<String, TxDecorator> downloadedTransactions = new HashMap<>();
 
         if (requiredAddresses == 0) {
             historyRequestByReceiveAddresses(downloadedTransactions);
@@ -476,7 +485,7 @@ public class Wallet implements IWallet {
     /**
      * Solicita las transacciones de las direcciones previamente derivadas.
      */
-    private void historyRequestByReceiveAddresses(Map<String, Transaction> transactions) {
+    private void historyRequestByReceiveAddresses(Map<String, TxDecorator> transactions) {
         Set<Address> receiveAddresses = new HashSet<>(mWallet.getIssuedReceiveAddresses());
 
         historyRequestByAddresses(receiveAddresses, transactions, new HashSet<>());
@@ -514,7 +523,7 @@ public class Wallet implements IWallet {
      * @param addressesToDownload Lista de direcciones.
      */
     private void historyRequestByAddresses(Set<Address> addressesToDownload,
-                                           Map<String, Transaction> downloadedTransactions,
+                                           Map<String, TxDecorator> downloadedTransactions,
                                            Set<Address> downloadedAddresses) {
         final int totalRequest = Math.max(1, addressesToDownload.size() / MAX_ADDRESS_PER_REQUEST);
 
@@ -522,6 +531,7 @@ public class Wallet implements IWallet {
             return;
 
         List<byte[]> addresses = serializeAddressesList(addressesToDownload);
+        int height = mWallet.getLastBlockSeenHeight();
 
         if (!Utils.tryNotThrow(() -> {
             List<byte[]> addressesToRequest
@@ -535,14 +545,14 @@ public class Wallet implements IWallet {
                     System.arraycopy(addressesToRequest.get(i), 0, addressesBuff,
                             i * 21, 21);
                 Log.d(LOG_TAG, "Addresses: " + Hex.toHexString(addressesBuff));
-                List<Transaction> history = BitcoinProvider.get(this)
-                        .getHistory(addressesBuff).get();
+                List<TxDecorator> history = BitcoinProvider.get(this)
+                        .getHistory(addressesBuff, height).get();
 
                 if (history == null)
                     throw new IOException("Fail to download history: "
                             + Hex.toHexString(addressesBuff));
 
-                for (Transaction tx : history) {
+                for (TxDecorator tx : history) {
                     if (tx.getBlockHeight() >= 0
                             && mWallet.getLastBlockSeenHeight() > tx.getBlockHeight())
                         continue;
@@ -570,14 +580,14 @@ public class Wallet implements IWallet {
             receiveTransactions(downloadedTransactions);
     }
 
-    private void receiveTransactions(final Map<String, Transaction> transactions) {
-        List<Transaction> orderedTx = new ArrayList<>(transactions.values());
+    private void receiveTransactions(final Map<String, TxDecorator> transactions) {
+        List<TxDecorator> orderedTx = new ArrayList<>(transactions.values());
 
         Collections.sort(orderedTx, TX_OLD_TO_NEW);
 
         if (!Utils.tryNotThrow(() -> {
-            for (Transaction tx : orderedTx) {
-                Transaction known = transactions.get(tx.getID());
+            for (TxDecorator tx : orderedTx) {
+                TxDecorator known = transactions.get(tx.getID());
 
                 if (known == null)
                     continue;
@@ -585,7 +595,7 @@ public class Wallet implements IWallet {
                 org.bitcoinj.core.Transaction wtx = mWallet.getTransaction(tx.getTx().getTxId());
 
                 if (wtx != null) {
-                    known = Transaction.wrap(wtx, this);
+                    known = TxDecorator.wrap(wtx, this);
                     transactions.remove(known.getID());
                     transactions.put(known.getID(), known);
                 }
@@ -595,7 +605,7 @@ public class Wallet implements IWallet {
                             AbstractBlockChain.NewBlockType.BEST_CHAIN, 0);
 
                 if (known.requireDependencies()) {
-                    Map<String, Transaction> dependencies = BitcoinProvider.get(this)
+                    Map<String, TxDecorator> dependencies = BitcoinProvider.get(this)
                             .getDependencies(known.getTx().getTxId().getReversedBytes())
                             .get();
 
@@ -620,7 +630,7 @@ public class Wallet implements IWallet {
      *
      * @param transactions Lista de transacciones.
      */
-    private void findOutputsNotAdded(Map<String, Transaction> transactions,
+    private void findOutputsNotAdded(Map<String, TxDecorator> transactions,
                                      Set<Address> downloadedAddresses) {
         Log.d(LOG_TAG, "Find my adddresses from outputs in " + transactions.size()
                 + " transactions");
@@ -628,7 +638,7 @@ public class Wallet implements IWallet {
         List<Address> addresses = new ArrayList<>();
         Set<Address> addressesToRequest = new HashSet<>();
 
-        for (Transaction tx : transactions.values())
+        for (TxDecorator tx : transactions.values())
             for (TransactionOutput output : tx.getTx().getOutputs())
                 addresses.add(output.getScriptPubKey()
                         .getToAddress(mNetwork, true));
@@ -654,14 +664,14 @@ public class Wallet implements IWallet {
      *                              especificada.
      */
     private void connectInputs(org.bitcoinj.core.Transaction tx,
-                               Map<String, Transaction> dependencies) throws NullPointerException {
+                               Map<String, TxDecorator> dependencies) throws NullPointerException {
         for (TransactionInput input : tx.getInputs()) {
             if (input.getConnectedOutput() == null) {
                 final TransactionOutPoint outpoint = input.getOutpoint();
                 final String hash = outpoint.getHash().toString();
                 final long index = outpoint.getIndex();
 
-                Transaction dep = dependencies.get(hash);
+                TxDecorator dep = dependencies.get(hash);
 
                 if (dep == null) continue;
 
@@ -706,11 +716,21 @@ public class Wallet implements IWallet {
         if (mWallet == null)
             throw new IllegalStateException("Wallet wasn't initialized");
 
-        mWallet.addCoinsReceivedEventListener((wallet, tx, prevBalance, newBalance)
-                -> Wallet.this.notifyBalanceChange());
-        mWallet.addCoinsSentEventListener((wallet, tx, prevBalance, newBalance)
-                -> Wallet.this.notifyBalanceChange());
+        mWallet.addCoinsReceivedEventListener(this::onNewTransaction);
+        mWallet.addCoinsSentEventListener(this::onNewTransaction);
         mWallet.addChangeEventListener(wallet -> Wallet.this.notifyBalanceChange());
+    }
+
+    /**
+     * Notifica a los escuchas que ha llegado una nueva transacción.
+     *
+     * @param newTx Nueva transacción.
+     */
+    private void notifyNewTransaction(ITransaction newTx) {
+        for (ExecutableConsumer<ITransaction> listener : mNewTransactionListeners)
+            listener.execute(newTx);
+
+        WalletManager.nofityChangedTxHistory(newTx);
     }
 
     /**
@@ -853,7 +873,7 @@ public class Wallet implements IWallet {
         Objects.requireNonNull(btcAddress);
         Objects.requireNonNull(btcAmount);
 
-        Transaction tx = new Transaction(this);
+        TxDecorator tx = new TxDecorator(this);
         tx.getTx().addOutput(btcAmount, btcAddress);
 
         for (TransactionOutput feeOutput : getOutputToWalletFee())
@@ -890,9 +910,9 @@ public class Wallet implements IWallet {
      * @param tx      Transacción a completar.
      * @param feeByKB Comisión por kilobyte.
      */
-    private void completeTx(Transaction tx, double feeByKB) {
+    private void completeTx(TxDecorator tx, double feeByKB) {
         final List<TransactionOutput> unspents = mWallet.calculateAllSpendCandidates();
-        final Transaction temp = tx.copy();
+        final TxDecorator temp = tx.copy();
         final Address address = mWallet.currentChangeAddress();
 
         Coin value = Coin.ZERO;
@@ -999,7 +1019,7 @@ public class Wallet implements IWallet {
      *
      * @param tx Transacción a firmar.
      */
-    private void signInputsOfTransaction(@NonNull Transaction tx) {
+    private void signInputsOfTransaction(@NonNull TxDecorator tx) {
         // TODO Create sign functions
         /*
         List<TransactionInput> inputs = tx.getInputs();
@@ -1093,12 +1113,11 @@ public class Wallet implements IWallet {
             if (!mWallet.isTransactionRelevant(tx.getTransaction())) continue;
             if (tx.getTransaction().getFee() == null) continue;
 
-            Transaction wtx = Transaction.wrap(tx.getTransaction(), this);
+            TxDecorator wtx = TxDecorator.wrap(tx.getTransaction(), this);
             wtx.assignWallet(mWallet);
             txs.add(wtx);
         }
 
-        Collections.sort(txs, TX_NEW_TO_OLD);
         return txs;
     }
 
@@ -1134,7 +1153,7 @@ public class Wallet implements IWallet {
         if (tx == null)
             return null;
 
-        Transaction wtx = Transaction.wrap(tx, this);
+        TxDecorator wtx = TxDecorator.wrap(tx, this);
         wtx.assignWallet(mWallet);
 
         return wtx;
@@ -1167,6 +1186,8 @@ public class Wallet implements IWallet {
 
         for (ExecutableConsumer<Double> listener : mBalanceListeners)
             listener.execute(balance);
+
+        WalletManager.notifyChangedBalance();
     }
 
     /**
@@ -1230,6 +1251,38 @@ public class Wallet implements IWallet {
 
         if (mWallet != null)
             listener.accept(getBalance());
+    }
+
+    /**
+     * Agrega un escucha de recepción de una nueva transacción.
+     *
+     * @param listener Escucha de nuevas transacciones.
+     */
+    @Override
+    public void addNewTransactionListener(Executor executor, Consumer<ITransaction> listener) {
+        Objects.requireNonNull(listener);
+
+        for (ExecutableConsumer<ITransaction> executableConsumer : mNewTransactionListeners)
+            if (executableConsumer.getConsumer().equals(listener))
+                return;
+
+        mNewTransactionListeners.add(new ExecutableConsumer<>(executor, listener));
+    }
+
+    /**
+     * Remueve el escucha de recepción de una nueva transacción.
+     *
+     * @param listener Escucha a remover.
+     */
+    @Override
+    public void removeNewTransactionListener(Consumer<ITransaction> listener) {
+        Objects.requireNonNull(listener);
+
+        for (ExecutableConsumer<ITransaction> executableConsumer : mNewTransactionListeners)
+            if (executableConsumer.getConsumer().equals(listener)) {
+                mNewTransactionListeners.remove(executableConsumer);
+                break;
+            }
     }
 
     /**
@@ -1334,5 +1387,23 @@ public class Wallet implements IWallet {
      */
     public NetworkParameters getNetwork() {
         return mNetwork;
+    }
+
+    /**
+     * Recepción de una nueva transacción.
+     *
+     * @param wallet      Billetera de bitcoin que recibe la transacción.
+     * @param tx          Nueva transacción.
+     * @param prevBalance Saldo anterior.
+     * @param newBalance  Nuevo saldo.
+     */
+    private void onNewTransaction(org.bitcoinj.wallet.Wallet wallet, Transaction tx,
+                                  Coin prevBalance, Coin newBalance) {
+        notifyBalanceChange();
+
+        TxDecorator btctx = TxDecorator.wrap(tx, this);
+        btctx.assignWallet(mWallet);
+
+        notifyNewTransaction(btctx);
     }
 }
