@@ -23,14 +23,11 @@ import android.util.Log;
 import com.cryptowallet.assets.bitcoin.services.retrofit.BitcoinApi;
 import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfo;
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
-import com.cryptowallet.assets.bitcoin.wallet.Transaction;
+import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
 import com.cryptowallet.assets.bitcoin.wallet.Wallet;
 import com.cryptowallet.wallet.ChainTipInfo;
-import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.TransactionState;
 import com.google.common.util.concurrent.ListenableFutureTask;
 
-import org.bitcoinj.wallet.WalletTransaction;
 import org.bouncycastle.util.encoders.Hex;
 
 import java.util.ArrayList;
@@ -147,17 +144,17 @@ public class BitcoinProvider {
      * @param address Dirección en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    ListenableFutureTask<List<Transaction>> getHistoryByAddress(byte[] address) {
+    ListenableFutureTask<List<TxDecorator>> getHistoryByAddress(byte[] address, int height) {
         final String addressHex = Hex.toHexString(address);
-        final List<Transaction> history = new ArrayList<>();
-        ListenableFutureTask<List<Transaction>> task = ListenableFutureTask.create(() -> {
+        final List<TxDecorator> history = new ArrayList<>();
+        ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getHistoryByAddress");
 
             return tryDo(() -> {
                 history.clear();
 
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<List<TxData>> response = mApi.getTxHistory(networkName, addressHex)
+                Response<List<TxData>> response = mApi.getTxHistory(networkName, addressHex, height)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
@@ -166,7 +163,7 @@ public class BitcoinProvider {
                 List<TxData> historyData = response.body();
 
                 for (TxData data : historyData)
-                    history.add(Transaction.fromTxData(data, mWallet));
+                    history.add(TxDecorator.fromTxData(data, mWallet));
 
                 return history;
             });
@@ -183,10 +180,10 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    ListenableFutureTask<Transaction> getTransactionByTxID(byte[] txid) {
+    ListenableFutureTask<TxDecorator> getTransactionByTxID(byte[] txid) {
         String txidHex = Hex.toHexString(txid);
 
-        ListenableFutureTask<Transaction> task = ListenableFutureTask.create(() -> {
+        ListenableFutureTask<TxDecorator> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getTransactionByTxID");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
@@ -195,7 +192,7 @@ public class BitcoinProvider {
                 if (!response.isSuccessful() || response.body() == null)
                     return null;
 
-                return Transaction.fromTxData(response.body(), mWallet);
+                return TxDecorator.fromTxData(response.body(), mWallet);
             });
         });
 
@@ -243,7 +240,7 @@ public class BitcoinProvider {
      * @param transaction Transacción a propagar.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<Boolean> broadcastTx(Transaction transaction) {
+    public ListenableFutureTask<Boolean> broadcastTx(TxDecorator transaction) {
         return null;
     }
 
@@ -253,12 +250,12 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<Map<String, Transaction>> getDependencies(byte[] txid) {
+    public ListenableFutureTask<Map<String, TxDecorator>> getDependencies(byte[] txid) {
         String txidHex = Hex.toHexString(txid);
 
-        ListenableFutureTask<Map<String, Transaction>> task = ListenableFutureTask.create(() -> {
+        ListenableFutureTask<Map<String, TxDecorator>> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getDependencies");
-            final Map<String, Transaction> deps = new HashMap<>();
+            final Map<String, TxDecorator> deps = new HashMap<>();
             return tryDo(() -> {
                 deps.clear();
 
@@ -272,7 +269,7 @@ public class BitcoinProvider {
                 List<TxData> depsData = response.body();
 
                 for (TxData data : depsData) {
-                    Transaction transaction = Transaction.fromTxData(data, mWallet);
+                    TxDecorator transaction = TxDecorator.fromTxData(data, mWallet);
                     deps.put(transaction.getID(), transaction);
                 }
 
@@ -291,15 +288,15 @@ public class BitcoinProvider {
      * @param addresses Direcciones a consultar.
      * @return Un tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<List<Transaction>> getHistory(byte[] addresses) {
+    public ListenableFutureTask<List<TxDecorator>> getHistory(byte[] addresses, int height) {
         final String addressesHex = Hex.toHexString(addresses);
 
-        ListenableFutureTask<List<Transaction>> task = ListenableFutureTask.create(() -> {
-            final List<Transaction> transactions = new ArrayList<>();
+        ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
+            final List<TxDecorator> transactions = new ArrayList<>();
             Thread.currentThread().setName("Bitcoin Provider getHistory");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<List<TxData>> response = mApi.getHistory(networkName, addressesHex)
+                Response<List<TxData>> response = mApi.getHistory(networkName, addressesHex, height)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
@@ -308,7 +305,7 @@ public class BitcoinProvider {
                 List<TxData> txData = response.body();
 
                 for (TxData data : txData)
-                    transactions.add(Transaction.fromTxData(data, mWallet));
+                    transactions.add(TxDecorator.fromTxData(data, mWallet));
 
                 return transactions;
             });

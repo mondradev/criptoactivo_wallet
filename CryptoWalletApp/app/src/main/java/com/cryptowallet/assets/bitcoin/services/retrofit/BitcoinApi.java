@@ -23,6 +23,7 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 /**
  * Define los endpoints de la api Bitcoin que serán utilizados por {@link retrofit2.Retrofit}.
@@ -36,11 +37,13 @@ public interface BitcoinApi {
      *
      * @param network Tipo de red a la cual pertenece la dirección. Ej: mainnet o testnet.
      * @param address Dirección serializada en formato hexadecimal.
+     * @param height  Altura utilizada como punto de partida de la búsqueda.
      * @return Una instancia que gestiona la llamada asíncrona a la API.
      */
     @GET("btc/{network}/txhistory/{address}")
     Call<List<TxData>> getTxHistory(@Path("network") String network,
-                                    @Path("address") String address);
+                                    @Path("address") String address,
+                                    @Query("height") int height);
 
     /**
      * Obtiene la transacción especificada por el TxID.
@@ -77,8 +80,11 @@ public interface BitcoinApi {
      *
      * @param network   Tipo de red a la cual pertenecen las direcciones. Ej. mainnet o testnet.
      * @param addresses Direcciones a consultar.
+     * @param height    Altura utilizada como punto de partida de la búsqueda.
      * @return Una instancia que gesitona la llamada asíncrona de la API.
      */
     @GET("btc/{network}/history/{addresses}")
-    Call<List<TxData>> getHistory(@Path("network") String network, @Path("addresses") String addresses);
+    Call<List<TxData>> getHistory(@Path("network") String network,
+                                  @Path("addresses") String addresses,
+                                  @Query("height") int height);
 }
