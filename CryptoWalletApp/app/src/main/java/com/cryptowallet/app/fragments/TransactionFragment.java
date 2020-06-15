@@ -37,13 +37,17 @@ import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
+import org.w3c.dom.Text;
+
 import java.text.NumberFormat;
+import java.util.Collections;
 
 /**
- * Este fragmento provee de un cuadro de dialogo inferior que permite visualizar los datos para
- * aceptar pagos de otras billeteras.
+ * Este fragmento provee de un cuadro de dialogo inferior que permite visualizar los datos de una
+ * transacción.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
@@ -84,7 +88,7 @@ public class TransactionFragment extends BottomSheetDialogFragment {
      * @param asset    Activo de la billetera.
      */
     public static void show(@NonNull FragmentActivity activity, @NonNull SupportedAssets asset,
-                     @NonNull String txid) {
+                            @NonNull String txid) {
         if (Strings.isNullOrEmpty(txid))
             throw new IllegalArgumentException("TxId must be not null or empty");
 
@@ -151,10 +155,19 @@ public class TransactionFragment extends BottomSheetDialogFragment {
                         getString(R.string.yesterday_text)
                 ));
         root.<TextView>findViewById(R.id.mTxFee)
-                .setText(criptoAsset.toStringFriendly(mTx.getNetworkFee()));
+                .setText(criptoAsset.toStringFriendly(mTx.isPay() ? mTx.getNetworkFee() : 0));
         root.<TextView>findViewById(R.id.mTxSize)
                 .setText(Utils.toSizeFriendlyString(mTx.getSize()));
         root.<TextView>findViewById(R.id.mTxStatus).setText(status);
+
+        String fromAddress = mTx.isCoinbase()
+                ? getString(R.string.coinbase_address)
+                : Joiner.on("\n").join(mTx.getFromAddress());
+
+        root.<TextView>findViewById(R.id.mTxFrom)
+                .setText(fromAddress);
+        root.<TextView>findViewById(R.id.mTxTo)
+                .setText(Joiner.on("\n").join(mTx.getToAddress()));
 
         if (mTx.getBlockHeight() < 0)
             root.findViewById(R.id.mTxBlockInfo).setVisibility(View.GONE);

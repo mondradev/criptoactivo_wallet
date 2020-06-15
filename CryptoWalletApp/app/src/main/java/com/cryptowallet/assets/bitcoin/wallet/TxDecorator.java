@@ -18,6 +18,8 @@
 
 package com.cryptowallet.assets.bitcoin.wallet;
 
+import androidx.annotation.NonNull;
+
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.IWallet;
@@ -31,14 +33,14 @@ import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.ProtocolException;
 import org.bitcoinj.core.SegwitAddress;
 import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.TransactionBag;
+import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,37 +52,39 @@ import java.util.Set;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.0
  */
-@SuppressWarnings({"unused", "WeakerAccess"})
-public class Transaction implements ITransaction {
+public class TxDecorator implements ITransaction {
 
     /**
      * Minimo de confirmación.
      */
     private static final int MIN_COMMITS = 3;
-
+    /**
+     * Transacción de Bitcoin.
+     */
+    private final Transaction mTx;
     /**
      * Billetera de bitcoin (BitcoinJ)
      */
-    private TransactionBag mWallet;
-
+    private org.bitcoinj.wallet.Wallet mWallet;
     /**
      * Billetera que contiene la transacción.
      */
     private Wallet mWalletParent;
 
     /**
-     * Transacción de Bitcoin.
-     */
-    private final org.bitcoinj.core.Transaction mTx;
-
-    /**
      * Crea una nueva transacción vacía.
      *
      * @param wallet Billetera que la contiene.
      */
-    public Transaction(Wallet wallet) {
+    TxDecorator(@NonNull Wallet wallet) {
+        Objects.requireNonNull(wallet);
+
+        if (wallet.getAsset() != getCriptoAsset())
+            throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
+
         this.mWalletParent = wallet;
-        this.mTx = new org.bitcoinj.core.Transaction(wallet.getNetwork());
+        this.mWallet = wallet.getWalletInstance();
+        this.mTx = new Transaction(wallet.getNetwork());
     }
 
     /**
@@ -91,10 +95,20 @@ public class Transaction implements ITransaction {
      * @throws ProtocolException En caso que exista un error al generar la transacción a partir de
      *                           los datos especificados.
      */
-    public Transaction(Wallet wallet, byte[] payloadBytes)
+    private TxDecorator(@NonNull Wallet wallet, @NonNull byte[] payloadBytes)
             throws ProtocolException {
-        this.mTx = new org.bitcoinj.core.Transaction(wallet.getNetwork(), payloadBytes);
+        Objects.requireNonNull(wallet);
+        Objects.requireNonNull(payloadBytes);
+
+        if (wallet.getAsset() != SupportedAssets.BTC)
+            throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
+
+        if (payloadBytes.length == 0)
+            throw new IllegalArgumentException("Payload is empty");
+
+        this.mTx = new Transaction(wallet.getNetwork(), payloadBytes);
         this.mWalletParent = wallet;
+        this.mWallet = wallet.getWalletInstance();
     }
 
     /**
@@ -103,9 +117,10 @@ public class Transaction implements ITransaction {
      * @param wallet Billetera que la contiene.
      * @param tx     Transacción de Bitcoin.
      */
-    private Transaction(Wallet wallet, org.bitcoinj.core.Transaction tx) {
+    private TxDecorator(Wallet wallet, Transaction tx) {
         this.mTx = tx;
         this.mWalletParent = wallet;
+        this.mWallet = wallet.getWalletInstance();
     }
 
     /**
@@ -115,8 +130,14 @@ public class Transaction implements ITransaction {
      * @param wallet Billetera que la contiene.
      * @return Una transacción de Bitcoin.
      */
-    public static Transaction fromTxData(TxData data, Wallet wallet) {
-        final Transaction tx = new Transaction(
+    public static TxDecorator fromTxData(@NonNull TxData data, @NonNull Wallet wallet) {
+        Objects.requireNonNull(data);
+        Objects.requireNonNull(wallet);
+
+        if (wallet.getAsset() != SupportedAssets.BTC)
+            throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
+
+        final TxDecorator tx = new TxDecorator(
                 wallet,
                 data.getDataAsBuffer()
         );
@@ -129,6 +150,16 @@ public class Transaction implements ITransaction {
         );
 
         return tx;
+    }
+
+    /**
+     * Obtiene la transacción de Bitcoin a partir de otra.
+     *
+     * @param tx Transacción de bitcoin.
+     * @return Una transacción.
+     */
+    static TxDecorator wrap(Transaction tx, Wallet wallet) {
+        return new TxDecorator(wallet, tx);
     }
 
     /**
@@ -152,32 +183,12 @@ public class Transaction implements ITransaction {
     }
 
     /**
-     * Obtiene la transacción de Bitcoin a partir de otra.
-     *
-     * @param tx Transacción de bitcoin.
-     * @return Una transacción.
-     */
-    public static Transaction wrap(org.bitcoinj.core.Transaction tx, Wallet wallet) {
-        return new Transaction(wallet, tx);
-    }
-
-    /**
-     * Asigna la billetera (BitcoinJ) a la transacción, lo cual permite utilizar de manera precisa
-     * la función {@link Transaction#getAmount()}
-     *
-     * @param wallet Billetera de BitcoinJ
-     */
-    void assignWallet(TransactionBag wallet) {
-        this.mWallet = wallet;
-    }
-
-    /**
      * Indica si la transacción requiere actualizar sus dependencias. Esto permite visualizar
      * correctamente las direcciones de procedencia y la comisión de la red.
      *
      * @return Un valor true si requiere sus dependencias.
      */
-    public boolean requireDependencies() {
+    boolean requireDependencies() {
         for (TransactionInput input : this.mTx.getInputs())
             if (input.getConnectedOutput() == null)
                 return true;
@@ -200,10 +211,13 @@ public class Transaction implements ITransaction {
      * asignadas correctamente.
      *
      * @return Comisión de la transacción.
-     * @see Transaction#requireDependencies()
+     * @see TxDecorator#requireDependencies()
      */
     @Override
     public double getNetworkFee() {
+        if (mWallet == null)
+            return calculateFee();
+
         if (!isPay()) return 0;
 
         final long walletFee = getWalletFee();
@@ -214,6 +228,22 @@ public class Transaction implements ITransaction {
             return (double) fee.add(Coin.valueOf(walletFee)).value / getCriptoAsset().getUnit();
 
         return 0;
+    }
+
+    /**
+     * Calcula la comisión de la transacción a partir de sus entradas y salidas.
+     *
+     * @return Comisión de la transacciones.
+     */
+    private double calculateFee() {
+        Coin fee = Coin.ZERO;
+        for (TransactionInput input : getTx().getInputs())
+            fee = fee.add(input.getValue() != null ? input.getValue() : Coin.ZERO);
+
+        for (TransactionOutput output : getTx().getOutputs())
+            fee = fee.subtract(output.getValue());
+
+        return (double) fee.value / getCriptoAsset().getUnit();
     }
 
     /**
@@ -242,25 +272,27 @@ public class Transaction implements ITransaction {
      * cantidad relevante para la billetera, es necesario asignarla a esta transacción.
      *
      * @return Cantidad de la transacción.
-     * @see Transaction#assignWallet(TransactionBag)
      */
     @Override
     public double getAmount() {
         long unit = getCriptoAsset().getUnit();
 
         if (mWallet == null) {
-            long total = 0;
+            Coin total = Coin.ZERO;
 
             for (TransactionOutput output : this.mTx.getOutputs())
-                total += output.getValue().value;
+                total = total.add(output.getValue());
 
-            return (double) total / unit;
+            return (double) total.value / unit;
         }
 
         Coin value = this.mTx.getValue(mWallet);
 
+        if (value.isNegative())
+            value = value.add(mTx.getFee());
+
         if (isPay())
-            value = value.add(Coin.valueOf((long) (getNetworkFee() * unit)));
+            value = value.add(Coin.valueOf(getWalletFee()));
 
         return Math.abs((double) value.value / unit);
     }
@@ -270,18 +302,16 @@ public class Transaction implements ITransaction {
      * que todas la dependencias estén asignadas correctamente.
      *
      * @return Lista de direcciones remitentes.
-     * @see Transaction#requireDependencies()
+     * @see TxDecorator#requireDependencies()
      */
-    @NotNull
+    @NonNull
     @Override
     public List<String> getFromAddress() {
-        List<String> addresses = new ArrayList<>();
+        Set<String> addresses = new HashSet<>();
 
         for (TransactionInput input : this.mTx.getInputs()) {
-            if (input.isCoinBase()) {
-                addresses.add("{NewCoins}");
+            if (input.isCoinBase())
                 continue;
-            }
 
             if (input.getConnectedOutput() == null)
                 continue;
@@ -289,13 +319,16 @@ public class Transaction implements ITransaction {
             Address address = input.getConnectedOutput().getScriptPubKey()
                     .getToAddress(mWalletParent.getNetwork(), true);
 
+            if (mWallet != null && isPay() && !mWallet.isAddressMine(address))
+                continue;
+
             if (address instanceof LegacyAddress)
                 addresses.add(((LegacyAddress) address).toBase58());
             else if (address instanceof SegwitAddress)
                 addresses.add(((SegwitAddress) address).toBech32());
         }
 
-        return addresses;
+        return new ArrayList<>(addresses);
     }
 
     /**
@@ -303,14 +336,17 @@ public class Transaction implements ITransaction {
      *
      * @return Lista de direcciones destinatarios.
      */
-    @NotNull
+    @NonNull
     @Override
     public List<String> getToAddress() {
-        List<String> addresses = new ArrayList<>();
+        Set<String> addresses = new HashSet<>();
 
         for (TransactionOutput output : this.mTx.getOutputs()) {
             Address address = output.getScriptPubKey()
                     .getToAddress(mWalletParent.getNetwork(), true);
+
+            if (mWallet != null && isPay() && mWallet.isAddressMine(address))
+                continue;
 
             if (address instanceof LegacyAddress)
                 addresses.add(((LegacyAddress) address).toBase58());
@@ -318,7 +354,7 @@ public class Transaction implements ITransaction {
                 addresses.add(((SegwitAddress) address).toBech32());
         }
 
-        return addresses;
+        return new ArrayList<>(addresses);
     }
 
     /**
@@ -327,7 +363,7 @@ public class Transaction implements ITransaction {
      *
      * @return Fecha y hora de la transacción.
      */
-    @NotNull
+    @NonNull
     @Override
     public Date getTime() {
         return this.mTx.getUpdateTime();
@@ -338,7 +374,7 @@ public class Transaction implements ITransaction {
      *
      * @return Identificador de la transacción.
      */
-    @NotNull
+    @NonNull
     @Override
     public String getID() {
         return this.mTx.getTxId().toString();
@@ -421,7 +457,15 @@ public class Transaction implements ITransaction {
      */
     @Override
     public boolean isPay() {
-        return this.mTx.getValue(mWallet).isNegative();
+        if (mWallet == null)
+            return false;
+
+        Coin amount = this.mTx.getValue(mWallet);
+
+        if (amount.isNegative())
+            amount = amount.add(mTx.getFee());
+
+        return amount.isNegative();
     }
 
     /**
@@ -431,7 +475,7 @@ public class Transaction implements ITransaction {
      */
     @Override
     public boolean isCoinbase() {
-        return getFromAddress().isEmpty();
+        return mTx.isCoinBase();
     }
 
     /**
@@ -453,11 +497,35 @@ public class Transaction implements ITransaction {
      * si la transacción es más reciente o un valor 0 si son iguales en temporalidad.
      */
     @Override
-    public int compareTo(@NotNull ITransaction o) {
-        if (!(o instanceof Transaction))
-            return -1;
+    public int compareTo(@NonNull ITransaction o) {
+        if (!(o instanceof TxDecorator))
+            return getTime().compareTo(o.getTime());
 
-        return getTime().compareTo(o.getTime());
+        TxDecorator tx = (TxDecorator) o;
+
+        final int timeCompare = getTime().compareTo(tx.getTime());
+
+        if (timeCompare != 0)
+            return timeCompare;
+
+        final int blockCompare = Long.compare(getBlockHeight(), tx.getBlockHeight());
+
+        if (blockCompare != 0)
+            return blockCompare;
+
+        Map<Sha256Hash, Integer> appearsInHashesLeft = getTx().getAppearsInHashes();
+        Map<Sha256Hash, Integer> appearsInHashesRight = tx.getTx().getAppearsInHashes();
+
+        if (appearsInHashesLeft == null) return -1;
+        if (appearsInHashesRight == null) return 1;
+
+        Integer indexLeft = appearsInHashesLeft.get(Sha256Hash.wrap(getBlockHash()));
+        Integer indexRight = appearsInHashesRight.get(Sha256Hash.wrap(tx.getBlockHash()));
+
+        if (indexLeft == null) return -1;
+        if (indexRight == null) return 1;
+
+        return indexLeft.compareTo(indexRight);
     }
 
     /**
@@ -475,8 +543,8 @@ public class Transaction implements ITransaction {
      *
      * @return Una transacción nueva.
      */
-    public Transaction copy() {
-        final Transaction wtx = new Transaction(mWalletParent, mTx.bitcoinSerialize());
+    public TxDecorator copy() {
+        final TxDecorator wtx = new TxDecorator(mWalletParent, mTx.bitcoinSerialize());
         final Context context = new Context(mWalletParent.getNetwork());
         final int height = mTx.getConfidence(context).getAppearedAtChainHeight();
 
@@ -517,7 +585,7 @@ public class Transaction implements ITransaction {
      *
      * @return Transacción de Bitcoin.
      */
-    public org.bitcoinj.core.Transaction getTx() {
+    public Transaction getTx() {
         return mTx;
     }
 }
