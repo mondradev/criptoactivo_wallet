@@ -21,9 +21,12 @@ package com.cryptowallet.assets.bitcoin.services;
 import com.cryptowallet.services.coinmarket.BitfinexPriceTracker;
 import com.cryptowallet.services.coinmarket.BitsoPriceTracker;
 import com.cryptowallet.services.coinmarket.PriceTracker;
+import com.cryptowallet.utils.Consumer;
 
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
+
+import java.util.concurrent.Executors;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
@@ -53,12 +56,12 @@ public class PriceTrackerTest {
     @Test
     public void bitsoPriceTracker() {
         final PriceTracker bitsoBtcMxnTracker = BitsoPriceTracker.get(BOOK_BTC_MXN);
-        final PriceTracker.IListener listener = mock(PriceTracker.IListener.class);
+        final ConsumerDouble listener = mock(ConsumerDouble.class);
 
-        bitsoBtcMxnTracker.addChangeListener(listener);
+        bitsoBtcMxnTracker.addChangeListener(Executors.newSingleThreadExecutor(), listener);
 
         verify(listener, timeout(2000))
-                .onChange(ArgumentMatchers.floatThat(price -> price > 0));
+                .accept(ArgumentMatchers.doubleThat(price -> price > 0));
     }
 
     /**
@@ -67,11 +70,17 @@ public class PriceTrackerTest {
     @Test
     public void bitfinexPriceTracker() {
         final PriceTracker bitfinexBtcUsdTracker = BitfinexPriceTracker.get(BOOK_BTC_USD);
-        final PriceTracker.IListener listener = mock(PriceTracker.IListener.class);
+        final ConsumerDouble listener = mock(ConsumerDouble.class);
 
-        bitfinexBtcUsdTracker.addChangeListener(listener);
+        bitfinexBtcUsdTracker.addChangeListener(Executors.newSingleThreadExecutor(), listener);
 
         verify(listener, timeout(2000))
-                .onChange(ArgumentMatchers.floatThat(price -> price > 0));
+                .accept(ArgumentMatchers.doubleThat(price -> price > 0));
+    }
+
+    /**
+     * Consumidor de números de doble presición.
+     */
+    interface ConsumerDouble extends Consumer<Double> {
     }
 }
