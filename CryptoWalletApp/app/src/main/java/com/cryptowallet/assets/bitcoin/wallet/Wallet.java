@@ -39,7 +39,6 @@ import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletManager;
 import com.cryptowallet.wallet.exceptions.InSufficientBalanceException;
-import com.google.common.base.Strings;
 
 import org.bitcoinj.core.AbstractBlockChain;
 import org.bitcoinj.core.Address;
@@ -79,7 +78,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -126,44 +124,6 @@ public class Wallet implements IWallet {
      * Nombre del archivo de la billetera.
      */
     private static final String WALLET_FILENAME = "wallet.bitcoin";
-
-    /**
-     * Comparador de transacciones, más antigua a más reciente.
-     */
-    private static final Comparator<TxDecorator> TX_OLD_TO_NEW = (left, right) -> {
-        final int timeCompare = left.getTime().compareTo(right.getTime());
-        final int heightCompare = Long.compare(left.getBlockHeight(), right.getBlockHeight());
-        final Map<Sha256Hash, Integer> appearsInHashesLeft = left.getTx().getAppearsInHashes();
-        final Map<Sha256Hash, Integer> appearsInHashesRight = right.getTx().getAppearsInHashes();
-        final Sha256Hash hashLeft = !Strings.isNullOrEmpty(left.getBlockHash())
-                ? Sha256Hash.wrap(left.getBlockHash()) : null;
-        final Sha256Hash hashRight = !Strings.isNullOrEmpty(right.getBlockHash())
-                ? Sha256Hash.wrap(right.getBlockHash()) : null;
-        final Integer blockIndexLeft = appearsInHashesLeft != null && hashLeft != null
-                ? appearsInHashesLeft.get(hashLeft) : -1;
-        final Integer blockIndexRight = appearsInHashesRight != null && hashRight != null
-                ? appearsInHashesRight.get(hashRight) : -1;
-        final int blockIndex = Integer.compare(blockIndexLeft == null ? -1 : blockIndexLeft,
-                blockIndexRight == null ? -1 : blockIndexRight);
-
-        return timeCompare != 0 ? timeCompare :
-                heightCompare != 0 ? heightCompare :
-                        blockIndex != 0 ? blockIndex :
-                                left.getTx().getTxId().compareTo(right.getTx().getTxId());
-    };
-
-    /**
-     * Comparador de transacciones, más reciente a más antigua.
-     */
-    private static final Comparator<ITransaction> TX_NEW_TO_OLD = (left, right) -> {
-        if (!(left instanceof TxDecorator) || !(right instanceof TxDecorator))
-            return left.getTime().compareTo(right.getTime());
-
-        TxDecorator nLeft = (TxDecorator) left;
-        TxDecorator nRight = (TxDecorator) right;
-
-        return -TX_OLD_TO_NEW.compare(nLeft, nRight);
-    };
 
     /**
      * Archivo de la billetera.
@@ -330,6 +290,15 @@ public class Wallet implements IWallet {
         } catch (UnreadableWalletException | MnemonicException e) {
             return null;
         }
+    }
+
+    /**
+     * Obtiene la instancia de la billetera de BitcoinJ.
+     *
+     * @return Instancia de la billetera BitcoinJ.
+     */
+    org.bitcoinj.wallet.Wallet getWalletInstance() {
+        return mWallet;
     }
 
     /**
@@ -580,10 +549,15 @@ public class Wallet implements IWallet {
             receiveTransactions(downloadedTransactions);
     }
 
+    /**
+     * Recibe las transacciones en la billetera, y desencadena los eventos.
+     *
+     * @param transactions Transacciones a agregar a la billetera.
+     */
     private void receiveTransactions(final Map<String, TxDecorator> transactions) {
         List<TxDecorator> orderedTx = new ArrayList<>(transactions.values());
 
-        Collections.sort(orderedTx, TX_OLD_TO_NEW);
+        Collections.sort(orderedTx);
 
         if (!Utils.tryNotThrow(() -> {
             for (TxDecorator tx : orderedTx) {
@@ -1112,10 +1086,7 @@ public class Wallet implements IWallet {
         for (WalletTransaction tx : mWallet.getWalletTransactions()) {
             if (!mWallet.isTransactionRelevant(tx.getTransaction())) continue;
             if (tx.getTransaction().getFee() == null) continue;
-
-            TxDecorator wtx = TxDecorator.wrap(tx.getTransaction(), this);
-            wtx.assignWallet(mWallet);
-            txs.add(wtx);
+            txs.add(TxDecorator.wrap(tx.getTransaction(), this));
         }
 
         return txs;
@@ -1153,10 +1124,7 @@ public class Wallet implements IWallet {
         if (tx == null)
             return null;
 
-        TxDecorator wtx = TxDecorator.wrap(tx, this);
-        wtx.assignWallet(mWallet);
-
-        return wtx;
+        return TxDecorator.wrap(tx, this);
     }
 
     /**
@@ -1400,10 +1368,6 @@ public class Wallet implements IWallet {
     private void onNewTransaction(org.bitcoinj.wallet.Wallet wallet, Transaction tx,
                                   Coin prevBalance, Coin newBalance) {
         notifyBalanceChange();
-
-        TxDecorator btctx = TxDecorator.wrap(tx, this);
-        btctx.assignWallet(mWallet);
-
-        notifyNewTransaction(btctx);
+        notifyNewTransaction(TxDecorator.wrap(tx, this));
     }
 }

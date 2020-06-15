@@ -19,6 +19,8 @@
 package com.cryptowallet.app.fragments;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +33,9 @@ import androidx.fragment.app.Fragment;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
+import com.cryptowallet.assets.bitcoin.wallet.Wallet;
+import com.cryptowallet.utils.Consumer;
+import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletManager;
 
@@ -48,7 +53,7 @@ public class WalletFragment extends Fragment {
     /**
      * Escucha del cambio del saldo en alguna billetera.
      */
-    private CryptoAssetFragment.IOnBalanceUpdate mOnBalanceUpdateListener;
+    private Consumer<Double> mOnBalanceUpdateListener;
 
     /**
      * Este método es llamado cuando se requiere crear la vista del fragmento.
@@ -83,13 +88,11 @@ public class WalletFragment extends Fragment {
 
         container.removeAllViews();
 
-        mOnBalanceUpdateListener = () -> fiatBalance
-                .setText(fiat.toPlainText(WalletManager.getBalance()));
+        mOnBalanceUpdateListener = (balance) -> fiatBalance.setText(fiat.toPlainText(balance));
 
         WalletManager.forEachAsset((asset) -> {
             String fragmentTag = CryptoAssetFragment.class.getSimpleName() + asset.name();
             CryptoAssetFragment assetView = CryptoAssetFragment.newInstance(asset);
-            assetView.setOnBalanceUpdate(this.mOnBalanceUpdateListener);
 
             getParentFragmentManager()
                     .beginTransaction()
@@ -97,9 +100,27 @@ public class WalletFragment extends Fragment {
                     .commit();
         });
 
+        WalletManager.addChangedBalanceListener(
+                new Handler(Looper.getMainLooper())::post, mOnBalanceUpdateListener);
+
         fiatSign.setText(fiat.getSign());
         fiatName.setText(fiat.name());
         fiatBalance.setText(fiat.toPlainText(WalletManager.getBalance()));
     }
 
+    /**
+     * Called when the view previously created by {@link #onCreateView} has
+     * been detached from the fragment.  The next time the fragment needs
+     * to be displayed, a new view will be created.  This is called
+     * after {@link #onStop()} and before {@link #onDestroy()}.  It is called
+     * <em>regardless</em> of whether {@link #onCreateView} returned a
+     * non-null view.  Internally it is called after the view's state has
+     * been saved but before it has been removed from its parent.
+     */
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        WalletManager.removeChangedBalanceListener(mOnBalanceUpdateListener);
+    }
 }

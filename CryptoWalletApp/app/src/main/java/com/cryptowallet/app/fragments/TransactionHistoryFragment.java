@@ -19,6 +19,8 @@
 package com.cryptowallet.app.fragments;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,12 +34,11 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.adapters.TransactionHistoryAdapter;
+import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.WalletManager;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -66,6 +67,16 @@ public class TransactionHistoryFragment extends Fragment {
     private SwipeRefreshLayout mSwipeRefresh;
 
     /**
+     * Escucha de nuevas transacciones.
+     */
+    private Consumer<ITransaction> mOnNewTransactionListener;
+
+    /**
+     * Indica que el esuchucha ya puede recibir transacciones.
+     */
+    private boolean mIsReady;
+
+    /**
      * Este método es llamado cuando se requiere crear la vista del fragmento.
      *
      * @param inflater           Inflador de XML.
@@ -76,8 +87,33 @@ public class TransactionHistoryFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_transactions_history,
+        View root = inflater.inflate(R.layout.fragment_transactions_history,
                 container, false);
+
+        mExecutor = Executors.newSingleThreadExecutor();
+        mAdapter = new TransactionHistoryAdapter(requireActivity());
+        mAdapter.setEmptyView(root.findViewById(R.id.mTxHistEmptyLayout));
+
+        RecyclerView txList = root.findViewById(R.id.mTxHistList);
+        txList.setAdapter(mAdapter);
+        txList.setHasFixedSize(true);
+        txList.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        mSwipeRefresh = root.findViewById(R.id.mTxHistSwipeRefreshTx);
+        mSwipeRefresh.setOnRefreshListener(this::onRefresh);
+        mSwipeRefresh.setRefreshing(true);
+        mSwipeRefresh.setColorSchemeColors(
+                Utils.resolveColor(requireContext(), R.attr.colorOnPrimary));
+        mSwipeRefresh.setProgressBackgroundColorSchemeColor(Utils.resolveColor(requireContext(),
+                R.attr.colorAccent));
+
+        mOnNewTransactionListener = (tx) -> {
+            if (!mIsReady) return;
+
+            mAdapter.add(tx);
+        };
+
+        return root;
     }
 
     /**
@@ -91,34 +127,26 @@ public class TransactionHistoryFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        mExecutor = Executors.newSingleThreadExecutor();
-        mAdapter = new TransactionHistoryAdapter(requireActivity());
-        mAdapter.setEmptyView(requireView().findViewById(R.id.mTxHistEmptyLayout));
-
-        RecyclerView txList = requireView().findViewById(R.id.mTxHistList);
-        txList.setAdapter(mAdapter);
-        txList.setHasFixedSize(true);
-        txList.setLayoutManager(new LinearLayoutManager(requireContext()));
-
-        mSwipeRefresh = requireView().findViewById(R.id.mTxHistSwipeRefreshTx);
-        mSwipeRefresh.setColorSchemeColors(Utils.resolveColor(requireContext(), R.attr.colorOnPrimary));
-        mSwipeRefresh.setProgressBackgroundColorSchemeColor(Utils.resolveColor(requireContext(),
-                R.attr.colorAccent));
-        mSwipeRefresh.setOnRefreshListener(this::onRefresh);
-        mSwipeRefresh.setRefreshing(true);
-
         onRefresh();
+
+        WalletManager.addChangedTxHistoryListener(
+                new Handler(Looper.getMainLooper())::post, mOnNewTransactionListener);
     }
 
     /**
-     * Obtiene la lista de transacciones de todas las billeteras.
-     * @return Lista de transacciones.
+     * Called when the view previously created by {@link #onCreateView} has
+     * been detached from the fragment.  The next time the fragment needs
+     * to be displayed, a new view will be created.  This is called
+     * after {@link #onStop()} and before {@link #onDestroy()}.  It is called
+     * <em>regardless</em> of whether {@link #onCreateView} returned a
+     * non-null view.  Internally it is called after the view's state has
+     * been saved but before it has been removed from its parent.
      */
-    private List<ITransaction> getTransactions() {
-        List<ITransaction> txList = new ArrayList<>();
-        WalletManager.forEachAsset(asset ->
-                txList.addAll(WalletManager.get(asset).getTransactions()));
-        return txList;
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        WalletManager.removeChangedTxHistoryListener(mOnNewTransactionListener);
     }
 
     /**
@@ -126,8 +154,11 @@ public class TransactionHistoryFragment extends Fragment {
      */
     private void onRefresh() {
         mExecutor.execute(() -> {
-            mAdapter.setSource(getTransactions());
+            mAdapter.setSource(WalletManager.getTransactions());
             mSwipeRefresh.post(() -> mSwipeRefresh.setRefreshing(false));
+
+            if (!mIsReady)
+                mIsReady = true;
         });
     }
 }
