@@ -126,6 +126,9 @@ public final class TransactionHistoryAdapter
     public void add(ITransaction item) {
         Objects.requireNonNull(item, "Item can't be null");
 
+        if (getItems().contains(item))
+            return;
+
         getItems().add(item);
         Collections.sort(getItems(), (left, right) -> right.compareTo(left));
 
