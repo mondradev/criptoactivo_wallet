@@ -152,4 +152,8 @@
     <string name="unconfirmed_status_text">Sin confirmar</string>
     <string name="error_to_initialize_message">Ocurrió un error al inicializar la billetera, inténtelo más tarde</string>
     <string name="error_to_initialize_title">Inicialización fallida</string>
+    <string name="from_text">Desde</string>
+    <string name="to_text">Para</string>
+    <string name="authenticator_2fa_title">Autenticación 2-Factores</string>
+    <string name="authenticate_text">Autenticar</string>
 </resources>

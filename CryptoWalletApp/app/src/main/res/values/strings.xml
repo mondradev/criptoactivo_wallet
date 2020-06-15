@@ -186,4 +186,8 @@
     <string name="unconfirmed_status_text">Unconfirmed</string>
     <string name="error_to_initialize_title">Fail to initialize</string>
     <string name="error_to_initialize_message">An error occurred while initializing the wallet, please try again later</string>
+    <string name="from_text">From</string>
+    <string name="to_text">To</string>
+    <string name="authenticator_2fa_title">Authentication 2-Factors</string>
+    <string name="authenticate_text">Authenticate</string>
 </resources>
