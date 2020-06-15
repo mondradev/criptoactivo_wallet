@@ -119,7 +119,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Detiene el temporizador de bloqueo.
      */
-    protected static void stopTimer() {
+    public static void stopTimer() {
         if (mLockTimer != null)
             mLockTimer.cancel();
     }
@@ -199,7 +199,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Borra la bandera de bloqueo.
      */
-    protected void unlockApp() {
+    public void unlockApp() {
         if (!mRequireLock)
             return;
 
