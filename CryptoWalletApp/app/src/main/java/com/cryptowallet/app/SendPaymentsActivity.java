@@ -46,6 +46,7 @@ import com.cryptowallet.wallet.ITransactionFee;
 import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.exceptions.InSufficientBalanceException;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.internal.CheckableImageButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -54,7 +55,6 @@ import com.google.common.base.Strings;
 
 import org.checkerframework.common.value.qual.IntVal;
 
-import java.text.NumberFormat;
 import java.util.Objects;
 
 /**
@@ -185,8 +185,9 @@ public class SendPaymentsActivity extends LockableActivity {
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         Objects.requireNonNull(getSupportActionBar()).setTitle(getString(R.string.send_text));
 
-        String assetName = getIntent().getStringExtra(CryptoAssetFragment.ASSET_KEY);
-        SupportedAssets asset = SupportedAssets.valueOf(assetName);
+        final String assetName = getIntent().getStringExtra(CryptoAssetFragment.ASSET_KEY);
+        final SupportedAssets asset = SupportedAssets.valueOf(assetName);
+        final int size = (int) Math.log10(asset.getUnit());
 
         mFeeType = FEE_NORMAL;
         mHandler = new Handler(Looper.getMainLooper());
@@ -211,9 +212,13 @@ public class SendPaymentsActivity extends LockableActivity {
         mWallet.addBalanceChangeListener(mHandler::post, this::onBalanceChange);
         mSendAddressText.addTextChangedListener((IAfterTextChangedListener) this::onAddressChange);
         mSendAmountText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChange);
+        mSendFeeCustomText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChange);
 
         this.<MaterialButtonToggleGroup>requireView(R.id.mSendFeeSelector)
                 .addOnButtonCheckedListener(this::onFeeChange);
+
+        InputFilter[] feeCustomFilters = {new DecimalsFilter(22, size)};
+        mSendFeeCustomText.setFilters(feeCustomFilters);
 
         updateFilters();
         checkEnoughtBalance();
@@ -283,27 +288,54 @@ public class SendPaymentsActivity extends LockableActivity {
      * Verifica si el saldo es suficiente para realizar el envío.
      */
     private void checkEnoughtBalance() {
-        SupportedAssets asset = getCurrency();
-        double balance = getBalance();
-        double amount = Utils.parseDouble(mSendAmountText.getText().toString());
-        double fee = calculateTotalFee(mSendAddressText.getText().toString(), amount);
-        double total = amount + fee;
+        final SupportedAssets asset = getCurrency();
+        final double balance = mWallet.getBalance();
+        final double amount = Utils.parseDouble(mSendAmountText.getText().toString());
+        final double cryptoAmount = mIsFiat ? amount / mWallet.getLastPrice() : amount;
 
-        if (mWallet.isDust(toCryptoAsset(amount)) && toCryptoAsset(amount) > 0)
-            mSendAmountLayout.setError(getString(R.string.is_dust_error));
-        else if (mWallet.getMaxValue() < toCryptoAsset(amount))
-            mSendAmountLayout.setError(getString(R.string.max_value_error,
-                    mWallet.getAsset().toStringFriendly(mWallet.getMaxValue())));
-        else
-            mSendAmountLayout.setError(total > balance
-                    ? getString(R.string.no_enought_funds_error) : null);
+        if (mWallet.isDust(cryptoAmount) && cryptoAmount > 0)
+            setEnoughtBalanceError(getString(R.string.is_dust_error));
+        else if (cryptoAmount > balance)
+            setEnoughtBalanceError(getString(R.string.no_enought_funds_error));
+        else {
+            try {
+                final double fee = calculateTotalFee(mSendAddressText.getText().toString(),
+                        cryptoAmount, getFee());
+                final double total = cryptoAmount + fee;
 
-        mSendTotalFeeText.setText(asset.toStringFriendly(fee, false));
-        mSendTotalPayText.setText(asset.toStringFriendly(total, false));
+                if (mWallet.getMaxValue() < cryptoAmount)
+                    setEnoughtBalanceError(getString(R.string.max_value_error,
+                            mWallet.getAsset().toStringFriendly(mWallet.getMaxValue())));
+                else if (total > balance)
+                    setEnoughtBalanceError(getString(R.string.no_enought_funds_error));
+                else {
+                    mSendAmountLayout.setError(null);
+                    mHasEnoughtBalanceError = false;
+                }
 
-        mHasEnoughtBalanceError = total > balance;
+                mSendTotalFeeText.setText(asset.toStringFriendly(
+                        mIsFiat ? normalizeValue(fee) : fee, false));
+                mSendTotalPayText.setText(asset.toStringFriendly(
+                        mIsFiat ? normalizeValue(total) : total, false));
+
+                mSendFeeCustomLayout.setError(null);
+            } catch (InSufficientBalanceException ex) {
+                mSendFeeCustomLayout.setError(getString(R.string.fee_error));
+                mHasEnoughtBalanceError = true;
+            }
+        }
 
         canPay();
+    }
+
+    /**
+     * Indica que existe un error en el saldo utilizado por la transacción.
+     *
+     * @param error Error a mostrar en el cuadro de texto.
+     */
+    private void setEnoughtBalanceError(String error) {
+        mSendAmountLayout.setError(error);
+        mHasEnoughtBalanceError = true;
     }
 
     /**
@@ -324,48 +356,38 @@ public class SendPaymentsActivity extends LockableActivity {
         Utils.tryNotThrow(() -> CheckableImageButton.class
                 .getMethod("setChecked", boolean.class).invoke(view, !mIsFiat));
 
-        mSendAmountLayout.setHint(getString(R.string.amount_pattern, getCurrency().name()));
-
-        if (!Strings.isNullOrEmpty(mSendAmountText.getText().toString())) {
-            double amount = Utils.parseDouble(mSendAmountText.getText().toString());
-            amount = toFiat(toCryptoAsset(amount));
-
-            String amountText = NumberFormat.getNumberInstance().format(amount);
-
-            mSendAmountText.setText(amountText);
-            mSendAmountText.setSelection(amountText.length());
-        }
+        double amount = 0;
 
         mIsFiat = !mIsFiat;
 
+        if (!Strings.isNullOrEmpty(mSendAmountText.getText().toString())) {
+            amount = Utils.parseDouble(mSendAmountText.getText().toString());
+            amount = normalizeValue(amount);
+        }
+
+        mSendAmountLayout.setHint(getString(R.string.amount_pattern, getCurrency().name()));
+
+        String amountText = amount == 0 ? ""
+                : getCurrency().toPlainText(amount, false, false);
         updateFilters();
+
+        mSendAmountText.setText(amountText);
+        mSendAmountText.setSelection(amountText.length());
+
         updateInfo();
     }
 
     /**
-     * Convierte el valor expresado en fiat a su valor en criptoactivo.
+     * Convierte el valor expresado en fiat a criptomoneda o viceversa dependiendo de
+     * {@link #mIsFiat}.
      *
-     * @param amount Valor en fiat.
-     * @return Valor en criptoactivo.
+     * @param amount Cantidad a expresar.
+     * @return Cantidad convertida.
      */
-    private double toCryptoAsset(double amount) {
-        if (!mIsFiat)
-            return amount;
-
-        return amount / mWallet.getLastPrice();
-    }
-
-    /**
-     * Convierte el valor expresado en criptoactivo a su valor en fiat.
-     *
-     * @param amount Valor en criptoactivo.
-     * @return Valor en fiat.
-     */
-    private double toFiat(double amount) {
-        if (mIsFiat)
-            return amount;
-
-        return amount * mWallet.getLastPrice();
+    private double normalizeValue(double amount) {
+        return mIsFiat
+                ? amount * mWallet.getLastPrice()
+                : amount / mWallet.getLastPrice();
     }
 
     /**
@@ -376,10 +398,8 @@ public class SendPaymentsActivity extends LockableActivity {
         final int size = (int) Math.log10(asset.getUnit());
 
         InputFilter[] filters = {new DecimalsFilter(20, size)};
-        InputFilter[] feeCustomFilters = {new DecimalsFilter(22, size + 2)};
 
         mSendAmountText.setFilters(filters);
-        mSendFeeCustomText.setFilters(feeCustomFilters);
     }
 
     /**
@@ -390,7 +410,7 @@ public class SendPaymentsActivity extends LockableActivity {
     private void onAddressChange(Editable address) {
         mHasValidAddressError = !mWallet.validateAddress(address.toString());
 
-        if (mHasValidAddressError)
+        if (mHasValidAddressError && !Strings.isNullOrEmpty(address.toString()))
             mSendAddressLayout.setError(getString(R.string.error_invalid_address));
         else
             mSendAddressLayout.setError(null);
@@ -441,18 +461,19 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @param address Dirección destino del envío.
      * @param amount  Cantidad a enviar.
+     * @param feeByKB Comisión por kilobyte.
      * @return Comisión por realizar la transacción.
      */
-    private double calculateTotalFee(String address, double amount) {
-        if (Strings.isNullOrEmpty(address))
+    private double calculateTotalFee(String address, double amount, double feeByKB) {
+        if (Strings.isNullOrEmpty(address) || amount == 0)
             return 0;
 
-        ITransaction tx = mWallet.createTx(address, amount, getFee());
+        ITransaction tx = mWallet.createTx(address, amount, feeByKB);
 
         if (tx == null)
             return 0;
 
-        return (tx.getSize() / KB_SIZE) * getFee();
+        return tx.getFee();
     }
 
     /**
@@ -469,7 +490,7 @@ public class SendPaymentsActivity extends LockableActivity {
             case FEE_FAST:
                 return fees.getFaster();
             case FEE_CUSTOM:
-                return Utils.parseFloat(mSendFeeCustomText.toString());
+                return Utils.parseFloat(mSendFeeCustomText.getText().toString());
         }
 
         return 0f;
@@ -522,10 +543,7 @@ public class SendPaymentsActivity extends LockableActivity {
         // TODO Validate can pay
         final String address = mSendAddressText.getText().toString();
         double amount = Float.parseFloat(mSendAmountText.getText().toString());
-        double fee = calculateTotalFee(address, amount);
-
-        amount = toCryptoAsset(amount);
-        fee = toCryptoAsset(fee);
+        double fee = calculateTotalFee(address, amount, getFee());
 
         Preferences.get().authenticate(this, mHandler::post,
                 (IAuthenticationSucceededCallback) authenticationToken -> {
