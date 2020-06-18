@@ -71,6 +71,7 @@ import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.UnreadableWalletException;
 import org.bitcoinj.wallet.WalletTransaction;
 import org.bouncycastle.util.encoders.Hex;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -886,7 +887,6 @@ public class Wallet implements IWallet {
      */
     private void completeTx(TxDecorator tx, double feeByKB) {
         final List<TransactionOutput> unspents = mWallet.calculateAllSpendCandidates();
-        final TxDecorator temp = tx.copy();
         final Address address = mWallet.currentChangeAddress();
 
         Coin value = Coin.ZERO;
@@ -897,14 +897,16 @@ public class Wallet implements IWallet {
             else
                 value = value.add(output.getValue());
 
-        Collections.sort(unspents, (left, right) -> { // TODO Order transactions
-            return 0;
-        });
+        Collections.sort(unspents, (left, right) -> left.getValue().compareTo(right.getValue()));
 
+        TxDecorator temp;
         Coin fee = Coin.ZERO;
         List<TransactionOutput> candidates = new ArrayList<>();
 
         while (true) {
+            temp = tx.copy();
+            candidates.clear();
+
             Coin total = Coin.ZERO;
             Coin valueNeeded = value;
 
@@ -936,14 +938,16 @@ public class Wallet implements IWallet {
             int size = temp.getTx().bitcoinSerialize().length;
             size += estimateSignSize(candidates);
 
-            Coin totalFee = Coin.valueOf((long) (feeByKB * getAsset().getUnit()))
-                    .div(1024).multiply(size);
+            Coin requiredFee = Coin.valueOf((long) (feeByKB * getAsset().getUnit() / 1024))
+                    .multiply(size);
 
-            if (!fee.isLessThan(total))
+            if (!fee.isLessThan(requiredFee))
                 break;
 
-            fee = totalFee;
+            fee = requiredFee;
         }
+
+        tx.getTx().clearInputs();
 
         for (TransactionOutput candidate : candidates)
             tx.getTx().addInput(candidate);
@@ -952,8 +956,6 @@ public class Wallet implements IWallet {
 
         for (TransactionOutput output : temp.getTx().getOutputs())
             tx.getTx().addOutput(output);
-
-        signInputsOfTransaction(tx);
     }
 
     /**
@@ -962,7 +964,7 @@ public class Wallet implements IWallet {
      * @param candidate Salidas candidatos a ser las entradas.
      * @return El tamaño de la firma.
      */
-    private int estimateSignSize(List<TransactionOutput> candidate) {
+    private int estimateSignSize(@NotNull List<TransactionOutput> candidate) {
         int size = 0;
 
         for (TransactionOutput output : candidate) {
@@ -991,11 +993,11 @@ public class Wallet implements IWallet {
     /**
      * Firma las entradas de la transacción.
      *
-     * @param tx Transacción a firmar.
+     * @param txd Transacción a firmar.
      */
-    private void signInputsOfTransaction(@NonNull TxDecorator tx) {
+    private void signInputsOfTransaction(@NonNull TxDecorator txd) {
         // TODO Create sign functions
-        /*
+     /*   Transaction tx = txd.getTx();
         List<TransactionInput> inputs = tx.getInputs();
         List<TransactionOutput> outputs = tx.getOutputs();
 
@@ -1041,12 +1043,12 @@ public class Wallet implements IWallet {
         return new ITransactionFee() {
             @Override
             public double getAverage() {
-                return 0f;
+                return 0.00039936;
             }
 
             @Override
             public double getFaster() {
-                return 0f;
+                return 0.00040960;
             }
         };
     }
@@ -1081,6 +1083,8 @@ public class Wallet implements IWallet {
      */
     @Override
     public List<ITransaction> getTransactions() {
+        org.bitcoinj.core.Context.propagate(mContextLib);
+
         List<ITransaction> txs = new ArrayList<>();
 
         for (WalletTransaction tx : mWallet.getWalletTransactions()) {
@@ -1117,6 +1121,8 @@ public class Wallet implements IWallet {
     @Nullable
     @Override
     public ITransaction findTransaction(String hash) {
+        org.bitcoinj.core.Context.propagate(mContextLib);
+
         Sha256Hash txid = Sha256Hash.wrap(hash);
 
         org.bitcoinj.core.Transaction tx = mWallet.getTransaction(txid);
