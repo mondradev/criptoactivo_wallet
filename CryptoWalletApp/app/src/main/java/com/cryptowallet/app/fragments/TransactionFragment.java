@@ -40,10 +40,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
-import org.w3c.dom.Text;
-
 import java.text.NumberFormat;
-import java.util.Collections;
 
 /**
  * Este fragmento provee de un cuadro de dialogo inferior que permite visualizar los datos de una
@@ -155,7 +152,7 @@ public class TransactionFragment extends BottomSheetDialogFragment {
                         getString(R.string.yesterday_text)
                 ));
         root.<TextView>findViewById(R.id.mTxFee)
-                .setText(criptoAsset.toStringFriendly(mTx.isPay() ? mTx.getNetworkFee() : 0));
+                .setText(criptoAsset.toStringFriendly(mTx.getFee()));
         root.<TextView>findViewById(R.id.mTxSize)
                 .setText(Utils.toSizeFriendlyString(mTx.getSize()));
         root.<TextView>findViewById(R.id.mTxStatus).setText(status);

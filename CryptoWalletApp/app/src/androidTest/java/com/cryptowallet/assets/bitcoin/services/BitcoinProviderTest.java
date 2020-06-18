@@ -192,7 +192,7 @@ public class BitcoinProviderTest {
             }
         }
 
-        assertEquals(0, tx.getNetworkFee(), 0);
+        assertEquals(0, tx.getFee(), 0);
         assertArrayEquals(new String[]{"mj2tZKFhiLkxWz6eJpubj5Y5SiGrmBrgtm"},
                 tx.getFromAddress().toArray());
     }
