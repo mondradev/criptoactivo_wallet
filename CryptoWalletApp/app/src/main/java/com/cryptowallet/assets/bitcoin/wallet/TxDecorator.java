@@ -36,6 +36,7 @@ import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
+import org.bitcoinj.core.TransactionOutPoint;
 import org.bitcoinj.core.TransactionOutput;
 
 import java.util.ArrayList;
@@ -58,14 +59,17 @@ public class TxDecorator implements ITransaction {
      * Minimo de confirmación.
      */
     private static final int MIN_COMMITS = 3;
+
     /**
      * Transacción de Bitcoin.
      */
     private final Transaction mTx;
+
     /**
      * Billetera de bitcoin (BitcoinJ)
      */
     private org.bitcoinj.wallet.Wallet mWallet;
+
     /**
      * Billetera que contiene la transacción.
      */
@@ -171,7 +175,7 @@ public class TxDecorator implements ITransaction {
      * @param index  Posición de la transacción en el bloque.
      */
     private void setBlockInfo(String hash, long height, long time, int index) {
-        final Context context = new Context(mWalletParent.getNetwork());
+        final Context context = Context.getOrCreate(mWalletParent.getNetwork());
         if (height < -1) {
             mTx.getConfidence(context)
                     .setConfidenceType(TransactionConfidence.ConfidenceType.PENDING);
@@ -214,11 +218,8 @@ public class TxDecorator implements ITransaction {
      * @see TxDecorator#requireDependencies()
      */
     @Override
-    public double getNetworkFee() {
-        if (mWallet == null)
-            return calculateFee();
-
-        if (!isPay()) return 0;
+    public double getFee() {
+        if (mWallet != null && !isPay()) return 0;
 
         final long walletFee = getWalletFee();
 
@@ -228,22 +229,6 @@ public class TxDecorator implements ITransaction {
             return (double) fee.add(Coin.valueOf(walletFee)).value / getCriptoAsset().getUnit();
 
         return 0;
-    }
-
-    /**
-     * Calcula la comisión de la transacción a partir de sus entradas y salidas.
-     *
-     * @return Comisión de la transacciones.
-     */
-    private double calculateFee() {
-        Coin fee = Coin.ZERO;
-        for (TransactionInput input : getTx().getInputs())
-            fee = fee.add(input.getValue() != null ? input.getValue() : Coin.ZERO);
-
-        for (TransactionOutput output : getTx().getOutputs())
-            fee = fee.subtract(output.getValue());
-
-        return (double) fee.value / getCriptoAsset().getUnit();
     }
 
     /**
@@ -387,7 +372,7 @@ public class TxDecorator implements ITransaction {
      */
     @Override
     public boolean isConfirm() {
-        return this.mTx.getConfidence().getDepthInBlocks() > MIN_COMMITS;
+        return this.getConfirmations() > MIN_COMMITS;
     }
 
     /**
@@ -412,6 +397,9 @@ public class TxDecorator implements ITransaction {
      */
     @Override
     public long getBlockHeight() {
+        if (mTx.getConfidence().getConfidenceType()
+                != TransactionConfidence.ConfidenceType.BUILDING)
+            return -1;
         return this.mTx.getConfidence().getAppearedAtChainHeight();
     }
 
@@ -485,8 +473,10 @@ public class TxDecorator implements ITransaction {
      */
     @Override
     public long getConfirmations() {
-        return this.mTx.getConfidence(Context.getOrCreate(mWalletParent.getNetwork()))
-                .getDepthInBlocks();
+        if (mTx.getConfidence(Context.getOrCreate(mWalletParent.getNetwork())).getConfidenceType()
+                != TransactionConfidence.ConfidenceType.BUILDING)
+            return 0;
+        return this.mTx.getConfidence().getDepthInBlocks();
     }
 
     /**
@@ -544,20 +534,27 @@ public class TxDecorator implements ITransaction {
      * @return Una transacción nueva.
      */
     public TxDecorator copy() {
-        final TxDecorator wtx = new TxDecorator(mWalletParent, mTx.bitcoinSerialize());
-        final Context context = new Context(mWalletParent.getNetwork());
-        final int height = mTx.getConfidence(context).getAppearedAtChainHeight();
+        final TxDecorator wtx = new TxDecorator(mWalletParent);
+        final Context context = Context.getOrCreate(mWalletParent.getNetwork());
+        final TransactionConfidence confidence = mTx.getConfidence(context);
+        final int height = confidence.getConfidenceType()
+                != TransactionConfidence.ConfidenceType.BUILDING
+                ? -1 : confidence.getAppearedAtChainHeight();
 
-        for (TransactionInput input : wtx.mTx.getInputs()) {
-            TransactionOutput output = mTx.getInput(input.getIndex())
-                    .getOutpoint().getConnectedOutput();
+        for (TransactionOutput output : mTx.getOutputs())
+            wtx.getTx().addOutput(output.getValue(), output.getScriptPubKey());
 
-            input.connect(new TransactionOutput(
+        for (TransactionInput txi : mTx.getInputs()) {
+            TransactionOutPoint outpoint = txi.getOutpoint();
+
+            TransactionInput input = new TransactionInput(
                     mWalletParent.getNetwork(),
-                    Objects.requireNonNull(output).getParentTransaction(),
-                    output.getValue(),
-                    output.getScriptBytes())
+                    wtx.getTx(),
+                    txi.getScriptBytes(),
+                    outpoint
             );
+
+            wtx.getTx().addInput(input);
         }
 
         if (height >= 0) {
