@@ -42,8 +42,8 @@ public final class InSufficientBalanceException extends RuntimeException {
     /**
      * Crea una nueva excepción de saldo insuficiente.
      *
-     * @param asset          Activo que se trató de enviar.
-     * @param requireAmount  Saldo requerido.
+     * @param asset         Activo que se trató de enviar.
+     * @param requireAmount Saldo requerido.
      */
     public InSufficientBalanceException(SupportedAssets asset, double requireAmount) {
         this(asset, requireAmount, null);
@@ -59,7 +59,8 @@ public final class InSufficientBalanceException extends RuntimeException {
      */
     public InSufficientBalanceException(SupportedAssets asset, double requireAmount,
                                         Exception innerException) {
-        super("The wallet doesn't have enough balance", innerException);
+        super(String.format("The wallet doesn't have enough balance: %s",
+                asset.toStringFriendly(requireAmount)), innerException);
         mAsset = asset;
         mRequireAmount = requireAmount;
     }
