@@ -190,4 +190,5 @@
     <string name="to_text">To</string>
     <string name="authenticator_2fa_title">Authentication 2-Factors</string>
     <string name="authenticate_text">Authenticate</string>
+    <string name="fee_error">Your custom fee isn\'t valid</string>
 </resources>

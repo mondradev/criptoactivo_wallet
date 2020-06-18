@@ -156,4 +156,5 @@
     <string name="to_text">Para</string>
     <string name="authenticator_2fa_title">Autenticación 2-Factores</string>
     <string name="authenticate_text">Autenticar</string>
+    <string name="fee_error">Tu comisión personalizada es invalida</string>
 </resources>

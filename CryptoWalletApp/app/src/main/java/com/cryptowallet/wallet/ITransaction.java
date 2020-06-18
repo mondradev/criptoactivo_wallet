@@ -44,7 +44,7 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Comisión de la transacción.
      */
-    double getNetworkFee();
+    double getFee();
 
     /**
      * Obtiene la cantidad gastada en la transacción sin incluir la comisión.

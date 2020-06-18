@@ -159,14 +159,14 @@ public enum SupportedAssets {
      * @return Una cadena que representa la cantidad en la divisa.
      */
     public String toStringFriendly(double value) {
-        return  toStringFriendly(value, true);
+        return toStringFriendly(value, true);
     }
 
     /**
      * Obtiene la representación de una cantidad en la divisa. Ej: 100.0 -> $100.00
      *
-     * @param value Valor a formatear.
-     * @param reduce  Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
+     * @param value  Valor a formatear.
+     * @param reduce Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
      * @return Una cadena que representa la cantidad en la divisa.
      */
     public String toStringFriendly(double value, boolean reduce) {
@@ -216,17 +216,30 @@ public enum SupportedAssets {
      * @return Una cadena que representa la cantidad en la divisa.
      */
     public String toPlainText(double value) {
-        return  toPlainText(value, true);
+        return toPlainText(value, true, true);
+    }
+
+
+    /**
+     * Obtiene la representación de la cantidad formateada con el número de digitos máximos.
+     *
+     * @param value  Valor a formatear.
+     * @param reduce Indica si se debe abreviar el valor. Ej. 1,000 -> K o 1,000,000 -> M.
+     * @return Una cadena que representa la cantidad en la divisa.
+     */
+    public String toPlainText(double value, boolean reduce) {
+        return toPlainText(value, reduce, true);
     }
 
     /**
      * Obtiene la representación de la cantidad formateada con el número de digitos máximos.
      *
-     * @param value Valor a formatear.
-     * @param reduce  Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
+     * @param value        Valor a formatear.
+     * @param reduce       Indica si se debe abreviar el valor. Ej. 1,000 -> K o 1,000,000 -> M.
+     * @param groupingUsed Indica si se agrupan las cifras. Ej. 1000000 -> 1,000,000
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toPlainText(double value, boolean reduce) {
+    public String toPlainText(double value, boolean reduce, boolean groupingUsed) {
         final NumberFormat instance = NumberFormat.getInstance();
 
         int minDigits = (int) Math.log10(mUnit);
@@ -252,6 +265,7 @@ public enum SupportedAssets {
         } else
             minDigits = Math.min(minDigits, 4);
 
+        instance.setGroupingUsed(groupingUsed);
         instance.setMinimumFractionDigits(minDigits);
         instance.setMaximumFractionDigits(maxDigits);
 
