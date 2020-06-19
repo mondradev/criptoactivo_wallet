@@ -191,4 +191,6 @@
     <string name="authenticator_2fa_title">Authentication 2-Factors</string>
     <string name="authenticate_text">Authenticate</string>
     <string name="fee_error">Your custom fee isn\'t valid</string>
+    <string name="successful_payment_pattern">Your payment of %s was successful</string>
+    <string name="share_successful_payment_title">Share successful payment</string>
 </resources>

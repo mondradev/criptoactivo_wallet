@@ -267,7 +267,7 @@ public class CryptoAssetFragment extends Fragment {
         Intent intent = new Intent(requireActivity(), SendPaymentsActivity.class);
         intent.putExtra(ASSET_KEY, mWallet.getAsset().name());
 
-        startActivityForResult(intent, SEND_PAYMENTS_REQUEST); // TODO Process result
+        startActivityForResult(intent, SEND_PAYMENTS_REQUEST);
     }
 
     /**

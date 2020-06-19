@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#000"
+        android:pathData="M256,92.5A163.5,163.5,0,1,0,419.5,256,163.5,163.5,0,0,0,256,92.5Zm0,306A142.5,142.5,0,1,1,398.5,256,142.5,142.5,0,0,1,256,398.5Z" />
+    <path
+        android:fillColor="#000"
+        android:pathData="-M342.53 178.76 217.78 303.51 169.47 255.2 154.62 270.05 202.93 318.36 202.9 318.39 217.75 333.24 357.38 193.61 342.53 178.76z" />
+</vector>

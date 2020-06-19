@@ -37,7 +37,9 @@ import androidx.core.app.ActivityCompat;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
+import com.cryptowallet.app.fragments.Authenticator2FaFragment;
 import com.cryptowallet.app.fragments.CryptoAssetFragment;
+import com.cryptowallet.app.fragments.SuccessfulPaymentFragment;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.utils.inputfilters.DecimalsFilter;
 import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
@@ -90,11 +92,6 @@ public class SendPaymentsActivity extends LockableActivity {
      * Petición de permiso de uso de cámara.
      */
     private static final int PERMISSION_CAMERA_REQUEST = 4;
-
-    /**
-     * Bytes contenidos en un KB.
-     */
-    private static final float KB_SIZE = 1024f;
 
     /**
      * Tipo de comisión seleccionada.
@@ -285,13 +282,25 @@ public class SendPaymentsActivity extends LockableActivity {
     }
 
     /**
+     * Parsea el valor del texto y si está activa la bandera {@link #mIsFiat}, hace la conversión a
+     * el criptoactivo.
+     *
+     * @param value Valor con un formato válido para convertir a número.
+     * @return Valor en criptoactivo.
+     */
+    private double parseToCrypto(String value) {
+        final double amount = Utils.parseDouble(value);
+
+        return mIsFiat ? amount / mWallet.getLastPrice() : amount;
+    }
+
+    /**
      * Verifica si el saldo es suficiente para realizar el envío.
      */
     private void checkEnoughtBalance() {
         final SupportedAssets asset = getCurrency();
         final double balance = mWallet.getBalance();
-        final double amount = Utils.parseDouble(mSendAmountText.getText().toString());
-        final double cryptoAmount = mIsFiat ? amount / mWallet.getLastPrice() : amount;
+        final double cryptoAmount = parseToCrypto(mSendAmountText.getText().toString());
 
         if (mWallet.isDust(cryptoAmount) && cryptoAmount > 0)
             setEnoughtBalanceError(getString(R.string.is_dust_error));
@@ -310,15 +319,16 @@ public class SendPaymentsActivity extends LockableActivity {
                     setEnoughtBalanceError(getString(R.string.no_enought_funds_error));
                 else {
                     mSendAmountLayout.setError(null);
+                    mSendFeeCustomLayout.setError(null);
                     mHasEnoughtBalanceError = false;
                 }
 
                 mSendTotalFeeText.setText(asset.toStringFriendly(
-                        mIsFiat ? normalizeValue(fee) : fee, false));
-                mSendTotalPayText.setText(asset.toStringFriendly(
-                        mIsFiat ? normalizeValue(total) : total, false));
+                        mIsFiat ? fee * mWallet.getLastPrice() : fee, false));
 
-                mSendFeeCustomLayout.setError(null);
+                mSendTotalPayText.setText(asset.toStringFriendly(
+                        mIsFiat ? total * mWallet.getLastPrice() : total, false));
+
             } catch (InSufficientBalanceException ex) {
                 mSendFeeCustomLayout.setError(getString(R.string.fee_error));
                 mHasEnoughtBalanceError = true;
@@ -356,21 +366,17 @@ public class SendPaymentsActivity extends LockableActivity {
         Utils.tryNotThrow(() -> CheckableImageButton.class
                 .getMethod("setChecked", boolean.class).invoke(view, !mIsFiat));
 
-        double amount = 0;
-
         mIsFiat = !mIsFiat;
 
-        if (!Strings.isNullOrEmpty(mSendAmountText.getText().toString())) {
-            amount = Utils.parseDouble(mSendAmountText.getText().toString());
-            amount = normalizeValue(amount);
-        }
+        double amount = normalizeValue(Utils.parseDouble(mSendAmountText.getText().toString()));
 
-        mSendAmountLayout.setHint(getString(R.string.amount_pattern, getCurrency().name()));
+        String amountText = amount > 0
+                ? getCurrency().toPlainText(amount, false, false)
+                : "";
 
-        String amountText = amount == 0 ? ""
-                : getCurrency().toPlainText(amount, false, false);
         updateFilters();
 
+        mSendAmountLayout.setHint(getString(R.string.amount_pattern, getCurrency().name()));
         mSendAmountText.setText(amountText);
         mSendAmountText.setSelection(amountText.length());
 
@@ -540,15 +546,19 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param view Componente el cual desencadeno el evento Click.
      */
     public void onPay(View view) {
-        // TODO Validate can pay
         final String address = mSendAddressText.getText().toString();
-        double amount = Float.parseFloat(mSendAmountText.getText().toString());
-        double fee = calculateTotalFee(address, amount, getFee());
+        final double amount = parseToCrypto(mSendAmountText.getText().toString());
+        final ITransaction tx = mWallet.createTx(address, amount, getFee());
 
         Preferences.get().authenticate(this, mHandler::post,
-                (IAuthenticationSucceededCallback) authenticationToken -> {
-                    // TODO Show Dialog 2FA and Send Pay {address, amount, fee}
-                });
+                (IAuthenticationSucceededCallback) authenticationToken ->
+                        Authenticator2FaFragment.show(this, () -> {
+                            if (mWallet.sendTx(tx, authenticationToken)) {
+                                SuccessfulPaymentFragment.show(this, tx);
+                            } else {
+                                // TODO Show fail in send
+                            }
+                        }));
     }
 
     /**
@@ -560,7 +570,8 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param data        Información devuelta.
      */
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode,
+                                    @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode != SCAN_QR_REQUEST || resultCode != RESULT_OK || data == null)

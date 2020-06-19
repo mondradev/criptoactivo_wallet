@@ -277,4 +277,13 @@ public interface IWallet {
      */
     @Nullable
     ITransaction findTransaction(String hash);
+
+    /**
+     * Firma una transacción y la propaga por la red.
+     *
+     * @param tx                  Transacción a envíar.
+     * @param authenticationToken Token de autenticación para firmar la transacción.
+     * @return True si se logró enviar la transacción.
+     */
+    boolean sendTx(ITransaction tx, byte[] authenticationToken);
 }
