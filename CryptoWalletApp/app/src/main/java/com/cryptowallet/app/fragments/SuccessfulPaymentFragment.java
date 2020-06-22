@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -116,12 +117,6 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
             = String.format("%s.ToAddressKey", SuccessfulPaymentFragment.class.getName());
 
     /**
-     * Clave del parametro tamaño de la transacción.
-     */
-    private static final String SIZE_EXTRA
-            = String.format("%s.SizeKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
      * Muestra un cuadro de diálogo inferior con los datos de la transacción enviada.
      *
      * @param activity    Actividad que invoca.
@@ -136,7 +131,6 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
         parameters.putDouble(AMOUNT_EXTRA, transaction.getAmount());
         parameters.putDouble(FIAT_AMOUNT_EXTRA, transaction.getFiatAmount());
         parameters.putDouble(FEE_EXTRA, transaction.getFee());
-        parameters.putLong(SIZE_EXTRA, transaction.getSize());
         parameters.putStringArray(TO_ADDRESSES_EXTRA,
                 transaction.getToAddress().toArray(new String[0]));
 
@@ -169,8 +163,6 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
         root.<TextView>findViewById(R.id.mSuPayFee)
                 .setText(asset.toStringFriendly(arguments.getDouble(FEE_EXTRA)));
         root.<TextView>findViewById(R.id.mSuPayTo).setText(Joiner.on("\n").join(toAddresses));
-        root.<TextView>findViewById(R.id.mSuPaySize)
-                .setText(Utils.toSizeFriendlyString(arguments.getLong(SIZE_EXTRA)));
 
         root.<TextView>findViewById(R.id.mSuPayMessage)
                 .setText(getString(R.string.successful_payment_pattern, toFriendlyString(
@@ -182,6 +174,17 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
         root.findViewById(R.id.mSuPayShareButton).setOnClickListener(this::onPressedButton);
 
         return root;
+    }
+
+    /**
+     * Este método es llamado cuando el cuadro de diálogo es finalizado.
+     *
+     * @param dialog Funciones de eventos del cuadro de diálogo.
+     */
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+        requireActivity().finish();
     }
 
     /**
@@ -223,6 +226,7 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
                 view.getMeasuredHeight(),
                 ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(Utils.resolveColor(requireContext(), R.attr.colorSurface));
         view.draw(canvas);
 
         return bitmap;

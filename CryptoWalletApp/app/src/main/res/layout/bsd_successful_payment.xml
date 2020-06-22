@@ -21,7 +21,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:paddingStart="24dp"
-    android:paddingTop="24dp"
+    android:paddingTop="8dp"
     android:paddingEnd="24dp"
     android:theme="?attr/bottomSheetDialogTheme">
 
@@ -29,7 +29,7 @@
         android:layout_width="192dp"
         android:layout_height="192dp"
         android:layout_gravity="center_horizontal"
-        android:contentDescription="@string/icon_description"
+        android:contentDescription="@null"
         android:src="@drawable/ic_sucessful"
         android:tint="?attr/colorPrimaryDark" />
 
@@ -39,7 +39,7 @@
         android:layout_height="wrap_content"
         android:text="@string/successful_payment_pattern"
         android:textAlignment="center"
-        android:textAppearance="?attr/textAppearanceHeadline6" />
+        android:textAppearance="?attr/textAppearanceSubtitle1" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -96,20 +96,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/address_sample"
-            android:textAppearance="?attr/textAppearanceBody2" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/size_text"
-            android:textAppearance="?attr/textAppearanceSubtitle2" />
-
-        <TextView
-            android:id="@+id/mSuPaySize"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/size_sample_text"
             android:textAppearance="?attr/textAppearanceBody2" />
 
         <Button
