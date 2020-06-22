@@ -480,6 +480,16 @@ public class TxDecorator implements ITransaction {
     }
 
     /**
+     * Obtiene los bytes que representa a la transacción.
+     *
+     * @return Matriz unidimensional de bytes.
+     */
+    @Override
+    public byte[] serialize() {
+        return getTx().bitcoinSerialize();
+    }
+
+    /**
      * Compara la transacción con otra del mismo activo para determinar cual es más reciente.
      *
      * @param o Otra transacción.

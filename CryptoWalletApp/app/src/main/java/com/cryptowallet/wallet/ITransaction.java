@@ -148,4 +148,11 @@ public interface ITransaction extends Comparable<ITransaction> {
      * @return El número de confirmaciones.
      */
     long getConfirmations();
+
+    /**
+     * Obtiene los bytes que representa a la transacción.
+     *
+     * @return Matriz unidimensional de bytes.
+     */
+    byte[] serialize();
 }
