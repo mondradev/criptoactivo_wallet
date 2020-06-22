@@ -123,6 +123,8 @@ public class BitcoinProvider {
      * {@link #MAX_ATTEMPS} intentos.
      */
     private <T> T tryDo(Callable<T> request) {
+        mWallet.propagateLib();
+
         for (int attemp = 0; attemp < MAX_ATTEMPS; attemp++) {
             try {
                 T response = request.call();
@@ -131,6 +133,8 @@ public class BitcoinProvider {
                     return response;
             } catch (Exception e) {
                 Log.e(LOG_TAG, "Unable to complete the request: " + e.getMessage());
+            } finally {
+                Thread.currentThread().setName("Bitcoin Provider");
             }
         }
 
@@ -144,6 +148,7 @@ public class BitcoinProvider {
      * @param address Dirección en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
+    @SuppressWarnings("SameParameterValue")
     ListenableFutureTask<List<TxDecorator>> getHistoryByAddress(byte[] address, int height) {
         final String addressHex = Hex.toHexString(address);
         final List<TxDecorator> history = new ArrayList<>();
@@ -241,7 +246,28 @@ public class BitcoinProvider {
      * @return Una tarea encargada de gestionar la petición.
      */
     public ListenableFutureTask<Boolean> broadcastTx(TxDecorator transaction) {
-        return null;
+        if (transaction == null)
+            throw new NullPointerException("Transaction is null");
+
+        String hexTx = Hex.toHexString(transaction.serialize());
+
+        ListenableFutureTask<Boolean> task = ListenableFutureTask.create(() -> {
+            Thread.currentThread().setName("Bitcoin Provider broadcastTx");
+            return tryDo(() -> {
+                String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
+                Response<Boolean> response = mApi.broadcastTx(networkName, hexTx)
+                        .execute();
+
+                if (!response.isSuccessful() || response.body() == null)
+                    return false;
+
+                return response.body();
+            });
+        });
+
+        mExecutor.execute(task);
+
+        return task;
     }
 
     /**

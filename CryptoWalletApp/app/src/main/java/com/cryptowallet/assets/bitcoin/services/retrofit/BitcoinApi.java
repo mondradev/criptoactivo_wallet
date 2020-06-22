@@ -32,6 +32,17 @@ import retrofit2.http.Query;
  * @version 1.0
  */
 public interface BitcoinApi {
+
+    /**
+     * Envía una transacción a la red para distribuirla y pueda ser agregada a la cadena de bloques.
+     *
+     * @param network Tipo de red a la cual pertenece la transacción.
+     * @param hex     Datos de la transacción en crudo.
+     * @return Un true si la transacción fue enviada.
+     */
+    @GET("btc/{network}/broadcast/{hex}")
+    Call<Boolean> broadcastTx(@Path("network") String network, @Path("hex") String hex);
+
     /**
      * Obtiene el historial de transacciones de una dirección.
      *
