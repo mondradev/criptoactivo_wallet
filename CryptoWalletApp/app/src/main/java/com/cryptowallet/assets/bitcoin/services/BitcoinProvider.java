@@ -21,6 +21,7 @@ package com.cryptowallet.assets.bitcoin.services;
 import android.util.Log;
 
 import com.cryptowallet.assets.bitcoin.services.retrofit.BitcoinApi;
+import com.cryptowallet.assets.bitcoin.services.retrofit.BroadcastResponse;
 import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfo;
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
 import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
@@ -255,13 +256,13 @@ public class BitcoinProvider {
             Thread.currentThread().setName("Bitcoin Provider broadcastTx");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<Boolean> response = mApi.broadcastTx(networkName, hexTx)
+                Response<BroadcastResponse> response = mApi.broadcastTx(networkName, hexTx)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return false;
 
-                return response.body();
+                return response.body().isSent();
             });
         });
 

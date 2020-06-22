@@ -41,7 +41,7 @@ public interface BitcoinApi {
      * @return Un true si la transacción fue enviada.
      */
     @GET("btc/{network}/broadcast/{hex}")
-    Call<Boolean> broadcastTx(@Path("network") String network, @Path("hex") String hex);
+    Call<BroadcastResponse> broadcastTx(@Path("network") String network, @Path("hex") String hex);
 
     /**
      * Obtiene el historial de transacciones de una dirección.
