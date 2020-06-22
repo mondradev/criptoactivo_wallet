@@ -62,14 +62,20 @@ import org.bitcoinj.crypto.MnemonicException;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptException;
 import org.bitcoinj.script.ScriptPattern;
+import org.bitcoinj.signers.TransactionSigner;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 import org.bitcoinj.utils.Threading;
+import org.bitcoinj.wallet.DecryptingKeyBag;
 import org.bitcoinj.wallet.DeterministicSeed;
+import org.bitcoinj.wallet.KeyBag;
 import org.bitcoinj.wallet.KeyChain;
+import org.bitcoinj.wallet.RedeemData;
 import org.bitcoinj.wallet.UnreadableWalletException;
 import org.bitcoinj.wallet.WalletTransaction;
+import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.util.encoders.Hex;
 import org.jetbrains.annotations.NotNull;
 
@@ -233,6 +239,30 @@ public class Wallet implements IWallet {
     }
 
     /**
+     * Obtiene el número de iteraciones que se requieren para realizar la encriptación de una clave.
+     *
+     * @param password Clave a analizar.
+     * @return El número de iteraciones.
+     */
+    private static int calculateIterations(String password) {
+        final int targetTimeMsec = 5000;
+
+        int iterations = 16384;
+        long now = System.currentTimeMillis();
+
+        new KeyCrypterScrypt(iterations).deriveKey(password);
+
+        long time = System.currentTimeMillis() - now;
+
+        while (time > targetTimeMsec) {
+            iterations >>= 1;
+            time /= 2;
+        }
+
+        return iterations;
+    }
+
+    /**
      * Elimina la billetera existente.
      *
      * @return Un true si la billetera fue borrada.
@@ -316,7 +346,7 @@ public class Wallet implements IWallet {
         mExecutor.execute(() -> {
             Thread.currentThread().setName("Bitcoin Wallet");
 
-            org.bitcoinj.core.Context.propagate(mContextLib);
+            propagateLib();
 
             try {
                 Threading.USER_THREAD = mExecutor;
@@ -333,9 +363,11 @@ public class Wallet implements IWallet {
                         mWallet = org.bitcoinj.wallet.Wallet
                                 .createDeterministic(mNetwork, Script.ScriptType.P2PKH);
 
-                    KeyCrypterScrypt scrypt = new KeyCrypterScrypt();
+                    String password = Hex.toHexString(authenticationToken);
 
-                    mWallet.encrypt(scrypt, scrypt.deriveKey(Hex.toHexString(authenticationToken)));
+                    KeyCrypterScrypt scrypt = new KeyCrypterScrypt(calculateIterations(password));
+
+                    mWallet.encrypt(scrypt, scrypt.deriveKey(password));
                     mWallet.saveToFile(mWalletFile);
                 }
 
@@ -366,6 +398,13 @@ public class Wallet implements IWallet {
                 onInitialized.accept(true);
             }
         });
+    }
+
+    /**
+     * Propaga el contexto de la liberaría BitcoinJ.
+     */
+    public void propagateLib() {
+        org.bitcoinj.core.Context.propagate(mContextLib);
     }
 
     /**
@@ -693,7 +732,7 @@ public class Wallet implements IWallet {
 
         mWallet.addCoinsReceivedEventListener(this::onNewTransaction);
         mWallet.addCoinsSentEventListener(this::onNewTransaction);
-        mWallet.addChangeEventListener(wallet -> Wallet.this.notifyBalanceChange());
+        mWallet.addChangeEventListener(wallet -> notifyBalanceChange());
     }
 
     /**
@@ -856,6 +895,9 @@ public class Wallet implements IWallet {
 
         completeTx(tx, feeByKB);
 
+        Log.d(LOG_TAG, String.format("Created transaction [%s] (%s)",
+                tx.getID(), Utils.toSizeFriendlyString(tx.getSize())));
+
         return tx;
     }
 
@@ -893,7 +935,11 @@ public class Wallet implements IWallet {
 
         for (TransactionOutput output : tx.getTx().getOutputs())
             if (output.isDust())
-                throw new IllegalArgumentException("Output is dust, verify transaction");
+                throw new IllegalArgumentException(
+                        String.format("Output is dust, %s to %s",
+                                output.getValue().toFriendlyString(),
+                                output.getScriptPubKey().getToAddress(mNetwork)
+                        ));
             else
                 value = value.add(output.getValue());
 
@@ -935,10 +981,13 @@ public class Wallet implements IWallet {
                     temp.getTx().addOutput(txo);
             }
 
+            for (TransactionOutput txo : candidates)
+                temp.getTx().addInput(txo);
+
             int size = temp.getTx().bitcoinSerialize().length;
             size += estimateSignSize(candidates);
 
-            Coin requiredFee = Coin.valueOf((long) (feeByKB * getAsset().getUnit() / 1024))
+            Coin requiredFee = Coin.valueOf((long) (feeByKB * getAsset().getUnit() / 1000))
                     .multiply(size);
 
             if (!fee.isLessThan(requiredFee))
@@ -957,6 +1006,7 @@ public class Wallet implements IWallet {
         for (TransactionOutput output : temp.getTx().getOutputs())
             tx.getTx().addOutput(output);
     }
+
 
     /**
      * Calcula el tamaño de la firma de cada entrada.
@@ -993,43 +1043,60 @@ public class Wallet implements IWallet {
     /**
      * Firma las entradas de la transacción.
      *
-     * @param txd Transacción a firmar.
+     * @param txd                 Transacción a firmar.
+     * @param authenticationToken Token de autenticación de la billetera.
      */
-    private void signInputsOfTransaction(@NonNull TxDecorator txd) {
-        // TODO Create sign functions
-     /*   Transaction tx = txd.getTx();
+    private void signInputsOfTransaction(@NonNull TxDecorator txd, byte[] authenticationToken) {
+        Transaction tx = txd.getTx();
         List<TransactionInput> inputs = tx.getInputs();
-        List<TransactionOutput> outputs = tx.getOutputs();
+        tx.setPurpose(Transaction.Purpose.USER_PAYMENT);
 
-        KeyBag maybeDecryptingKeyBag = new DecryptingKeyBag(mWallet,
-                mWallet.getKeyCrypter().deriveKey(""));
+        KeyCrypter keyCrypter = mWallet.getKeyCrypter();
 
-        int numInputs = tx.getInputs().size();
-        for (int i = 0; i < numInputs; i++) {
-            TransactionInput txIn = tx.getInput(i);
+        Objects.requireNonNull(keyCrypter);
+
+        KeyParameter aesKey = keyCrypter.deriveKey(Hex.toHexString(authenticationToken));
+        KeyBag maybeDecryptingKeyBag = new DecryptingKeyBag(mWallet, aesKey);
+
+        for (int index = 0; index < inputs.size(); index++) {
+            TransactionInput txIn = inputs.get(index);
             TransactionOutput connectedOutput = txIn.getConnectedOutput();
+
             if (connectedOutput == null)
                 continue;
+
             Script scriptPubKey = connectedOutput.getScriptPubKey();
 
             try {
-                txIn.getScriptSig().correctlySpends(tx, i, txIn.getWitness(), connectedOutput.getValue(),
-                        connectedOutput.getScriptPubKey(), Script.ALL_VERIFY_FLAGS);
+                txIn.getScriptSig().correctlySpends(tx, index, txIn.getWitness(),
+                        connectedOutput.getValue(), connectedOutput.getScriptPubKey(),
+                        Script.ALL_VERIFY_FLAGS);
+
                 continue;
             } catch (ScriptException e) {
-                // Expected.
+                // Nothing do
             }
 
-            RedeemData redeemData = txIn.getConnectedRedeemData(maybeDecryptingKeyBag);
-            checkNotNull(redeemData, "Transaction exists in wallet that we cannot redeem: %s", txIn.getOutpoint().getHash());
-            txIn.setScriptSig(scriptPubKey.createEmptyInputScript(redeemData.keys.get(0), redeemData.redeemScript));
-            txIn.setWitness(scriptPubKey.createEmptyWitness(redeemData.keys.get(0)));
+            final RedeemData redeemData = txIn.getConnectedRedeemData(maybeDecryptingKeyBag);
+
+            Objects.requireNonNull(redeemData,
+                    String.format("Transaction exists in wallet that we cannot redeem: %s",
+                            txIn.getOutpoint().getHash()));
+
+            final ECKey key = redeemData.keys.get(0);
+
+            txIn.setScriptSig(scriptPubKey.createEmptyInputScript(key, redeemData.redeemScript)); // 41 -> 76 -> 147 | 41 + 35 + 71
+            txIn.setWitness(scriptPubKey.createEmptyWitness(key));
         }
 
-        TransactionSigner.ProposedTransaction proposal = new TransactionSigner.ProposedTransaction(tx);
-        for (TransactionSigner signer : signers)
+        final TransactionSigner.ProposedTransaction proposal
+                = new TransactionSigner.ProposedTransaction(tx);
+
+        for (TransactionSigner signer : mWallet.getTransactionSigners())
             signer.signInputs(proposal, maybeDecryptingKeyBag);
-        */
+
+        Log.d(LOG_TAG, String.format("Signed transaction [%s] (%s)", // 147
+                txd.getID(), Utils.toSizeFriendlyString(txd.getSize())));
     }
 
     /**
@@ -1083,7 +1150,7 @@ public class Wallet implements IWallet {
      */
     @Override
     public List<ITransaction> getTransactions() {
-        org.bitcoinj.core.Context.propagate(mContextLib);
+        propagateLib();
 
         List<ITransaction> txs = new ArrayList<>();
 
@@ -1121,7 +1188,7 @@ public class Wallet implements IWallet {
     @Nullable
     @Override
     public ITransaction findTransaction(String hash) {
-        org.bitcoinj.core.Context.propagate(mContextLib);
+        propagateLib();
 
         Sha256Hash txid = Sha256Hash.wrap(hash);
 
@@ -1131,6 +1198,25 @@ public class Wallet implements IWallet {
             return null;
 
         return TxDecorator.wrap(tx, this);
+    }
+
+    /**
+     * Firma una transacción y la propaga por la red.
+     *
+     * @param tx                  Transacción a envíar.
+     * @param authenticationToken Token de autenticación para firmar la transacción.
+     * @return True si se logró enviar la transacción.
+     */
+    @Override
+    public boolean sendTx(ITransaction tx, byte[] authenticationToken) {
+        if (!(tx instanceof TxDecorator))
+            throw new IllegalArgumentException(
+                    "The transaction cannot be sent because it isn't a Bitcoin transaction");
+
+        return Utils.tryReturnBoolean(() -> {
+            signInputsOfTransaction((TxDecorator) tx, authenticationToken);
+            return BitcoinProvider.get(this).broadcastTx((TxDecorator) tx).get();
+        }, false);
     }
 
     /**
