@@ -55,12 +55,12 @@ import static android.content.Context.CLIPBOARD_SERVICE;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
  */
-public class Authenticator2FaFragment extends BottomSheetDialogFragment {
+public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
 
     /**
      * TAG del fragmento.
      */
-    private static final String TAG_FRAGMENT = "Authenticator2FaFragment";
+    private static final String TAG_FRAGMENT = "TwoFactorAuthenticationFragment";
 
     /**
      * Identificadores de los digitos del código de autenticación.
@@ -90,7 +90,7 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
      *
      * @param onSucceeded Función que permite indicar si fue completada la autenticación.
      */
-    private Authenticator2FaFragment(IAuthenticationSucceeded onSucceeded) {
+    private TwoFactorAuthenticationFragment(IAuthenticationSucceeded onSucceeded) {
         mSuccededCallback = onSucceeded;
     }
 
@@ -100,7 +100,7 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
      * @param activity Actividad que invoca.
      */
     public static void show(@NonNull FragmentActivity activity, IAuthenticationSucceeded onSucceeded) {
-        new Authenticator2FaFragment(onSucceeded)
+        new TwoFactorAuthenticationFragment(onSucceeded)
                 .show(activity.getSupportFragmentManager(), TAG_FRAGMENT);
     }
 
@@ -120,7 +120,7 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
         root.findViewById(R.id.m2FaSubmitButton).setOnClickListener(this::onSubmit);
 
         for (int id : mDigitsAuthCode) {
-            final EditText editor = requireEditTextById(id);
+            final EditText editor = requireEditTextById(root, id);
 
             editor.addTextChangedListener((IAfterTextChangedListener) s -> {
                 for (InputFilter filter : editor.getFilters())
@@ -173,7 +173,7 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
                 if (!Pattern.matches("[0-9]{6}", text)) return;
 
                 for (int i = 0; i < mDigitsAuthCode.length; i++)
-                    requireEditTextById(mDigitsAuthCode[i])
+                    requireEditTextById(root, mDigitsAuthCode[i])
                             .setText(Character.toString(text.charAt(i)));
             }
 
@@ -204,10 +204,10 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
         final StringBuilder builder = new StringBuilder();
 
         for (int id : mDigitsAuthCode)
-            if (Strings.isNullOrEmpty(requireEditTextById(id).getText().toString()))
+            if (Strings.isNullOrEmpty(requireEditTextById(requireView(), id).getText().toString()))
                 return;
             else
-                builder.append(requireEditTextById(id).getText());
+                builder.append(requireEditTextById(requireView(), id).getText());
 
         final int authCode = Integer.parseInt(builder.toString());
 
@@ -218,9 +218,9 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
                 mSuccededCallback.onSucceeded();
         } else {
             for (int id : mDigitsAuthCode)
-                requireEditTextById(id).setText("");
+                requireEditTextById(requireView(), id).setText("");
 
-            requireEditTextById(R.id.m2FaCodeDigit1).requestFocus();
+            requireEditTextById(requireView(), R.id.m2FaCodeDigit1).requestFocus();
 
             Snackbar.make((View) requireView().findViewById(R.id.m2FaRegisterButton).getParent(),
                     R.string.error_msg_auth_code,
@@ -232,11 +232,12 @@ public class Authenticator2FaFragment extends BottomSheetDialogFragment {
     /**
      * Obtiene el cuadro de texto especificado por identificador especificado.
      *
-     * @param id Identificador de la vista.
+     * @param root Vista raiz del fragmento.
+     * @param id   Identificador de la vista.
      * @return Un cuadro de texto.
      */
-    private EditText requireEditTextById(int id) {
-        View view = requireView().findViewById(id);
+    private EditText requireEditTextById(View root, int id) {
+        View view = root.findViewById(id);
         Objects.requireNonNull(view);
 
         if (view instanceof EditText)
