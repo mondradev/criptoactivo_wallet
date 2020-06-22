@@ -37,9 +37,11 @@ import androidx.core.app.ActivityCompat;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
-import com.cryptowallet.app.fragments.Authenticator2FaFragment;
+import com.cryptowallet.app.authentication.TwoFactorAuthentication;
 import com.cryptowallet.app.fragments.CryptoAssetFragment;
+import com.cryptowallet.app.fragments.FailMessageFragment;
 import com.cryptowallet.app.fragments.SuccessfulPaymentFragment;
+import com.cryptowallet.app.fragments.TwoFactorAuthenticationFragment;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.utils.inputfilters.DecimalsFilter;
 import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
@@ -291,7 +293,9 @@ public class SendPaymentsActivity extends LockableActivity {
     private double parseToCrypto(String value) {
         final double amount = Utils.parseDouble(value);
 
-        return mIsFiat ? amount / mWallet.getLastPrice() : amount;
+        double cryptoamount = mIsFiat ? amount / mWallet.getLastPrice() : amount;
+
+        return Double.isNaN(cryptoamount) ? 0 : cryptoamount;
     }
 
     /**
@@ -551,14 +555,27 @@ public class SendPaymentsActivity extends LockableActivity {
         final ITransaction tx = mWallet.createTx(address, amount, getFee());
 
         Preferences.get().authenticate(this, mHandler::post,
-                (IAuthenticationSucceededCallback) authenticationToken ->
-                        Authenticator2FaFragment.show(this, () -> {
-                            if (mWallet.sendTx(tx, authenticationToken)) {
-                                SuccessfulPaymentFragment.show(this, tx);
-                            } else {
-                                // TODO Show fail in send
-                            }
-                        }));
+                (IAuthenticationSucceededCallback) authenticationToken -> {
+                    if (TwoFactorAuthentication.get(getApplicationContext()).isEnabled())
+                        TwoFactorAuthenticationFragment
+                                .show(this, () -> sendCoins(tx, authenticationToken));
+                    else
+                        sendCoins(tx, authenticationToken);
+                });
+    }
+
+    /**
+     * Envía la transacción especificada.
+     *
+     * @param tx                  Transacción a enviar.
+     * @param authenticationToken Token de autenticación de la billetera.
+     */
+    public void sendCoins(ITransaction tx, byte[] authenticationToken) {
+        if (mWallet.sendTx(tx, authenticationToken))
+            SuccessfulPaymentFragment.show(this, tx);
+        else
+            FailMessageFragment.show(this,
+                    getString(R.string.fail_to_send_tx_error));
     }
 
     /**
