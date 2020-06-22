@@ -113,7 +113,7 @@ public class BitfinexPriceTracker extends PriceTracker {
                     @Override
                     public void onFailure(@NotNull Call<Float[]> call,
                                           @NotNull Throwable t) {
-                        // Nothing do
+                        retryRequest();
                     }
                 });
 

@@ -104,6 +104,13 @@ public abstract class PriceTracker {
         for (ExecutableConsumer<Double> listener : mListeners)
             listener.execute(mLastPrice);
 
+        retryRequest();
+    }
+
+    /**
+     * Reintenta la petición después de {@link #DELAY_TIME}
+     */
+    protected void retryRequest() {
         mHandler.postDelayed(this::request, DELAY_TIME);
     }
 

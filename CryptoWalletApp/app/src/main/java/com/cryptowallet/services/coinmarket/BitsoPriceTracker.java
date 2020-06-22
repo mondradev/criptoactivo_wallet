@@ -116,7 +116,7 @@ public class BitsoPriceTracker extends PriceTracker {
                     @Override
                     public void onFailure(@NotNull Call<TickerResponse> call,
                                           @NotNull Throwable t) {
-                        // Nothing do
+                        retryRequest();
                     }
                 });
 
