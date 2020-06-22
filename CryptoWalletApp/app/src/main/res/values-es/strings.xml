@@ -159,4 +159,5 @@
     <string name="fee_error">Tu comisión personalizada no es válida</string>
     <string name="successful_payment_pattern">Tu pago de %s fue completado</string>
     <string name="share_successful_payment_title">Compartir pago completado</string>
+    <string name="fail_to_send_tx_error">Imposible enviar transacción, intenta de nuevo</string>
 </resources>
