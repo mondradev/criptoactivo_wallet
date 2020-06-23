@@ -250,16 +250,13 @@ export class LevelStore implements IBlockStore {
     }
 
     public async getLocalTip(): Promise<ChainTip> {
-        try {
-            if (this._cacheTip)
-                return this._cacheTip
-
-            this._cacheTip = await this._getKey(this._db, null, Enconding.Tip)
-
+        if (this._cacheTip)
             return this._cacheTip
-        } catch (ignore) {
-            return { hash: Constants.NULL_HASH, height: 0, txn: 0, time: 0 }
-        }
+
+        this._cacheTip = await this._getKey(this._db, null, Enconding.Tip)
+        this._cacheTip = this._cacheTip || { hash: Constants.NULL_HASH, height: 0, txn: 0, time: 0 }
+
+        return this._cacheTip
     }
 
     public async saveBlock(block: Block): Promise<boolean> {

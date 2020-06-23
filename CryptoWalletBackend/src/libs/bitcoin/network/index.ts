@@ -742,8 +742,7 @@ export class Network {
 
         await this._requestHeaders(startHashes, stopHash)
 
-        if (stopHash === Constants.NULL_HASH)
-            this._downloadPendingBlocks()
+        this._downloadPendingBlocks()
     }
 
     public async broadcastTx(rawData: Buffer): Promise<boolean> {
