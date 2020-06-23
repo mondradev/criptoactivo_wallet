@@ -32,6 +32,8 @@ async function start() {
 async function exitHandler() {
     await chain.disconnect()
     await net.disconnect()
+
+    process.exit(0)
 }
 
 function validateAddress(address: string): ParamValid {
@@ -81,9 +83,8 @@ function validateHash(hash: string): ParamValid {
     return { error: false }
 }
 
-process.on('SIGABRT', exitHandler)
-process.on('SIGBREAK', exitHandler)
-process.on('beforeExit', exitHandler)
+process.on('SIGINT', exitHandler)
+process.on('SIGTERM', exitHandler)
 
 const router = Router()
     .get(URL_BASE + ":network/*", async (req: Request, res: Response, next: NextFunction) => {

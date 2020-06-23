@@ -722,14 +722,17 @@ export class Network {
 
             Logger.debug('Disconnecting the peers')
 
-            for (const peer of this._outboundPeers)
-                peer.disconnect()
+            while (await Lock.acquire<number>(LockKeys.Peer, () => this._outboundPeers.length) > 0) {
+                for (const peer of this._outboundPeers)
+                    peer.disconnect()
 
-            while (await Lock.acquire<number>(LockKeys.Peer, () => this._outboundPeers.length) > 0)
-                await sleep(100)
+                await sleep(1000)
+            }
 
             await this._setStatus(NetworkStatus.DISCONNECTED)
             this._notifier.emit(NetworkEvents.DISCONNECT)
+
+            Logger.info("The network is disconnected")
 
             done()
         })
