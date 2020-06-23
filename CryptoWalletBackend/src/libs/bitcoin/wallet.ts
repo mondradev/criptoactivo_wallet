@@ -15,7 +15,7 @@ export default class WalletProvider implements IWalletProvider {
         Logger.level = Config.logLevel
     }
 
-    public async getHistory(addresses: string, network: string): Promise<TxData[]> {
+    public async getHistory(addresses: string, network: string, height: number): Promise<TxData[]> {
         if (network !== Networks.defaultNetwork.name)
             return null
 
@@ -26,7 +26,7 @@ export default class WalletProvider implements IWalletProvider {
             addresses = addresses.substr(42)
 
             Logger.debug("Address found: " + address)
-            txHistorial.push(...await this.getHistoryByAddress(address, network))
+            txHistorial.push(...await this.getHistoryByAddress(address, network, height))
         }
 
         return txHistorial
@@ -85,19 +85,17 @@ export default class WalletProvider implements IWalletProvider {
 
         const block = await this.chain.getBlock(txIndex.blockHash)
         const height = await this.chain.getHeight(txIndex.blockHash)
-        const unspent = await this.chain.getUnspentCoins(txidBuff)
 
         return {
             height,
             block: block.hash,
             txid: txidBuff.toReverseHex(),
             time: block.header.time,
-            data: block.transactions[txIndex.index].toString(),
-            state: unspent.length > 0 ? 'unspent' : 'spent'
+            data: block.transactions[txIndex.index].toString()
         }
     }
 
-    public async getHistoryByAddress(address: string, network: string): Promise<TxData[]> {
+    public async getHistoryByAddress(address: string, network: string, fromHeight: number): Promise<TxData[]> {
         if (network !== Networks.defaultNetwork.name)
             return null
 
@@ -107,27 +105,22 @@ export default class WalletProvider implements IWalletProvider {
 
         for (const addrIndex of addrIndexes) {
             const txIndex = await this.chain.TxIndex.getIndexByHash(addrIndex.txid)
-            const block = await this.chain.getBlock(txIndex.blockHash)
             const height = await this.chain.getHeight(txIndex.blockHash)
-            const unspent = await this.chain.getUnspentCoins(addrIndex.txid)
+
+            if (height < fromHeight) continue
+
+            const block = await this.chain.getBlock(txIndex.blockHash)
 
             txHistorial.push({
                 height,
                 block: block.hash,
                 txid: addrIndex.txid.toReverseHex(),
                 time: block.header.time,
-                data: block.transactions[txIndex.index].toString(),
-                state: this._getTxState(address, unspent)
+                data: block.transactions[txIndex.index].toString()
             })
         }
 
         return txHistorial
-    }
-
-    private _getTxState(address: string, unspent: { index: number; utxo: Output }[]): "unspent" | "spent" | "pending" {
-        const utxos = unspent.filter(unspent => this.chain.AddrIndex.toAddress(unspent.utxo.script).toHex() == address)
-
-        return utxos.length > 0 ? "unspent" : "spent"
     }
 
     public async broadcastTx(transaction: string, network: string): Promise<boolean> {

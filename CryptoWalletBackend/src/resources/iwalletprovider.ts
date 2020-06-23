@@ -9,8 +9,9 @@ export interface IWalletProvider {
      *  
      * @param address Dirección a obtener el historial de transacciones.
      * @param network Tipo de red a consultar.
+     * @param height Altura a partir de donde se hará la consulta.
      */
-    getHistoryByAddress(address: string, network: string): Promise<TxData[]>
+    getHistoryByAddress(address: string, network: string, height?: number): Promise<TxData[]>
 
     /**
      * Obtiene una transacción del hash especificado.
@@ -59,6 +60,5 @@ export type TxData = {
     block: string,
     txid: string,
     data: string,
-    time: number,
-    state: 'spent' | 'unspent' | 'pending'
+    time: number
 }
