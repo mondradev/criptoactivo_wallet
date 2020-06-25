@@ -57,8 +57,8 @@ export class AddrIndex {
     public connect() {
         return new Promise<void>(resolve => {
             this._db.createReadStream({
-                gte: Enconding.TxAddrIndex.key(BufferHelper.fromHex(Array(36).fill(0).join(''))),
-                lte: Enconding.TxAddrIndex.key(BufferHelper.fromHex(Array(36).fill(0xff).join(''))),
+                gte: Enconding.TxAddrIndex.key(Buffer.alloc(36, 0)),
+                lte: Enconding.TxAddrIndex.key(Buffer.alloc(36, 0xFF)),
                 limit: MAX_SIZE_CACHE / 2
             })
                 .on('data', (data: { key: Buffer, value: Buffer }) =>
@@ -176,8 +176,8 @@ export class AddrIndex {
 
         return new Promise<AddrindexEntry[]>(resolve => {
             this._db.createReadStream({
-                gte: Enconding.Addrindex.key(Buffer.from(address).appendHex(Array(32).fill(0).join(''))),
-                lte: Enconding.Addrindex.key(Buffer.from(address).appendHex(Array(32).fill(0xff).join('')))
+                gte: Enconding.Addrindex.key(Buffer.from(address).append(Buffer.alloc(32, 0))),
+                lte: Enconding.Addrindex.key(Buffer.from(address).append(Buffer.alloc(32, 0xff)))
             })
                 .on('data', (data: { key: Buffer, value: Buffer }) =>
                     txdata.push(Enconding.Addrindex.decode(data.value)))
