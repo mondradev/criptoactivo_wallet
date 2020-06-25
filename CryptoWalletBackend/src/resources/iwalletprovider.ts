@@ -59,6 +59,7 @@ export type TxData = {
     height: number,
     block: string,
     txid: string,
+    index: number,
     data: string,
     time: number
 }

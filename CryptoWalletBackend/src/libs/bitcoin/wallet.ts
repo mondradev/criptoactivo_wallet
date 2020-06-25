@@ -90,6 +90,7 @@ export default class WalletProvider implements IWalletProvider {
             height,
             block: block.hash,
             txid: txidBuff.toReverseHex(),
+            index: txIndex.index,
             time: block.header.time,
             data: block.transactions[txIndex.index].toString()
         }
@@ -116,7 +117,8 @@ export default class WalletProvider implements IWalletProvider {
                 block: block.hash,
                 txid: addrIndex.txid.toReverseHex(),
                 time: block.header.time,
-                data: block.transactions[txIndex.index].toString()
+                data: block.transactions[txIndex.index].toString(),
+                index: addrIndex.index
             })
         }
 
