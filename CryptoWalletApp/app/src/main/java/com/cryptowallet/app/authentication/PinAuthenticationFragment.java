@@ -50,8 +50,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 
-import org.bouncycastle.util.encoders.Hex;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -502,7 +500,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
             } else {
                 mExecutor.execute(() -> mAuthPinCallback
                         .onAuthenticationSucceeded(authenticationToken));
-                Log.d(LOG_TAG, "Authentication: " + Hex.toHexString(authenticationToken));
                 dismiss();
             }
         });
