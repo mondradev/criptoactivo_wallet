@@ -59,7 +59,7 @@ import static android.graphics.Bitmap.Config.ARGB_8888;
  * Clase con funciones de utilería para la aplicación.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 1.1
+ * @version 1.2
  */
 public final class Utils {
 
@@ -329,6 +329,13 @@ public final class Utils {
         }
     }
 
+    public static <T> T coalesce(T value, T defaultValue) {
+        if (value != null)
+            return value;
+
+        return defaultValue;
+    }
+
     /**
      * Provee de una función que puede lanzar excepciones.
      */
@@ -355,5 +362,35 @@ public final class Utils {
          * @throws Exception Si un error surge.
          */
         T execute() throws Exception;
+    }
+
+    /**
+     * Funciones de utilidad para las listas.
+     *
+     * @author Ing. Javier Flores (jjflores@innsytech.com)
+     * @version 1.0
+     */
+    public static class Lists {
+
+        /**
+         * Función para realizar un recorrido de toda la colección y acumula el valor devuelto por
+         * la función acumuladora.
+         *
+         * @param list         Colección de datos.
+         * @param aggregator   Función acumuladora.
+         * @param initialValue Valor inicial del acumulador.
+         * @param <T>          Tipo de la colección.
+         * @param <R>          Valor del acumulador.
+         * @return Total acumulado.
+         */
+        public static <T, R> R aggregate(List<T> list, BiFunction<T, R, R> aggregator,
+                                         R initialValue) {
+            R aggregate = initialValue;
+            for (T item : list)
+                aggregate = aggregator.accept(item, aggregate);
+
+            return aggregate;
+        }
+
     }
 }
