@@ -304,7 +304,7 @@ public class TxDecorator implements ITransaction {
             Address address = input.getConnectedOutput().getScriptPubKey()
                     .getToAddress(mWalletParent.getNetwork(), true);
 
-            if (mWallet != null && isPay() && !mWallet.isAddressMine(address))
+            if (mWallet != null && isPay() != mWallet.isAddressMine(address))
                 continue;
 
             if (address instanceof LegacyAddress)
@@ -330,7 +330,7 @@ public class TxDecorator implements ITransaction {
             Address address = output.getScriptPubKey()
                     .getToAddress(mWalletParent.getNetwork(), true);
 
-            if (mWallet != null && isPay() && mWallet.isAddressMine(address))
+            if (mWallet != null && isPay() == mWallet.isAddressMine(address))
                 continue;
 
             if (address instanceof LegacyAddress)
