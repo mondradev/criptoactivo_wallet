@@ -149,8 +149,8 @@ public class BitcoinProvider {
      * @param address Dirección en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    @SuppressWarnings("SameParameterValue")
-    ListenableFutureTask<List<TxDecorator>> getHistoryByAddress(byte[] address, int height) {
+    @SuppressWarnings({"SameParameterValue", "WeakerAccess"})
+    public ListenableFutureTask<List<TxDecorator>> getHistoryByAddress(byte[] address, int height) {
         final String addressHex = Hex.toHexString(address);
         final List<TxDecorator> history = new ArrayList<>();
         ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
