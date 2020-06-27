@@ -109,7 +109,7 @@ public class Configure2FaActivity extends LockableActivity {
                 QR_CODE_SIZE
         ));
 
-        // TODO Require can delete with keyboard the code
+        // TODO Delete with keyboard the code
 
         for (int id : mDigitsAuthCode) {
             final EditText editor = requireEditTextById(id);
