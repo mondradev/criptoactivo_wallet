@@ -21,7 +21,10 @@ package com.cryptowallet.assets.bitcoin.services.retrofit;
 import java.util.List;
 
 import retrofit2.Call;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
+import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -40,8 +43,9 @@ public interface BitcoinApi {
      * @param hex     Datos de la transacción en crudo.
      * @return Un true si la transacción fue enviada.
      */
-    @GET("btc/{network}/broadcast/{hex}")
-    Call<BroadcastResponse> broadcastTx(@Path("network") String network, @Path("hex") String hex);
+    @PUT("btc/{network}/broadcast")
+    @FormUrlEncoded
+    Call<BroadcastResponse> broadcastTx(@Path("network") String network, @Field("hex") String hex);
 
     /**
      * Obtiene el historial de transacciones de una dirección.
