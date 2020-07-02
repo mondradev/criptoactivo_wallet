@@ -6,12 +6,42 @@ import { Network } from "./network"
 import NetworkStatus from "./network/networkstatus"
 import LoggerFactory from 'log4js'
 import Config from "../../../config"
+import { Mempool } from "./store/leveldb/mempool"
 
 const Logger = LoggerFactory.getLogger('Bitcoin (Wallet)')
 
 export default class WalletProvider implements IWalletProvider {
 
-    public constructor(private chain: Blockchain, private network: Network) {
+    public async getTransactionFromMempool(txid: string, network: string): Promise<TxData> {
+        if (network !== Networks.defaultNetwork.name)
+            return null
+
+        const tx = await this.mempool.get(BufferHelper.fromHex(txid))
+
+        if (!tx) return null
+
+        return {
+            block: "(Mempool)",
+            height: -1,
+            index: 0xffffffff,
+            txid: tx.hash,
+            time: new Date().getTime() / 1000,
+            data: tx.toBuffer().toHex()
+        }
+    }
+
+    public async getBlock(hash: string, network: string): Promise<{}> {
+        if (network !== Networks.defaultNetwork.name)
+            return null
+
+        const block = await this.chain.getBlock(BufferHelper.fromHex(hash))
+
+        if (!block) return null
+
+        return { ...block.toJSON(), height: await this.chain.getHeight(block._getHash()) }
+    }
+
+    public constructor(private chain: Blockchain, private mempool: Mempool, private network: Network) {
         Logger.level = Config.logLevel
     }
 
@@ -20,14 +50,19 @@ export default class WalletProvider implements IWalletProvider {
             return null
 
         const txHistorial = new Array<TxData>()
+        let addressesCount = 0
 
         while (addresses.length >= 42) {
             const address = addresses.substr(0, 42)
+
             addresses = addresses.substr(42)
 
-            Logger.debug("Address found: " + address)
             txHistorial.push(...await this.getHistoryByAddress(address, network, height))
+
+            addressesCount++
         }
+
+        Logger.debug("Addresses found: %d", addressesCount)
 
         return txHistorial
     }

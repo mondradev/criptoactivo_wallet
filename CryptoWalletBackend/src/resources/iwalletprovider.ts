@@ -22,6 +22,14 @@ export interface IWalletProvider {
     getTransaction(txid: string, network: string): Promise<TxData>
 
     /**
+     * Obtiene una transacción pendiente del hash especificado.
+     * 
+     * @param txid Hash único de la transacción.
+     * @param network Tipo de red a consultar.
+     */
+    getTransactionFromMempool(txid: string, network: string): Promise<TxData>   
+
+    /**
      * Obtiene la información de punta de la cadena.
      * 
      * @param network Tipo de red a consultar.
