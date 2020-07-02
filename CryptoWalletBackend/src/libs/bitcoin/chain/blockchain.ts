@@ -7,6 +7,7 @@ import LoggerFactory from 'log4js'
 import Constants from '../constants'
 import AsyncLock from 'async-lock'
 import Config from '../../../../config'
+import crypto from 'crypto'
 
 const Logger = LoggerFactory.getLogger('(Bitcoin) Blockchain')
 const Lock = new AsyncLock()
@@ -16,8 +17,54 @@ export class Blockchain {
     private _blockNotifier: EventEmitter
     private _store: IBlockStore
 
-    private async _validateHeader(header: BlockHeader): Promise<boolean> {
-        // TODO: Validación de cabeceras de bloques
+
+    private _dSha256(data: Buffer) {
+        const hash = crypto.createHash('sha256').update(data).digest()
+        return crypto.createHash('sha256').update(hash).digest()
+    }
+
+    private _computeMerkle(txids: Array<Buffer>) {
+        const hashes: Array<Buffer> = []
+
+        for (let i = 0; i < txids.length; i += 2) {
+            const hash1 = txids[i]
+            const hash2 = txids[i + 1] ? txids[i + 1] : hash1
+            const hash = this._dSha256(hash1.append(hash2))
+
+            hashes.push(hash)
+        }
+
+        return hashes
+    }
+
+    private _calculateMerkleRoot(txs: Array<Buffer>) {
+        if (!txs || txs.length == 0)
+            return Buffer.alloc(32, 0)
+
+        let data = txs
+
+        while (data.length > 1)
+            data = this._computeMerkle(data)
+
+        return data[0]
+    }
+
+    private async _validateBlock(block: Block): Promise<boolean> {
+        const hash = block._getHash()
+
+        const height = await this.getHeight(hash)
+
+        if (height > 0)
+            return false
+
+        const merkleRoot = this._calculateMerkleRoot(block.transactions.map(tx => tx._getHash()))
+
+        if (!merkleRoot.equals(block.header.merkleRoot)) {
+            Logger.warn("Block's merkleRoot is invalid: %s != %s", merkleRoot.toHex(), block.header.merkleRoot.toHex())
+
+            return false
+        }
+
         return true
     }
 
@@ -58,16 +105,21 @@ export class Blockchain {
         return this._store.getHeight(hash)
     }
 
-    public async addBlock(block: Block): Promise<void> {
-        if (!(await this._validateHeader(block.header)))
-            Logger.warn("Bad block [Hash=%s]")
+    public async addBlock(block: Block): Promise<boolean> {
+        if (!(await this._validateBlock(block))) {
+            Logger.warn("Bad block [Hash=%s]", block.hash)
+
+            return false
+        }
         else
-            await Lock.acquire<boolean>(KeyLocks.AddingBlock,
+            return await Lock.acquire<boolean>(KeyLocks.AddingBlock,
                 () => this._store.saveBlock(block))
                 .then((added) => {
-                    if (added)
-                        this._blockNotifier.emit(block.hash)
-                })
+                    if (!added) return false
+
+                    this._blockNotifier.emit(block.hash)
+                    return true
+                });
     }
 
     public async getLocators(tip: ChainTip): Promise<ChainLocators> {
