@@ -227,8 +227,8 @@ export class LevelStore implements IBlockStore {
     public async connect(): Promise<void> {
         Logger.info("Initializing blockstore (LevelStore)")
 
-        if (this._db.isOpen())
-            return await this._db.open()
+        if (!this._db.isOpen())
+            await this._db.open()
     }
 
     public async getLocators(height: number): Promise<string[]> {
@@ -328,12 +328,22 @@ export class LevelStore implements IBlockStore {
         }
     }
 
-    public async  deleteBlockInfo(height: number) {
+    public async rollback(toHeight: number) {
+        let height = (await this.getLocalTip()).height
+
+        while (height > toHeight && this._db.isOpen()) {
+            await this.deleteBlockInfo(height)
+            height = (await this.getLocalTip()).height
+        }
+    }
+
+    public async deleteBlockInfo(height: number) {
         const hash = await this.getHash(height);
         const binHeight = BufferHelper.numberToBuffer(height, 4, 'be');
         const binNewHeight = BufferHelper.numberToBuffer(height - 1, 4, 'be');
         const undo = await this._getKey(this._undoDb, hash, Enconding.UndoTxo);
         const dbBatch = this._db.batch();
+        const block = await this.getBlock(hash)
 
         if (undo)
             for (const output of undo)
@@ -342,8 +352,12 @@ export class LevelStore implements IBlockStore {
         const tip = await this._getKey(this._db, binNewHeight, Enconding.Tip);
 
         if (tip) {
+            Logger.debug("Updated localTip: Hash=%s Height=%d", tip.hash, tip.height)
+
             dbBatch.del(Enconding.Tip.key(binHeight))
-                .put(Enconding.Tip.key(), Enconding.Tip.encode(tip));
+                .put(Enconding.Tip.key(), Enconding.Tip.encode(tip))
+
+            this._cacheTip = tip
         }
 
         Logger.info("Height: %d, Hash: %s", height, hash ? hash.toString('hex') : 'n/a')
@@ -357,12 +371,38 @@ export class LevelStore implements IBlockStore {
             return;
         }
 
-        await dbBatch.del(Enconding.BlockByHashIdx.key(hash))
-            .del(Enconding.BlockHeightByHashIdx.key(hash))
-            .del(Enconding.BlockHashByHeightIdx.key(binHeight))
-            .write();
+        await this._connectOutput(block.transactions)
 
-        await this._undoDb.del(Enconding.UndoTxo.key(hash));
+        await Promise.all([
+            dbBatch.del(Enconding.BlockByHashIdx.key(hash))
+                .del(Enconding.BlockHeightByHashIdx.key(hash))
+                .del(Enconding.BlockHashByHeightIdx.key(binHeight))
+                .write(),
+
+            this._undoDb.del(Enconding.UndoTxo.key(hash)),
+
+            this.TxIndex.deleteIndexes(block.transactions.map(tx => tx._getHash())),
+
+            this.AddrIndex.deleteTxoIndexes(block.transactions)
+        ])
+    }
+
+    private async _connectOutput(transactions: Transaction[]) {
+        for (const tx of transactions) {
+            for (const txi of tx.inputs) {
+                const prevTxIdx = await this.TxIndex.getIndexByHash(txi.prevTxId.reverse())
+
+                if (!prevTxIdx) continue
+
+                const block = await this.getBlock(prevTxIdx.blockHash)
+                const prevTx = block.transactions[prevTxIdx.index]
+                const txo = prevTx.outputs[txi.outputIndex]
+
+                if (!txo) continue
+
+                txi.output = txo
+            }
+        }
     }
 
 }
