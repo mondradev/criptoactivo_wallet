@@ -1,5 +1,10 @@
 declare module "bitcore-lib" {
 
+    export class BN {
+
+        public toNumber(): number
+    }
+
     export class Network {
         public toString(): string
         public name: string
