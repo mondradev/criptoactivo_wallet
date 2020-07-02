@@ -184,4 +184,41 @@ export class AddrIndex {
                 .on('end', () => resolve(txdata))
         })
     }
+
+    public async deleteTxoIndexes(transactions: Transaction[]) {
+        const batchDb = this._db.batch()
+
+        for (const transaction of transactions) {
+            const hash = transaction._getHash()
+
+            for (const txi of transaction.inputs) {
+                if (txi.isNull())
+                    continue
+
+                if (txi.output == null) {
+                    Logger.warn("Output not found: " + hash.toReverseHex())
+                    continue
+                }
+
+                const address = this.toAddress(txi.output.script)
+
+                batchDb.del(Enconding.Addrindex.key(address.append(hash)))
+                    .put(Enconding.TxAddrIndex.key(hash.appendUInt32BE(txi.outputIndex)), address)
+            }
+
+            for (const [idx, txo] of transaction.outputs.entries()) {
+                const addr = this.toAddress(txo.script)
+                const outpoint = Enconding.TxAddrIndex.key(hash.appendUInt32BE(idx))
+
+                batchDb
+                    .del(outpoint)
+                    .del(Enconding.Addrindex.key(addr.append(hash)))
+
+                if (this._cacheAddrs.has(outpoint.toHex()))
+                    this._cacheAddrs.delete(outpoint.toHex())
+            }
+        }
+
+        return batchDb.write()
+    }
 }
