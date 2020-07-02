@@ -34,7 +34,7 @@ enum NetworkEvents {
      */
     SYNC = 'sync',
     /**
-     * Recepción de las transacciones en memoría, sin agregar a un bloque válido.
+     * Petición de las transacciones en memoria, sin agregar a un bloque válido.
      */
     MEMPOOL = 'mempool',
     /**
@@ -55,7 +55,12 @@ enum NetworkEvents {
     /**
      * Recepción de la petición de datos sobre una transacción o bloque
      */
-    GETDATA = 'getdata'
+    GETDATA = 'getdata',
+
+    /**
+     * Respuesta de la version del nodo.
+     */
+    VERSION = 'version'
 }
 
 export default NetworkEvents
