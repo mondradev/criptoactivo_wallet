@@ -372,7 +372,7 @@ public class TxDecorator implements ITransaction {
      */
     @Override
     public boolean isConfirm() {
-        return this.getConfirmations() > MIN_COMMITS;
+        return this.getConfirmations() > 0;
     }
 
     /**
