@@ -33,7 +33,7 @@ import org.bouncycastle.util.encoders.Hex;
  * @see com.cryptowallet.assets.bitcoin.services.BitcoinProvider
  */
 @SuppressWarnings("unused")
-public class TxData {
+public class TxDataResponse {
 
     /**
      * Identificador de la transacción.

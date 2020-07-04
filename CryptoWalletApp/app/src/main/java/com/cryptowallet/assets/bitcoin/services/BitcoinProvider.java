@@ -22,8 +22,8 @@ import android.util.Log;
 
 import com.cryptowallet.assets.bitcoin.services.retrofit.BitcoinApi;
 import com.cryptowallet.assets.bitcoin.services.retrofit.BroadcastResponse;
-import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfo;
-import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
+import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfoResponse;
+import com.cryptowallet.assets.bitcoin.services.retrofit.TxDataResponse;
 import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
 import com.cryptowallet.assets.bitcoin.wallet.Wallet;
 import com.cryptowallet.wallet.ChainTipInfo;
@@ -160,15 +160,15 @@ public class BitcoinProvider {
                 history.clear();
 
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<List<TxData>> response = mApi.getTxHistory(networkName, addressHex, height)
+                Response<List<TxDataResponse>> response = mApi.getTxHistory(networkName, addressHex, height)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return history;
 
-                List<TxData> historyData = response.body();
+                List<TxDataResponse> historyData = response.body();
 
-                for (TxData data : historyData)
+                for (TxDataResponse data : historyData)
                     history.add(TxDecorator.fromTxData(data, mWallet));
 
                 return history;
@@ -193,7 +193,7 @@ public class BitcoinProvider {
             Thread.currentThread().setName("Bitcoin Provider getTransactionByTxID");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<TxData> response = mApi.getTx(networkName, txidHex).execute();
+                Response<TxDataResponse> response = mApi.getTx(networkName, txidHex).execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return null;
@@ -217,12 +217,12 @@ public class BitcoinProvider {
             Thread.currentThread().setName("Bitcoin Provider getChainTipInfo");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<ChainInfo> response = mApi.getChainInfo(networkName).execute();
+                Response<ChainInfoResponse> response = mApi.getChainInfo(networkName).execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return null;
 
-                ChainInfo info = response.body();
+                ChainInfoResponse info = response.body();
 
                 return new ChainTipInfo.Builder()
                         .setHash(info.getHash())
@@ -287,15 +287,15 @@ public class BitcoinProvider {
                 deps.clear();
 
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<List<TxData>> response = mApi.getTxDeps(networkName, txidHex)
+                Response<List<TxDataResponse>> response = mApi.getTxDeps(networkName, txidHex)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return deps;
 
-                List<TxData> depsData = response.body();
+                List<TxDataResponse> depsData = response.body();
 
-                for (TxData data : depsData) {
+                for (TxDataResponse data : depsData) {
                     TxDecorator transaction = TxDecorator.fromTxData(data, mWallet);
                     deps.put(transaction.getID(), transaction);
                 }
@@ -323,15 +323,15 @@ public class BitcoinProvider {
             Thread.currentThread().setName("Bitcoin Provider getHistory");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<List<TxData>> response = mApi.getHistory(networkName, addressesHex, height)
+                Response<List<TxDataResponse>> response = mApi.getHistory(networkName, addressesHex, height)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return transactions;
 
-                List<TxData> txData = response.body();
+                List<TxDataResponse> txData = response.body();
 
-                for (TxData data : txData)
+                for (TxDataResponse data : txData)
                     transactions.add(TxDecorator.fromTxData(data, mWallet));
 
                 return transactions;

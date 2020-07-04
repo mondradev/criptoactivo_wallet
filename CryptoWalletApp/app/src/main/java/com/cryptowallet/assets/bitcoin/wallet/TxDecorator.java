@@ -20,7 +20,7 @@ package com.cryptowallet.assets.bitcoin.wallet;
 
 import androidx.annotation.NonNull;
 
-import com.cryptowallet.assets.bitcoin.services.retrofit.TxData;
+import com.cryptowallet.assets.bitcoin.services.retrofit.TxDataResponse;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
@@ -128,13 +128,13 @@ public class TxDecorator implements ITransaction {
     }
 
     /**
-     * Crea una transacción de Bitcoin a partir de la estructura {@link TxData}
+     * Crea una transacción de Bitcoin a partir de la estructura {@link TxDataResponse}
      *
      * @param data   Instancia que contiene la información.
      * @param wallet Billetera que la contiene.
      * @return Una transacción de Bitcoin.
      */
-    public static TxDecorator fromTxData(@NonNull TxData data, @NonNull Wallet wallet) {
+    public static TxDecorator fromTxData(@NonNull TxDataResponse data, @NonNull Wallet wallet) {
         Objects.requireNonNull(data);
         Objects.requireNonNull(wallet);
 

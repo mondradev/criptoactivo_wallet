@@ -57,9 +57,9 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamada asíncrona a la API.
      */
     @GET("btc/{network}/txhistory/{address}")
-    Call<List<TxData>> getTxHistory(@Path("network") String network,
-                                    @Path("address") String address,
-                                    @Query("height") int height);
+    Call<List<TxDataResponse>> getTxHistory(@Path("network") String network,
+                                            @Path("address") String address,
+                                            @Query("height") int height);
 
     /**
      * Obtiene la transacción especificada por el TxID.
@@ -69,7 +69,7 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamada asíncrona de la API.
      */
     @GET("btc/{network}/tx/{txid}")
-    Call<TxData> getTx(@Path("network") String network, @Path("txid") String txid);
+    Call<TxDataResponse> getTx(@Path("network") String network, @Path("txid") String txid);
 
     /**
      * Obtiene la información de la blockchain.
@@ -78,7 +78,7 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamana asíncrona de la API.
      */
     @GET("btc/{network}/chaininfo")
-    Call<ChainInfo> getChainInfo(@Path("network") String network);
+    Call<ChainInfoResponse> getChainInfo(@Path("network") String network);
 
     /**
      * Obtiene las dependencias de la transacción especificada por el TxID.
@@ -88,8 +88,8 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamada asíncrona de la API.
      */
     @GET("btc/{network}/txdeps/{txid}")
-    Call<List<TxData>> getTxDeps(@Path("network") String network,
-                                 @Path("txid") String txid);
+    Call<List<TxDataResponse>> getTxDeps(@Path("network") String network,
+                                         @Path("txid") String txid);
 
     /**
      * Obtiene las transacciones de las direcciones especificadas.
@@ -101,7 +101,7 @@ public interface BitcoinApi {
      */
     @POST("btc/{network}/history")
     @FormUrlEncoded
-    Call<List<TxData>> getHistory(@Path("network") String network,
-                                  @Field("addresses") String addresses,
-                                  @Query("height") int height);
+    Call<List<TxDataResponse>> getHistory(@Path("network") String network,
+                                          @Field("addresses") String addresses,
+                                          @Query("height") int height);
 }

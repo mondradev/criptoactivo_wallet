@@ -30,7 +30,7 @@ import com.google.gson.annotations.SerializedName;
  * @see com.cryptowallet.assets.bitcoin.services.BitcoinProvider
  */
 @SuppressWarnings("unused")
-public class ChainInfo {
+public class ChainInfoResponse {
 
     /**
      * Altura del último bloque.
