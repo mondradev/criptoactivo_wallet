@@ -42,8 +42,8 @@ function errorHandler(error: Error) {
 }
 
 async function exitHandler() {
-    await chain.disconnect()
     await net.disconnect()
+    await chain.disconnect()
 
     process.exit(0)
 }
