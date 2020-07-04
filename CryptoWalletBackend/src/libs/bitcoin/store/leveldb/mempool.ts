@@ -220,7 +220,8 @@ export class Mempool {
 
         await Promise.all([addrBatch.write(), txBatch.write()])
 
-        Logger.info("Block contains %d transactions from mempool", )
+        if (txs > 0)
+            Logger.info("Block contains %d transactions from mempool", txs)
     }
 
     private _toAddress(txo: Output): Buffer {
