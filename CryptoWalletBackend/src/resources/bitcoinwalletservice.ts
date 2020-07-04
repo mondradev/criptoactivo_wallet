@@ -100,14 +100,15 @@ process.on('SIGTERM', exitHandler)
 process.on('uncaughtException', errorHandler)
 
 const router = Router()
-    .get(URL_BASE + ":network/*", async (req: Request, res: Response, next: NextFunction) => {
+    .all(URL_BASE + ":network/*", async (req: Request, res: Response, next: NextFunction) => {
         const network = req.params.network;
-        const networkValid = validateNetwork(network);
+        const validNetwork = validateNetwork(network)
+        const apiRoute = req.path.replace(URL_BASE, "")
 
-        Logger.trace("Received request: %s", req.path.substring(0, Math.min(100, req.path.length)))
+        Logger.trace("%s %s", req.method, apiRoute.substring(0, Math.min(100, apiRoute.length)))
 
-        if (networkValid.error)
-            res.status(networkValid.code).json({ message: networkValid.message });
+        if (validNetwork.error)
+            res.status(validNetwork.code).json({ message: validNetwork.message });
         else if (req.path === URL_BASE + network + "/chaininfo")
             next()
         else if ((await net.getStatus()) < NetworkStatus.SYNCHRONIZED)
@@ -122,42 +123,38 @@ const router = Router()
 
         res.status(200).json(await wallet.getChainInfo(network))
     })
-    .get(URL_BASE + ":network/history/:addresses", async (req: Request, res: Response, next: NextFunction) => {
-        const height = parseInt(req.query.height as string) >> 0
-        const addresses: string = req.params.addresses
-        const network = req.params.network;
+    .get(URL_BASE + ":network/block/:hash", async (req: Request, res: Response, next: NextFunction) => {
+        const hash = req.params.hash
+        const network = req.params.network
+        const validHash = validateHash(hash)
 
-        Logger.debug("Request received [Op=history, Param={ addresses: %s, network: %s }]",
-            "byte[" + addresses.length / 2 + "]", network)
-
-        if (addresses.length < 42)
-            res.status(400).json({ message: "Any address wasn't specified" })
+        if (validHash.error)
+            res.status(validHash.code).json({ message: validHash.message })
         else
-            res.status(200).json(await wallet.getHistory(addresses, network, height))
-
+            res.status(200).json(await wallet.getBlock(hash, network))
     })
     .get(URL_BASE + ":network/txhistory/:address", async (req: Request, res: Response, next: NextFunction) => {
         const height = parseInt(req.query.height as string) >> 0
         const address: string = req.params.address
         const network: string = req.params.network
-        const addressValid = validateAddress(address)
+        const validAddress = validateAddress(address)
 
         Logger.debug("Request received [Op=txhist, Param={ address: %s, network: %s }]", address, network)
 
-        if (addressValid.error)
-            res.status(addressValid.code).json({ message: addressValid.message })
+        if (validAddress.error)
+            res.status(validAddress.code).json({ message: validAddress.message })
         else
             res.status(200).json(await wallet.getHistoryByAddress(address, network, height))
     })
     .get(URL_BASE + ":network/tx/:txid", async (req: Request, res: Response, next: NextFunction) => {
         const txid: string = req.params.txid
         const network: string = req.params.network
-        const hashValid = validateHash(txid)
+        const validHash = validateHash(txid)
 
         Logger.debug("Request received [Op=tx, Param={ txid: %s, network: %s }]", txid, network)
 
-        if (hashValid.error)
-            res.status(hashValid.code).json({ message: hashValid.message })
+        if (validHash.error)
+            res.status(validHash.code).json({ message: validHash.message })
         else {
             let tx = await wallet.getTransaction(txid, network)
 
@@ -169,35 +166,37 @@ const router = Router()
     .get(URL_BASE + ":network/txdeps/:txid", async (req: Request, res: Response, next: NextFunction) => {
         const txid: string = req.params.txid
         const network: string = req.params.network
-        const hashValid = validateHash(txid)
+        const validHash = validateHash(txid)
 
         Logger.debug("Request received [Op=txdeps, Param={ txid: %s, network: %s }]", txid, network)
 
-        if (hashValid.error)
-            res.status(hashValid.code).json({ message: hashValid.message })
+        if (validHash.error)
+            res.status(validHash.code).json({ message: validHash.message })
         else
             res.status(200).json(await wallet.getTxDependencies(txid, network))
+    })
+    .post(URL_BASE + ":network/history", async (req: Request, res: Response, next: NextFunction) => {
+        const height = parseInt(req.query.height as string) >> 0
+        const addresses: string = req.body.addresses
+        const network = req.params.network
+
+        Logger.debug("Request received [Op=history, Param={ addresses: %s, network: %s }]",
+            "byte[" + addresses.length / 2 + "]", network)
+        if (addresses.length < 42)
+            res.status(400).json({ message: "Any address wasn't specified" })
+        else
+            res.status(200).json(await wallet.getHistory(addresses, network, height))
+
     })
     .put(URL_BASE + ":network/broadcast", async (req: Request, res: Response, next: NextFunction) => {
         const raw = req.body.hex || ""
         const network = req.params.network
 
         Logger.debug("Request received [Op=broadcastTx, Param={ raw: %s, network: %s }]", "byte[" + raw.length / 2 + "]", network)
-
         if (raw.length < 24)
             res.status(400).json({ message: "Any transaction wasn't specified" })
         else
             res.status(200).json({ sent: await wallet.broadcastTx(raw, network) })
-    })
-    .get(URL_BASE + ":network/block/:hash", async (req: Request, res: Response, next: NextFunction) => {
-        const hash = req.params.hash
-        const network = req.params.network
-        const hashValid = validateHash(hash)
-
-        if (hashValid.error)
-            res.status(hashValid.code).json({ message: hashValid.message })
-        else
-            res.status(200).json(await wallet.getBlock(hash, network))
     })
 
 start()
