@@ -24,6 +24,7 @@ import retrofit2.Call;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
+import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
@@ -98,8 +99,9 @@ public interface BitcoinApi {
      * @param height    Altura utilizada como punto de partida de la búsqueda.
      * @return Una instancia que gesitona la llamada asíncrona de la API.
      */
-    @GET("btc/{network}/history/{addresses}")
+    @POST("btc/{network}/history")
+    @FormUrlEncoded
     Call<List<TxData>> getHistory(@Path("network") String network,
-                                  @Path("addresses") String addresses,
+                                  @Field("addresses") String addresses,
                                   @Query("height") int height);
 }

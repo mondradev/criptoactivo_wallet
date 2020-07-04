@@ -115,7 +115,7 @@ public class Wallet implements IWallet {
     /**
      * Direcciones máximas por petición.
      */
-    private static final int MAX_ADDRESS_PER_REQUEST = 100;
+    private static final int MAX_ADDRESS_PER_REQUEST = 200;
 
     /**
      * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
@@ -576,27 +576,25 @@ public class Wallet implements IWallet {
                                       Map<String, TxDecorator> transactions)
             throws ExecutionException, InterruptedException {
         List<byte[]> binAddresses = serializeAddressesList(addresses);
+        final int size = Utils.Lists
+                .aggregate(binAddresses, (item, amount) -> amount + item.length, 0);
+        final byte[] stream = new byte[size];
 
-        for (int i = 0; i < addresses.size(); i += MAX_ADDRESS_PER_REQUEST) {
-            final int toIndex = i
-                    + Math.min(addresses.size() - i, MAX_ADDRESS_PER_REQUEST);
+        int lastPos = 0;
 
-            final List<byte[]> binList = binAddresses.subList(i, toIndex);
-            final int size = Utils.Lists
-                    .aggregate(binList, (item, amount) -> amount + item.length, 0);
-            final byte[] stream = new byte[size];
-
-            for (int j = 0; j < binList.size(); j++)
-                System.arraycopy(binList.get(j), 0, stream, j * 21, 21);
-
-            List<TxDecorator> activity = BitcoinProvider.get(this)
-                    .getHistory(stream, height)
-                    .get();
-
-            if (!activity.isEmpty())
-                for (TxDecorator tx : activity)
-                    transactions.put(tx.getID(), tx);
+        for (int j = 0; j < binAddresses.size(); j++) {
+            System.arraycopy(binAddresses.get(j), 0,
+                    stream, lastPos, binAddresses.get(j).length);
+            lastPos += binAddresses.get(j).length;
         }
+
+        List<TxDecorator> activity = BitcoinProvider.get(this)
+                .getHistory(stream, height)
+                .get();
+
+        if (!activity.isEmpty())
+            for (TxDecorator tx : activity)
+                transactions.put(tx.getID(), tx);
     }
 
     /**
