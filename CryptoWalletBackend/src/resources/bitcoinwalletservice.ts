@@ -196,7 +196,7 @@ const router = Router()
         if (raw.length < 24)
             res.status(400).json({ message: "Any transaction wasn't specified" })
         else
-            res.status(200).json({ sent: await wallet.broadcastTx(raw, network) })
+            res.status(200).json({ successful: await wallet.broadcastTx(raw, network) })
     })
 
 start()
