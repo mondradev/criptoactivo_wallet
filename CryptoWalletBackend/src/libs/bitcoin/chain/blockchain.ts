@@ -117,7 +117,8 @@ export class Blockchain {
                 .then((added) => {
                     if (!added) return false
 
-                    this._blockNotifier.emit(block.hash)
+                    this._blockNotifier.emit(block.hash )
+                    this._blockNotifier.emit('block', block)
                     return true
                 });
     }
@@ -154,6 +155,9 @@ export class Blockchain {
         return this._store.getUnspentCoins(txid)
     }
 
+    public on(event: 'block', listener: (block: Block) => void) {
+        this._blockNotifier.on(event, listener)
+    }
 
     public onBlock(blockHash: string, listener: () => void) {
         this._blockNotifier.on(blockHash, listener)
@@ -161,13 +165,5 @@ export class Blockchain {
 
     public onceBlock(blockHash: string, listener: () => void) {
         this._blockNotifier.once(blockHash, listener)
-    }
-
-    public removeBlockListener(blockHash: string, listener: () => void) {
-        this._blockNotifier.removeListener(blockHash, listener)
-    }
-
-    public removeAllBlockListeners(blockHash: string) {
-        this._blockNotifier.removeAllListeners(blockHash)
     }
 }

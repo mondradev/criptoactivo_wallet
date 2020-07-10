@@ -8,6 +8,7 @@ import { Encoder } from "./encoder";
 import { Transaction, Block, Script, Address, PublicKey, Networks, Input, Output } from "bitcore-lib";
 import { AddrindexEntry } from "./addrindexentry";
 import { Blockchain } from "../../chain/blockchain";
+import { EventEmitter } from "events";
 
 const Logger = LoggerFactory.getLogger('Bitcoin (Mempool)')
 
@@ -23,6 +24,7 @@ export class Mempool {
     private _db: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
     private _dbIdx: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
     private _chain: Blockchain
+    private _notifier: EventEmitter
 
     private static _scriptFnAddress = {
         'Pay to public key': (script: Script) => new Address(new PublicKey(script.getPublicKey()), Networks.defaultNetwork).toBuffer(),
@@ -41,6 +43,7 @@ export class Mempool {
         this._txSize = 0
         this._ready = false
         this._chain = chain
+        this._notifier = new EventEmitter()
     }
 
     public load() {
@@ -123,6 +126,8 @@ export class Mempool {
         await Promise.all([addrBatch.write(), txBatch.write()])
 
         Logger.info("New transaction was added to mempool: %s", hash.toReverseHex())
+
+        this._notifier.emit('tx', transaction)
 
         await this._resolveOrphans(transaction)
     }
@@ -264,5 +269,9 @@ export class Mempool {
             throw new Error("Mempool is not ready")
 
         return this._getKey(this._db, txid, Enconding.Mempool)
+    }
+
+    public on(event: 'tx', listener: (tx: Transaction) => Promise<void>) {
+        this._notifier.on(event, listener)
     }
 }
