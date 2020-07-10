@@ -640,6 +640,16 @@ declare module "bitcore-lib" {
     export class Address {
 
         /**
+         * Instantiate an address from a buffer of the address
+         *
+         * @param {Buffer} buffer - An instance of buffer of the address
+         * @param {String|Network=} network - either a Network instance, 'livenet', or 'testnet'
+         * @param {string=} type - The type of address: 'script' or 'pubkey'
+         * @returns {Address} A new valid and frozen instance of an Address
+         */
+        public static fromBuffer(buffer: Buffer, network: string | Network, type?: string): Address;
+
+        /**
          * Will return a buffer representation of the address
          *
          * @returns {Buffer} Bitcoin address buffer
@@ -654,7 +664,7 @@ declare module "bitcore-lib" {
          * @param {string=} type - The type of address: 'script' or 'pubkey'
          * @returns {Address} A new valid and frozen instance of an Address
          */
-        public static fromString(str: string, network: string | Network, type: string): Buffer;
+        public static fromString(str: string, network: string | Network, type: string): Address;
 
         /**
          * Instantiate an address from an address String or Buffer, a public key or script hash Buffer,

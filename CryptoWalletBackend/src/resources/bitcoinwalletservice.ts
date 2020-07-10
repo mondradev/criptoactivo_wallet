@@ -13,7 +13,8 @@ type ParamValid = { message?: string, error: boolean, code?: number }
 
 const VERSION = "v0.6-beta" // 2020-02-29
 const VERSION_API = "v1" // 2020-04-01
-const URL_BASE = `/api/${VERSION_API}/btc/`
+const ASSET = "btc"
+const URL_BASE = `/api/${VERSION_API}/${ASSET}/`
 
 const Logger = LoggerFactory.getLogger('(Bitcoin) Service')
 
@@ -28,6 +29,7 @@ const wallet = new WalletProvider(chain, mempool, net)
 async function start() {
     await chain.connect()
     await mempool.load()
+    await wallet.connect()
     await net.connect()
     net.start()
 }
@@ -174,6 +176,24 @@ const router = Router()
             res.status(validHash.code).json({ message: validHash.message })
         else
             res.status(200).json(await wallet.getTxDependencies(txid, network))
+    })
+    .post(URL_BASE + ":network/subscribe", async (req: Request, res: Response, next: NextFunction) => {
+        const walletId = req.body.walletId
+        const pushToken = req.body.pushToken
+        const addresses = req.body.addresses
+        const network = req.params.network
+
+        Logger.debug("Request received [Op=subscribe, Param={ addresses: %s, walletId: %s, network: %s }]",
+            "byte[" + addresses.length / 2 + "]", walletId, network)
+
+        if (addresses.length < 42)
+            res.status(400).json({ message: "Any address wasn't specified" })
+        else if (walletId === "" || walletId == null)
+            res.status(400).json({ message: "Requires a walledId" })
+        else if (pushToken === "" || pushToken == null)
+            res.status(400).json({ message: "Requires a token for push notifications" })
+        else
+            res.status(200).json({ successful: await wallet.subscribeWallet(walletId, addresses, ASSET, network, pushToken) })
     })
     .post(URL_BASE + ":network/history", async (req: Request, res: Response, next: NextFunction) => {
         const height = parseInt(req.query.height as string) >> 0
