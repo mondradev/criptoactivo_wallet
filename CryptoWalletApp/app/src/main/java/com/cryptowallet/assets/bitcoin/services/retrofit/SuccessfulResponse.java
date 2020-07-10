@@ -22,30 +22,30 @@ import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
 /**
- * Representa la estructura de la respuesta de envío de una transacción.
+ * Representa la estructura de la respuesta de una operación en el servidor.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 1.0
+ * @version 1.1
  * @see BitcoinApi
  * @see com.cryptowallet.assets.bitcoin.services.BitcoinProvider
  */
 @SuppressWarnings("unused")
-public class BroadcastResponse {
+public class SuccessfulResponse {
 
     /**
-     * Indica si se envió la transacción.
+     * Indica si se completó la operación.
      */
-    @SerializedName("sent")
+    @SerializedName("successful")
     @Expose
-    private boolean mSent;
+    private boolean mSuccessful;
 
     /**
-     * Indica si se realizó el envío de la transacción.
+     * Indica si se realizó la operación fue completada.
      *
-     * @return True si se envió.
+     * @return True si se completó correctamente.
      */
-    public boolean isSent() {
-        return mSent;
+    public boolean isSuccessful() {
+        return mSuccessful;
     }
 
 }

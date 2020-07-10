@@ -21,11 +21,12 @@ package com.cryptowallet.assets.bitcoin.services;
 import android.util.Log;
 
 import com.cryptowallet.assets.bitcoin.services.retrofit.BitcoinApi;
-import com.cryptowallet.assets.bitcoin.services.retrofit.BroadcastResponse;
 import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfoResponse;
+import com.cryptowallet.assets.bitcoin.services.retrofit.SuccessfulResponse;
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxDataResponse;
 import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
 import com.cryptowallet.assets.bitcoin.wallet.Wallet;
+import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ChainTipInfo;
 import com.google.common.util.concurrent.ListenableFutureTask;
 
@@ -36,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -150,7 +152,8 @@ public class BitcoinProvider {
      * @return Una tarea encargada de gestionar la petición.
      */
     @SuppressWarnings({"SameParameterValue", "WeakerAccess"})
-    public ListenableFutureTask<List<TxDecorator>> getHistoryByAddress(byte[] address, int height) {
+    public List<TxDecorator> getHistoryByAddress(byte[] address, int height)
+            throws ExecutionException, InterruptedException {
         final String addressHex = Hex.toHexString(address);
         final List<TxDecorator> history = new ArrayList<>();
         ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
@@ -177,7 +180,7 @@ public class BitcoinProvider {
 
         mExecutor.execute(task);
 
-        return task;
+        return task.get();
     }
 
     /**
@@ -186,7 +189,7 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    ListenableFutureTask<TxDecorator> getTransactionByTxID(byte[] txid) {
+    TxDecorator getTransactionByTxID(byte[] txid) throws ExecutionException, InterruptedException {
         String txidHex = Hex.toHexString(txid);
 
         ListenableFutureTask<TxDecorator> task = ListenableFutureTask.create(() -> {
@@ -204,7 +207,7 @@ public class BitcoinProvider {
 
         mExecutor.execute(task);
 
-        return task;
+        return task.get();
     }
 
     /**
@@ -212,7 +215,7 @@ public class BitcoinProvider {
      *
      * @return Una tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<ChainTipInfo> getChainTipInfo() {
+    public ChainTipInfo getChainTipInfo() throws ExecutionException, InterruptedException {
         ListenableFutureTask<ChainTipInfo> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getChainTipInfo");
             return tryDo(() -> {
@@ -237,7 +240,7 @@ public class BitcoinProvider {
 
         mExecutor.execute(task);
 
-        return task;
+        return task.get();
     }
 
     /**
@@ -246,7 +249,7 @@ public class BitcoinProvider {
      * @param transaction Transacción a propagar.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<Boolean> broadcastTx(TxDecorator transaction) {
+    public Boolean broadcastTx(TxDecorator transaction) {
         if (transaction == null)
             throw new NullPointerException("Transaction is null");
 
@@ -256,19 +259,19 @@ public class BitcoinProvider {
             Thread.currentThread().setName("Bitcoin Provider broadcastTx");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<BroadcastResponse> response = mApi.broadcastTx(networkName, hexTx)
+                Response<SuccessfulResponse> response = mApi.broadcastTx(networkName, hexTx)
                         .execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return false;
 
-                return response.body().isSent();
+                return response.body().isSuccessful();
             });
         });
 
         mExecutor.execute(task);
 
-        return task;
+        return Utils.tryReturnBoolean(task::get, false);
     }
 
     /**
@@ -277,7 +280,8 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<Map<String, TxDecorator>> getDependencies(byte[] txid) {
+    public Map<String, TxDecorator> getDependencies(byte[] txid)
+            throws ExecutionException, InterruptedException {
         String txidHex = Hex.toHexString(txid);
 
         ListenableFutureTask<Map<String, TxDecorator>> task = ListenableFutureTask.create(() -> {
@@ -306,7 +310,7 @@ public class BitcoinProvider {
 
         mExecutor.execute(task);
 
-        return task;
+        return task.get();
     }
 
     /**
@@ -315,7 +319,8 @@ public class BitcoinProvider {
      * @param addresses Direcciones a consultar.
      * @return Un tarea encargada de gestionar la petición.
      */
-    public ListenableFutureTask<List<TxDecorator>> getHistory(byte[] addresses, int height) {
+    public List<TxDecorator> getHistory(byte[] addresses, int height)
+            throws ExecutionException, InterruptedException {
         final String addressesHex = Hex.toHexString(addresses);
 
         ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
@@ -323,8 +328,8 @@ public class BitcoinProvider {
             Thread.currentThread().setName("Bitcoin Provider getHistory");
             return tryDo(() -> {
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
-                Response<List<TxDataResponse>> response = mApi.getHistory(networkName, addressesHex, height)
-                        .execute();
+                Response<List<TxDataResponse>> response = mApi
+                        .getHistory(networkName, addressesHex, height).execute();
 
                 if (!response.isSuccessful() || response.body() == null)
                     return transactions;
@@ -340,6 +345,44 @@ public class BitcoinProvider {
 
         mExecutor.execute(task);
 
-        return task;
+        return task.get();
+    }
+
+    /**
+     * Registra el token en el servidor para poder recibir notificaciones.
+     *
+     * @param token     Token de notificaciones push (FCM)
+     * @param walletId  Identificador de la billetera.
+     * @param addresses Direcciones a registrar.
+     * @return Un true si la subscripción finalizó correctamente.
+     */
+    public boolean subscribe(String token, String walletId, byte[] addresses) {
+        if (walletId == null)
+            throw new NullPointerException("WalletId is null");
+
+        if (token == null)
+            throw new NullPointerException("Token is null");
+
+        if (addresses == null || addresses.length < 210)
+            throw new IllegalArgumentException("Requires at least 100 address");
+
+        ListenableFutureTask<Boolean> task = ListenableFutureTask.create(() -> {
+            Thread.currentThread().setName("Bitcoin Provider subscribe");
+            return tryDo(() -> {
+                String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
+                Response<SuccessfulResponse> response
+                        = mApi.subscribe(networkName, token, walletId, Hex.toHexString(addresses))
+                        .execute();
+
+                if (!response.isSuccessful() || response.body() == null)
+                    return false;
+
+                return response.body().isSuccessful();
+            });
+        });
+
+        mExecutor.execute(task);
+
+        return Utils.tryReturnBoolean(task::get, false);
     }
 }

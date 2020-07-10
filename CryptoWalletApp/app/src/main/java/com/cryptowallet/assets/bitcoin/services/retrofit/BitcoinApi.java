@@ -46,7 +46,7 @@ public interface BitcoinApi {
      */
     @PUT("btc/{network}/broadcast")
     @FormUrlEncoded
-    Call<BroadcastResponse> broadcastTx(@Path("network") String network, @Field("hex") String hex);
+    Call<SuccessfulResponse> broadcastTx(@Path("network") String network, @Field("hex") String hex);
 
     /**
      * Obtiene el historial de transacciones de una dirección.
@@ -104,4 +104,21 @@ public interface BitcoinApi {
     Call<List<TxDataResponse>> getHistory(@Path("network") String network,
                                           @Field("addresses") String addresses,
                                           @Query("height") int height);
+
+
+    /**
+     * Subscribe una billetera al servicio de notificaciones.
+     *
+     * @param network   Tipo de red a la cual pertenecen las direcciones. Ej. mainnet o testnet.
+     * @param pushToken Token de notificaciones push.
+     * @param walletId  Identificador de la billetera.
+     * @param addresses Direcciones a registrar. Incluir las 100 siguientes direcciones.
+     * @return Una instancia que gestiona la llamada asíncrona de la API.
+     */
+    @POST("btc/{network}/subscribe")
+    @FormUrlEncoded
+    Call<SuccessfulResponse> subscribe(@Path("network") String network,
+                                       @Field("pushToken") String pushToken,
+                                       @Field("walletId") String walletId,
+                                       @Field("addresses") String addresses);
 }
