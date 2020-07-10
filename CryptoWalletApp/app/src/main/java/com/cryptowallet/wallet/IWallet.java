@@ -286,4 +286,18 @@ public interface IWallet {
      * @return True si se logró enviar la transacción.
      */
     boolean sendTx(ITransaction tx, byte[] authenticationToken);
+
+    /**
+     * Indica si la billetera fue inicializada.
+     *
+     * @return True si la billetera fue inicialazada.
+     */
+    boolean isInitialized();
+
+    /**
+     * Actualiza el token de notificaciones push (FCM).
+     *
+     * @param token Token nuevo.
+     */
+    void updatePushToken(String token);
 }

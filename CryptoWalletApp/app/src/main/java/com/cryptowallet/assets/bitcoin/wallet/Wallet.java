@@ -73,6 +73,7 @@ import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.uri.BitcoinURIParseException;
 import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DecryptingKeyBag;
+import org.bitcoinj.wallet.DeterministicKeyChain;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.KeyBag;
 import org.bitcoinj.wallet.KeyChain;
@@ -182,6 +183,11 @@ public class Wallet implements IWallet {
      * Último precio del activo.
      */
     private double mLastPrice;
+
+    /**
+     * Identificador de la billetera.
+     */
+    private String walletId;
 
     /**
      * Conjunto de escuchas del precio.
@@ -354,6 +360,11 @@ public class Wallet implements IWallet {
 
             propagateLib();
 
+            if (mInitialized) {
+                onInitialized.accept(false);
+                return;
+            }
+
             try {
                 Threading.USER_THREAD = mExecutor;
 
@@ -377,6 +388,8 @@ public class Wallet implements IWallet {
                     mWallet.saveToFile(mWalletFile);
                 }
 
+                loadWalletId(authenticationToken);
+
                 configureListeners();
                 updatePriceListeners();
 
@@ -384,13 +397,27 @@ public class Wallet implements IWallet {
 
                 onInitialized.accept(false);
 
-                if (fetchTransactions())
-                    pullTransactions();
+                synchronizeWallet();
             } catch (IOException | UnreadableWalletException e) {
                 Log.w(LOG_TAG, Objects.requireNonNull(e.getMessage()));
                 onInitialized.accept(true);
             }
         });
+    }
+
+    /**
+     * Carga en memoria el identificador de la billetera.
+     *
+     * @param authenticationToken Token de autenticación.
+     */
+    private void loadWalletId(@NonNull byte[] authenticationToken) {
+        KeyCrypter keyCrypter = mWallet.getKeyCrypter();
+        Objects.requireNonNull(keyCrypter);
+
+        KeyParameter key = keyCrypter.deriveKey(Hex.toHexString(authenticationToken));
+        DeterministicSeed seed = mWallet.getKeyChainSeed().decrypt(keyCrypter, "", key);
+
+        walletId = Hex.toHexString(Utils.sha256(seed.getSeedBytes()));
     }
 
     /**
@@ -403,13 +430,11 @@ public class Wallet implements IWallet {
     /**
      * Solicita las transacciones al servidor.
      */
-    private void pullTransactions() {
-        Log.i(LOG_TAG, "Pull from server, current height: "
-                + mWallet.getLastBlockSeenHeight());
-
+    private void synchronizeWallet() {
         Utils.tryNotThrow(() -> {
-            ChainTipInfo tipInfo = BitcoinProvider.get(this).getChainTipInfo().get();
-            receivedHistoryRequest();
+            final BitcoinProvider provider = BitcoinProvider.get(this);
+            ChainTipInfo tipInfo = provider.getChainTipInfo();
+            historyRequest(tipInfo);
 
             mWallet.setLastBlockSeenHash(Sha256Hash.wrap(tipInfo.getHash()));
             mWallet.setLastBlockSeenHeight(tipInfo.getHeight());
@@ -419,12 +444,14 @@ public class Wallet implements IWallet {
 
             Utils.tryNotThrow(() -> mWallet.saveToFile(mWalletFile));
 
-            if (tipInfo.getHeight() !=
-                    BitcoinProvider.get(this).getChainTipInfo().get().getHeight())
-                pullTransactions();
-            else
+            if (tipInfo.getHeight() != provider.getChainTipInfo().getHeight())
+                synchronizeWallet();
+            else {
                 Log.i(LOG_TAG, "Sync is completed: current height "
                         + mWallet.getLastBlockSeenHeight());
+
+                WalletManager.notifySyncWallet(this);
+            }
         });
     }
 
@@ -452,15 +479,18 @@ public class Wallet implements IWallet {
 
     /**
      * Solicita el historial de las transacciones que representan envíos a esta billetera.
+     *
+     * @param tipInfo Información de la punta de la cadena de bloques.
      */
-    private void receivedHistoryRequest() throws ExecutionException, InterruptedException {
+    private void historyRequest(ChainTipInfo tipInfo)
+            throws ExecutionException, InterruptedException {
         final boolean isInitial = mWallet.getLastBlockSeenHeight() <= 0;
 
         if (isInitial) {
             Map<String, TxDecorator> history = new HashMap<>();
 
-            int receiveAddresses = scanAddresses(ChildNumber.ZERO, history, 0);
-            int changeAddresses = scanAddresses(ChildNumber.ONE, history, 0);
+            int receiveAddresses = scanAddresses(ChildNumber.ZERO, history);
+            int changeAddresses = scanAddresses(ChildNumber.ONE, history);
 
             Log.d(LOG_TAG, String.format("New addresses with activity found: %d",
                     receiveAddresses + changeAddresses));
@@ -468,9 +498,11 @@ public class Wallet implements IWallet {
             freshAddresses(KeyChain.KeyPurpose.RECEIVE_FUNDS, receiveAddresses);
             freshAddresses(KeyChain.KeyPurpose.CHANGE, changeAddresses);
 
-            receiveTransactions(history);
+            addTransactions(history);
 
-        } else
+        } else if (tipInfo.getHeight() != mWallet.getLastBlockSeenHeight()
+                || !tipInfo.getHash().equalsIgnoreCase(
+                Objects.requireNonNull(mWallet.getLastBlockSeenHash()).toString()))
             historyRequestByAddresses();
     }
 
@@ -487,6 +519,7 @@ public class Wallet implements IWallet {
             mWallet.freshAddress(keyPurpose);
     }
 
+
     /**
      * Escanea las direcciones del tipo especificado.
      *
@@ -494,27 +527,32 @@ public class Wallet implements IWallet {
      * @param history Historial de transacciones.
      * @return Cantidad de direcciones generadas.
      */
-    private int scanAddresses(ChildNumber purpose, Map<String, TxDecorator> history, int fromIndex)
+    private int scanAddresses(ChildNumber purpose, Map<String, TxDecorator> history)
             throws ExecutionException, InterruptedException {
-        Derivator derivator = new Derivator(purpose);
+        return scanAddresses(purpose, history, 0, MAX_INACTIVE_ADDRESS,
+                MAX_ADDRESS_PER_REQUEST);
+    }
+
+    /**
+     * Escanea las direcciones del tipo especificado.
+     *
+     * @param purpose Proposito de las direcciones a generar.
+     * @param history Historial de transacciones.
+     * @return Cantidad de direcciones generadas.
+     */
+    private int scanAddresses(ChildNumber purpose, Map<String, TxDecorator> history, int fromIndex,
+                              int tries, int size)
+            throws ExecutionException, InterruptedException {
+        final Derivator derivator = new Derivator(purpose);
         int index = fromIndex;
         int inactiveAddress = 0;
 
-        while (inactiveAddress < MAX_INACTIVE_ADDRESS) {
+        while (inactiveAddress < tries) {
             final Set<LegacyAddress> addresses = derivator
-                    .deriveAddresses(MAX_ADDRESS_PER_REQUEST, index);
-
-            final List<byte[]> binList = serializeAddressesList(addresses);
-            final int size = Utils.Lists
-                    .aggregate(binList, (item, amount) -> amount + item.length, 0);
-            final byte[] stream = new byte[size];
-
-            for (int i = 0; i < binList.size(); i++)
-                System.arraycopy(binList.get(i), 0, stream, i * 21, 21);
+                    .deriveAddresses(size, index);
 
             List<TxDecorator> txDecorators = BitcoinProvider.get(this)
-                    .getHistory(stream, 0)
-                    .get();
+                    .getHistory(serializeAddressesList(addresses), 0);
 
             if (txDecorators.isEmpty())
                 inactiveAddress++;
@@ -525,10 +563,54 @@ public class Wallet implements IWallet {
                 inactiveAddress = 0;
             }
 
-            index += MAX_ADDRESS_PER_REQUEST;
+            index += size;
         }
 
-        return index - inactiveAddress * MAX_ADDRESS_PER_REQUEST - fromIndex;
+        final int queriedAddresses = index - inactiveAddress * size - fromIndex;
+        final Set<LegacyAddress> generatedAddresses
+                = derivator.deriveAddresses(queriedAddresses, fromIndex);
+        final int skippedAddress = computeSkippedAddress(history, generatedAddresses);
+
+        return queriedAddresses - skippedAddress;
+    }
+
+    /**
+     * Determina cuantas de las últimas direcciones no tienen actividad.
+     *
+     * @param transactions Historial de transacciones.
+     * @param addresses    Direcciones a explorar.
+     * @return Cantidad de direcciones sin actividad.
+     */
+    private int computeSkippedAddress(Map<String, TxDecorator> transactions,
+                                      Set<LegacyAddress> addresses) {
+        ArrayList<LegacyAddress> list = new ArrayList<>(addresses);
+        Collections.reverse(list);
+
+        int skipped = 0;
+
+        for (LegacyAddress address : list) {
+            if (hasActivity(address, transactions))
+                break;
+            else
+                skipped++;
+        }
+
+        return skipped;
+    }
+
+    /**
+     * Verifica si la dirección recibe monedas en alguna de las transacciones.
+     *
+     * @param address      Dirección a buscar.
+     * @param transactions Transacciones a explorar.
+     * @return True si recibe monedas la dirección.
+     */
+    private boolean hasActivity(LegacyAddress address, Map<String, TxDecorator> transactions) {
+        for (TxDecorator tx : transactions.values())
+            if (tx.getToAddress().contains(address.toBase58()))
+                return true;
+
+        return false;
     }
 
     /**
@@ -544,17 +626,24 @@ public class Wallet implements IWallet {
 
         Set<LegacyAddress> receiveAddresses = external.deriveAddresses(externalKeys, 0);
         Set<LegacyAddress> changeAddresses = internal.deriveAddresses(internalKeys, 0);
+
+        Set<LegacyAddress> addresses = new HashSet<>();
+
+        addresses.addAll(receiveAddresses);
+        addresses.addAll(changeAddresses);
+
         Map<String, TxDecorator> transactions = new HashMap<>();
 
-        downloadTransactions(height, receiveAddresses, transactions);
-        downloadTransactions(height, changeAddresses, transactions);
+        downloadTransactions(height, addresses, transactions);
 
-        receiveTransactions(transactions);
+        addTransactions(transactions);
 
         transactions.clear();
 
-        final int newExternalKeys = scanAddresses(ChildNumber.ZERO, transactions, externalKeys);
-        final int newInternalKeys = scanAddresses(ChildNumber.ONE, transactions, internalKeys);
+        final int newExternalKeys
+                = scanAddresses(ChildNumber.ZERO, transactions, externalKeys, 1, 100);
+        final int newInternalKeys
+                = scanAddresses(ChildNumber.ONE, transactions, internalKeys, 1, 100);
 
         Log.d(LOG_TAG, String.format("New addresses with activity found: %d",
                 newExternalKeys + newInternalKeys));
@@ -562,7 +651,7 @@ public class Wallet implements IWallet {
         freshAddresses(KeyChain.KeyPurpose.RECEIVE_FUNDS, newExternalKeys);
         freshAddresses(KeyChain.KeyPurpose.CHANGE, newInternalKeys);
 
-        receiveTransactions(transactions);
+        addTransactions(transactions);
     }
 
     /**
@@ -575,22 +664,9 @@ public class Wallet implements IWallet {
     private void downloadTransactions(int height, Set<LegacyAddress> addresses,
                                       Map<String, TxDecorator> transactions)
             throws ExecutionException, InterruptedException {
-        List<byte[]> binAddresses = serializeAddressesList(addresses);
-        final int size = Utils.Lists
-                .aggregate(binAddresses, (item, amount) -> amount + item.length, 0);
-        final byte[] stream = new byte[size];
-
-        int lastPos = 0;
-
-        for (int j = 0; j < binAddresses.size(); j++) {
-            System.arraycopy(binAddresses.get(j), 0,
-                    stream, lastPos, binAddresses.get(j).length);
-            lastPos += binAddresses.get(j).length;
-        }
 
         List<TxDecorator> activity = BitcoinProvider.get(this)
-                .getHistory(stream, height)
-                .get();
+                .getHistory(serializeAddressesList(addresses), height);
 
         if (!activity.isEmpty())
             for (TxDecorator tx : activity)
@@ -620,13 +696,25 @@ public class Wallet implements IWallet {
      * @param addresses Lista de direcciones.
      * @return Matriz unidimensional de bytes.
      */
-    private List<byte[]> serializeAddressesList(Set<LegacyAddress> addresses) {
+    private byte[] serializeAddressesList(Set<LegacyAddress> addresses) {
         List<byte[]> binAddresses = new ArrayList<>();
 
         for (LegacyAddress address : addresses)
             binAddresses.add(serializeAddress(address));
 
-        return binAddresses;
+        final int size = Utils.Lists
+                .aggregate(binAddresses, (item, amount) -> amount + item.length, 0);
+        final byte[] bytes = new byte[size];
+
+        int lastPos = 0;
+
+        for (int j = 0; j < binAddresses.size(); j++) {
+            System.arraycopy(binAddresses.get(j), 0, bytes, lastPos,
+                    binAddresses.get(j).length);
+            lastPos += binAddresses.get(j).length;
+        }
+
+        return bytes;
     }
 
 
@@ -635,7 +723,7 @@ public class Wallet implements IWallet {
      *
      * @param transactions Transacciones a agregar a la billetera.
      */
-    private void receiveTransactions(final Map<String, TxDecorator> transactions) {
+    private void addTransactions(final Map<String, TxDecorator> transactions) {
         if (transactions.isEmpty()) return;
 
         List<TxDecorator> orderedTx = new ArrayList<>(transactions.values());
@@ -663,8 +751,7 @@ public class Wallet implements IWallet {
 
                 if (known.requireDependencies()) {
                     Map<String, TxDecorator> dependencies = BitcoinProvider.get(this)
-                            .getDependencies(known.getTx().getTxId().getReversedBytes())
-                            .get();
+                            .getDependencies(known.getTx().getTxId().getReversedBytes());
 
                     if (dependencies == null)
                         throw new IOException("Fail to download dependencies: " + known.getID());
@@ -713,27 +800,6 @@ public class Wallet implements IWallet {
                 input.connect(output);
             }
         }
-    }
-
-    /**
-     * Verifica si se requiere extraer las transacciones del servidor.
-     *
-     * @return Un true si se requiere extraer las transacciones.
-     */
-    private boolean fetchTransactions() {
-        return Utils.tryReturnBoolean(() -> {
-            final int height = mWallet.getLastBlockSeenHeight();
-            final Sha256Hash hash = mWallet.getLastBlockSeenHash();
-            final ChainTipInfo chainTipInfo = BitcoinProvider.get(this).getChainTipInfo().get();
-
-            Log.d(LOG_TAG,
-                    String.format("{ height: %d, hash: %s, height(remote): %d, hash(remote): %s }",
-                            height, hash, chainTipInfo.getHeight(), chainTipInfo.getHash()));
-
-            return height < chainTipInfo.getHeight() || hash == null
-                    || !hash.toString().equalsIgnoreCase(chainTipInfo.getHash())
-                    || chainTipInfo.getTime().after(mWallet.getLastBlockSeenTime());
-        }, false);
     }
 
     /**
@@ -893,6 +959,8 @@ public class Wallet implements IWallet {
     public ITransaction createTx(String address, double amount, double feeByKB) {
         if (mWallet == null)
             throw new IllegalStateException("Wallet wasn't initialized");
+
+        propagateLib();
 
         Address btcAddress = parseAddress(address);
         Coin btcAmount = Coin.valueOf((long) (amount * getAsset().getUnit()));
@@ -1162,6 +1230,9 @@ public class Wallet implements IWallet {
      */
     @Override
     public List<ITransaction> getTransactions() {
+        if (mWallet == null)
+            throw new IllegalStateException("Wallet wasn't initialized");
+
         propagateLib();
 
         List<ITransaction> txs = new ArrayList<>();
@@ -1200,6 +1271,9 @@ public class Wallet implements IWallet {
     @Nullable
     @Override
     public ITransaction findTransaction(String hash) {
+        if (mWallet == null)
+            throw new IllegalStateException("Wallet wasn't initialized");
+
         propagateLib();
 
         Sha256Hash txid = Sha256Hash.wrap(hash);
@@ -1221,14 +1295,56 @@ public class Wallet implements IWallet {
      */
     @Override
     public boolean sendTx(ITransaction tx, byte[] authenticationToken) {
+        if (mWallet == null)
+            throw new IllegalStateException("Wallet wasn't initialized");
+
+        propagateLib();
+
         if (!(tx instanceof TxDecorator))
             throw new IllegalArgumentException(
                     "The transaction cannot be sent because it isn't a Bitcoin transaction");
 
         return Utils.tryReturnBoolean(() -> {
             signInputsOfTransaction((TxDecorator) tx, authenticationToken);
-            return BitcoinProvider.get(this).broadcastTx((TxDecorator) tx).get();
+            return BitcoinProvider.get(this).broadcastTx((TxDecorator) tx);
         }, false);
+    }
+
+    /**
+     * Indica si la billetera fue inicializada.
+     *
+     * @return True si la billetera fue inicialazada.
+     */
+    @Override
+    public boolean isInitialized() {
+        return mInitialized;
+    }
+
+    /**
+     * Actualiza el token de notificaciones push (FCM).
+     *
+     * @param token Token nuevo.
+     */
+    @Override
+    public void updatePushToken(String token) {
+        final DeterministicKeyChain activeKeyChain = mWallet.getActiveKeyChain();
+
+        final Set<LegacyAddress> receiveAddresses = new Derivator(ChildNumber.ZERO)
+                .deriveAddresses(activeKeyChain.getIssuedExternalKeys()
+                        + MAX_ADDRESS_PER_REQUEST, 0);
+
+        final Set<LegacyAddress> changeAddresses = new Derivator(ChildNumber.ONE)
+                .deriveAddresses(activeKeyChain.getIssuedInternalKeys()
+                        + MAX_ADDRESS_PER_REQUEST, 0);
+
+        final HashSet<LegacyAddress> addresses = new HashSet<>();
+        addresses.addAll(receiveAddresses);
+        addresses.addAll(changeAddresses);
+
+        final byte[] binAdresses = serializeAddressesList(addresses);
+
+        if (!BitcoinProvider.get(this).subscribe(token, walletId, binAdresses))
+            Log.w(LOG_TAG, "Fail to subscribe push token");
     }
 
     /**
