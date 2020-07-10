@@ -56,11 +56,6 @@ import java.util.Set;
 public class TxDecorator implements ITransaction {
 
     /**
-     * Minimo de confirmación.
-     */
-    private static final int MIN_COMMITS = 3;
-
-    /**
      * Transacción de Bitcoin.
      */
     private final Transaction mTx;
@@ -330,7 +325,8 @@ public class TxDecorator implements ITransaction {
             Address address = output.getScriptPubKey()
                     .getToAddress(mWalletParent.getNetwork(), true);
 
-            if (mWallet != null && isPay() == mWallet.isAddressMine(address))
+            if (!requireDependencies() &&
+                    mWallet != null && isPay() == mWallet.isAddressMine(address))
                 continue;
 
             if (address instanceof LegacyAddress)
