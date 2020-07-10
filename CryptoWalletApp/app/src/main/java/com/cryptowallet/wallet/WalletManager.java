@@ -24,6 +24,9 @@ import androidx.annotation.NonNull;
 
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.ExecutableConsumer;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -83,6 +86,13 @@ public abstract class WalletManager {
     }
 
     /**
+     * @throws UnsupportedOperationException No es posible crear instancias.
+     */
+    private WalletManager() throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("Unable to create a new instance");
+    }
+
+    /**
      * Remueve el escucha del cambio del saldo.
      *
      * @param listener Escucha a remover.
@@ -96,7 +106,6 @@ public abstract class WalletManager {
                 break;
             }
     }
-
 
     /**
      * Remueve el escucha del cambio del historial de transacciones.
@@ -146,19 +155,12 @@ public abstract class WalletManager {
     }
 
     /**
-     * @throws UnsupportedOperationException No es posible crear instancias.
-     */
-    private WalletManager() throws UnsupportedOperationException {
-        throw new UnsupportedOperationException("Unable to create a new instance");
-    }
-
-    /**
      * Obtiene el controlador de billetera del activo especificado.
      *
      * @param asset Criptoactivo del controlador.
      * @return El controlador de billetera.
      */
-    public static IWallet get(SupportedAssets asset) {
+    public synchronized static IWallet get(SupportedAssets asset) {
         if (asset.isFiat())
             throw new IllegalArgumentException();
 
@@ -249,7 +251,7 @@ public abstract class WalletManager {
     /**
      * Notifica que el saldo de alguna de las billeteras ha cambiado su saldo.
      */
-    public static void notifyChangedBalance() {
+    public synchronized static void notifyChangedBalance() {
         final double balance = getBalance();
         for (ExecutableConsumer<Double> listener : mOnChangedBalanceListeners)
             listener.execute(balance);
@@ -260,7 +262,7 @@ public abstract class WalletManager {
      *
      * @param newTx Transacción recibida.
      */
-    public static void nofityChangedTxHistory(@NonNull final ITransaction newTx) {
+    public synchronized static void nofityChangedTxHistory(@NonNull final ITransaction newTx) {
         Objects.requireNonNull(newTx);
 
         for (ExecutableConsumer<ITransaction> listener : mOnChangedTxHistoryListeners)
@@ -269,9 +271,41 @@ public abstract class WalletManager {
 
     /**
      * Obtiene la cantidad de billeteras registradas.
+     *
      * @return Cantidad de billeteras.
      */
     public static int getCount() {
         return mWalletServices.size();
+    }
+
+    /**
+     * Ejecuta una función por cada billetera inicializada.
+     *
+     * @param consumer Una función de consumo.
+     */
+    public static void forEachWallet(Consumer<IWallet> consumer) {
+        Collection<IWallet> wallets = mWalletServices.values();
+
+        for (IWallet wallet : wallets)
+            if (wallet.isInitialized()) consumer.accept(wallet);
+    }
+
+    /**
+     * Notifica que la billetera especificada a sincronizado sus transacciones. Esto permite detonar
+     * la actualización de los tokens e invocar la función {@link IWallet#updatePushToken(String)}
+     *
+     * @param wallet Billetera que reporta la actualización.
+     */
+    public synchronized static void notifySyncWallet(IWallet wallet) {
+        if (FirebaseMessaging.getInstance().isAutoInitEnabled()) {
+            FirebaseInstanceId.getInstance().getInstanceId()
+                    .addOnCompleteListener(task -> {
+                        InstanceIdResult result = task.getResult();
+
+                        if (result != null)
+                            wallet.updatePushToken(result.getToken());
+                    });
+        } else
+            FirebaseMessaging.getInstance().setAutoInitEnabled(true);
     }
 }
