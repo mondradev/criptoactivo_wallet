@@ -208,6 +208,8 @@ public final class Utils {
 
             return true;
         } catch (Exception e) {
+            if (e.getStackTrace().length > 1)
+                Log.d("Utils", "Method: " + e.getStackTrace()[1]);
             Log.d("Utils", String.format("Exception avoided: %s", e.getMessage()));
             return false;
         }

@@ -194,4 +194,5 @@
     <string name="successful_payment_pattern">Your payment of %s was successful</string>
     <string name="share_successful_payment_title">Share successful payment</string>
     <string name="fail_to_send_tx_error">Fail to send a transaction, try again</string>
+    <string name="default_notification_channel_id" translatable="false">cryptowallet_notifications</string>
 </resources>

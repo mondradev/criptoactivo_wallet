@@ -20,6 +20,8 @@ package com.cryptowallet.app;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
@@ -64,12 +66,13 @@ final class AlertMessages {
      * @param onAgreed Una función invocada cuando los terminos son aceptados.
      */
     static void showTerms(Context context, DialogInterface.OnClickListener onAgreed) {
-        new AlertDialog.Builder(context)
-                .setTitle(R.string.terms_text)
-                .setMessage(R.string.terms_content)
-                .setPositiveButton(R.string.agree_caption_button, onAgreed)
-                .create()
-                .show();
+        new Handler(Looper.getMainLooper()).post(() ->
+                new AlertDialog.Builder(context)
+                        .setTitle(R.string.terms_text)
+                        .setMessage(R.string.terms_content)
+                        .setPositiveButton(R.string.agree_caption_button, onAgreed)
+                        .create()
+                        .show());
     }
 
     /**
@@ -80,13 +83,14 @@ final class AlertMessages {
      * @param message Mensaje de la alerta.
      */
     private static void showCritalError(Context context, @StringRes int title, @StringRes int message) {
-        new AlertDialog.Builder(context)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton(android.R.string.ok,
-                        (dialog, button) -> System.exit(1))
-                .create()
-                .show();
+        new Handler(Looper.getMainLooper()).post(() ->
+                new AlertDialog.Builder(context)
+                        .setTitle(title)
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok,
+                                (dialog, button) -> System.exit(1))
+                        .create()
+                        .show());
     }
 
 
