@@ -18,6 +18,7 @@
 
 package com.cryptowallet.wallet;
 
+import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -171,26 +172,28 @@ public abstract class WalletManager {
     }
 
     /**
+     * Inicializa el administrador de billeteras. Esta función carga las billeteras registradas para
+     * que puedan ser obtenidas a través de {@link #get(SupportedAssets)}.
+     *
+     * @param appContext Contexto de la aplicación que permite tener acceso a los recursos del
+     *                   dispositivo.
+     */
+    public static void init(Context appContext) {
+        registerWallet(new com.cryptowallet.assets.bitcoin.wallet.Wallet(appContext));
+    }
+
+    /**
      * Registra un nuevo controlador de billetera.
      *
      * @param wallet Instancia del controlador.
      */
-    public static void registerWallet(IWallet wallet) {
+    private static void registerWallet(IWallet wallet) {
         if (mWalletServices.containsKey(wallet.getAsset()))
             return;
 
         mWalletServices.put(wallet.getAsset(), wallet);
 
         Log.d(LOG_TAG, "Added wallet for " + wallet.getAsset().name());
-    }
-
-    /**
-     * Borra el controlador de billetera del administrador.
-     *
-     * @param asset Activo que se desea eliminar el controlador.
-     */
-    public static void unregisterWallet(SupportedAssets asset) {
-        mWalletServices.remove(asset);
     }
 
     /**

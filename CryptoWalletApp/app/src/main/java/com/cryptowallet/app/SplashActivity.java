@@ -31,9 +31,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.AuthenticationCallback;
 import com.cryptowallet.app.authentication.IAuthenticationCallback;
-import com.cryptowallet.assets.bitcoin.wallet.Wallet;
-import com.cryptowallet.services.coinmarket.BitfinexPriceTracker;
-import com.cryptowallet.services.coinmarket.BitsoPriceTracker;
 import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletManager;
 
@@ -54,16 +51,6 @@ public final class SplashActivity extends AppCompatActivity {
      * Código de una salida por una autenticación fallida o cancelada.
      */
     private static final int AUTHENTICATION_FAIL = 1;
-
-    /**
-     * Libro de Bitcoin-PesosMxn Bitso
-     */
-    private static final String BOOK_BTC_MXN = "btc_mxn";
-
-    /**
-     * Libro de Bitcoin-USD Bitfinex
-     */
-    private static final String BOOK_BTC_USD = "tBTCUSD";
 
     /**
      * Etiqueta de log.
@@ -121,11 +108,7 @@ public final class SplashActivity extends AppCompatActivity {
      * Configura los parametros iniciales de la aplicación.
      */
     private void setupApp() {
-        Wallet btcWallet = new Wallet(this);
-        btcWallet.registerPriceTracker(BitfinexPriceTracker.get(BOOK_BTC_USD), SupportedAssets.USD);
-        btcWallet.registerPriceTracker(BitsoPriceTracker.get(BOOK_BTC_MXN), SupportedAssets.MXN);
-
-        WalletManager.registerWallet(btcWallet);
+        WalletManager.init(this);
         LockableActivity.registerMainActivityClass(SplashActivity.class);
         Preferences.create(this).loadLanguage(this);
 
