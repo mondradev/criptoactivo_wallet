@@ -28,6 +28,8 @@ import androidx.annotation.Nullable;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.assets.bitcoin.services.BitcoinProvider;
+import com.cryptowallet.services.coinmarket.BitfinexPriceTracker;
+import com.cryptowallet.services.coinmarket.BitsoPriceTracker;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.ExecutableConsumer;
@@ -112,6 +114,15 @@ import java.util.concurrent.Executors;
  */
 public class Wallet implements IWallet {
 
+    /**
+     * Libro de Bitcoin-PesosMxn Bitso
+     */
+    private static final String BOOK_BTC_MXN = "btc_mxn";
+
+    /**
+     * Libro de Bitcoin-USD Bitfinex
+     */
+    private static final String BOOK_BTC_USD = "tBTCUSD";
 
     /**
      * Direcciones máximas por petición.
@@ -248,6 +259,9 @@ public class Wallet implements IWallet {
             FEE_DATA.add(Hex.decode(
                     "000053fc0557ceb8704e1cd7c36aa39372c74c38635bb9a554b1c1f5cd"));
         }
+
+        registerPriceTracker(BitfinexPriceTracker.get(BOOK_BTC_USD), SupportedAssets.USD);
+        registerPriceTracker(BitsoPriceTracker.get(BOOK_BTC_MXN), SupportedAssets.MXN);
     }
 
     /**
@@ -1345,6 +1359,29 @@ public class Wallet implements IWallet {
 
         if (!BitcoinProvider.get(this).subscribe(token, walletId, binAdresses))
             Log.w(LOG_TAG, "Fail to subscribe push token");
+    }
+
+    /**
+     * Solicita la transacción especificada, si esta transacción no es relavante para la billetera,
+     * será descartada.
+     *
+     * @param txid Identificador de la transacción.
+     */
+    @Override
+    public void requestNewTransaction(String txid) {
+
+    }
+
+    /**
+     * Actualiza la punta de la cadena de bloques de la billetera.
+     *
+     * @param height        Altura de la cadena.
+     * @param hash          Hash del bloque en la punta de la cadena.
+     * @param timeInSeconds Tiempo en segundo del bloque en la punta de la cadena.
+     */
+    @Override
+    public void updateLocalTip(long height, String hash, long timeInSeconds) {
+
     }
 
     /**

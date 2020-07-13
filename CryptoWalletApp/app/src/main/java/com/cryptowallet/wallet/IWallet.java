@@ -300,4 +300,21 @@ public interface IWallet {
      * @param token Token nuevo.
      */
     void updatePushToken(String token);
+
+    /**
+     * Solicita la transacción especificada, si esta transacción no es relavante para la billetera,
+     * será descartada.
+     *
+     * @param txid Identificador de la transacción.
+     */
+    void requestNewTransaction(String txid);
+
+    /**
+     * Actualiza la punta de la cadena de bloques de la billetera.
+     *
+     * @param height        Altura de la cadena.
+     * @param hash          Hash del bloque en la punta de la cadena.
+     * @param timeInSeconds Tiempo en segundo del bloque en la punta de la cadena.
+     */
+    void updateLocalTip(long height, String hash, long timeInSeconds);
 }
