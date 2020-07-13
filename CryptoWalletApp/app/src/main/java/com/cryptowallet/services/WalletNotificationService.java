@@ -21,8 +21,12 @@ package com.cryptowallet.services;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.cryptowallet.wallet.WalletManager;
+import com.google.common.base.Strings;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
@@ -34,6 +38,14 @@ import com.google.firebase.messaging.RemoteMessage;
  * @version 1.0
  */
 public class WalletNotificationService extends FirebaseMessagingService {
+
+    static final String TYPE_KEY = "type";
+    static final String HEIGHT_KEY = "height";
+    static final String HASH_KEY = "hash";
+    static final String TIME_KEY = "time";
+    static final String NETWORK_KEY = "network";
+    static final String ASSET_KEY = "asset";
+    static final String TXID_KEY = "txid";
 
     /**
      * Etiqueta de log de la clase.
@@ -58,7 +70,40 @@ public class WalletNotificationService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
-        Log.i(LOG_TAG, "Received message from FCM");
-        // TODO recepción de notificaciones
+        String type = remoteMessage.getData().get(TYPE_KEY);
+
+        if (Strings.isNullOrEmpty(type)) return;
+
+        MessageType messageType = MessageType.valueOf(type.toUpperCase());
+
+        if (messageType.equals(MessageType.UNKNOWN)) return;
+
+        Data parameters;
+
+        if (messageType.equals(MessageType.UPDATE_TIP)) {
+            parameters = new Data.Builder()
+                    .putString(HEIGHT_KEY, remoteMessage.getData().get(HEIGHT_KEY))
+                    .putString(HASH_KEY, remoteMessage.getData().get(HASH_KEY))
+                    .putString(TIME_KEY, remoteMessage.getData().get(TIME_KEY))
+                    .putString(NETWORK_KEY, remoteMessage.getData().get(NETWORK_KEY))
+                    .putString(ASSET_KEY, remoteMessage.getData().get(ASSET_KEY))
+                    .build();
+        } else if (messageType.equals(MessageType.NEW_TX)) {
+            parameters = new Data.Builder()
+                    .putString(TXID_KEY, remoteMessage.getData().get(TXID_KEY))
+                    .putString(NETWORK_KEY, remoteMessage.getData().get(NETWORK_KEY))
+                    .putString(ASSET_KEY, remoteMessage.getData().get(ASSET_KEY))
+                    .build();
+        } else return;
+
+        OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(NotificationsWorker.class)
+                .setInputData(parameters).build();
+        WorkManager.getInstance(getApplicationContext()).beginWith(work).enqueue();
+    }
+
+    enum MessageType {
+        UNKNOWN,
+        UPDATE_TIP,
+        NEW_TX
     }
 }
