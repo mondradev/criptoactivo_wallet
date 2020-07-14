@@ -133,6 +133,7 @@ export default class WalletProvider implements IWalletProvider {
         }
 
         const notifications = new Map<string, { pushTokens: string[], txs: string[] }>()
+        const wallets = await this._db.getWallets(ASSET, Networks.defaultNetwork.name)
 
         for (const value of addressesByTx) {
             const addresses = value.addresses
@@ -147,6 +148,16 @@ export default class WalletProvider implements IWalletProvider {
 
                 notifications.get(wallet.walletId).txs.push(value.txid)
             }
+        }
+
+        for (const wallet of wallets) {
+            if (notifications.has(wallet.walletId))
+                continue
+
+            notifications.set(wallet.walletId, {
+                pushTokens: wallet.pushTokens,
+                txs: []
+            })
         }
 
         await this._sendNewBlock(hash.toReverseHex(), height, time, notifications)
