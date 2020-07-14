@@ -84,9 +84,9 @@ export default class WalletProvider implements IWalletProvider {
         return {
             block: "(Mempool)",
             height: -1,
-            index: 0xffffffff,
+            index: -1,
             txid: tx.hash,
-            time: new Date().getTime() / 1000,
+            time: Math.round(new Date().getTime() / 1000),
             data: tx.toBuffer().toHex()
         }
     }
@@ -117,27 +117,62 @@ export default class WalletProvider implements IWalletProvider {
     }
 
     private async _notifyReceivedBlock(block: Block) {
-        for (const tx of block.transactions)
-            await this._notifyReceivedTx(tx)
+        const status = await this.network.getStatus()
 
-        const tip = await this.getChainInfo(Networks.defaultNetwork.name)
-        await this._notifyUpdateTip(tip)
+        if (status !== NetworkStatus.SYNCHRONIZED)
+            return
+
+        const hash = block._getHash()
+        const height = await this.chain.getHeight(hash)
+        const time = block.header.time
+        const addressesByTx = new Array<{ txid: string, addresses: string[] }>()
+
+        for (const tx of block.transactions) {
+            const addresses = await this._resolveAddresses(tx)
+            addressesByTx.push(addresses)
+        }
+
+        const notifications = new Map<string, { pushTokens: string[], txs: string[] }>()
+
+        for (const value of addressesByTx) {
+            const addresses = value.addresses
+            const wallets = await this._db.getWalletsByAddresses(addresses, ASSET, Networks.defaultNetwork.name)
+
+            for (const wallet of wallets) {
+                if (!notifications.has(wallet.walletId))
+                    notifications.set(wallet.walletId, {
+                        pushTokens: wallet.pushTokens,
+                        txs: []
+                    })
+
+                notifications.get(wallet.walletId).txs.push(value.txid)
+            }
+        }
+
+        await this._sendNewBlock(hash.toReverseHex(), height, time, notifications)
+
     }
 
-    private async _notifyUpdateTip(tip: ChainInfo) {
-        const wallets = await this._db.getWallets(ASSET, tip.network)
-        const pushTokens = wallets.reduce((tokens, wallet) => { tokens.push(...wallet.pushTokens); return tokens }, [])
+    private async _sendNewBlock(hash: string, height: number, time: number, notifications: Map<string, { pushTokens: string[], txs: string[] }>) {
+        return Promise.all([...notifications.keys()].map(walletId => {
+            const notification = notifications.get(walletId)
+            return this._notifyNewBlock(hash, height, time, notification.txs, notification.pushTokens)
+        }))
+    }
 
+    private async _notifyNewBlock(hash: string, height: number, time: number, txs: string[], pushTokens: string[]) {
         return Promise.all(pushTokens.map(async pt => {
             return axios.post("https://fcm.googleapis.com/v1/projects/development-criptoactivo/messages:send",
                 {
                     message: {
                         data: {
-                            height: tip.height.toString(),
-                            hash: tip.hash,
-                            time: tip.time.toString(),
-                            network: tip.network,
-                            asset: ASSET
+                            type: "new_block",
+                            height: height.toString(),
+                            hash,
+                            time: time.toString(),
+                            network: Networks.defaultNetwork.name,
+                            asset: ASSET,
+                            txs: JSON.stringify(txs)
                         },
                         token: pt
                     }
@@ -158,11 +193,11 @@ export default class WalletProvider implements IWalletProvider {
     }
 
     private async _notifyReceivedTx(tx: Transaction) {
-        await this._createNotify(tx)
-            .then(notify => this._sendNotify(notify))
+        await this._resolveAddresses(tx)
+            .then(notify => this._sendNewTx(notify))
     }
 
-    public async _sendNotify(notify: { txid: string; addresses: string[] }) {
+    public async _sendNewTx(notify: { txid: string; addresses: string[] }) {
         const walletsQuery = notify.addresses.map(address =>
             this._db.getWalletByAddress(address, ASSET, Networks.defaultNetwork.name))
 
@@ -175,20 +210,21 @@ export default class WalletProvider implements IWalletProvider {
 
         for (const wallet of wallets)
             if (!sents[wallet.walletId])
-                if (await this._notifyWallet(wallet.pushTokens, notify.txid)) {
+                if (await this._notifyNewTx(wallet.pushTokens, notify.txid)) {
                     Logger.debug("Sent notification to %s", wallet.walletId)
                     sents[wallet.walletId] = true
                 }
 
     }
 
-    private async _notifyWallet(pushTokens: string[], txid: string) {
+    private async _notifyNewTx(pushTokens: string[], txid: string) {
         return new Promise<boolean>(done =>
             Promise.all(pushTokens.map(async pt => {
                 return axios.post("https://fcm.googleapis.com/v1/projects/development-criptoactivo/messages:send",
                     {
                         message: {
                             data: {
+                                type: "new_tx",
                                 txid,
                                 network: Networks.defaultNetwork.name,
                                 asset: ASSET
@@ -213,8 +249,8 @@ export default class WalletProvider implements IWalletProvider {
             })).then(() => done(true)).catch(() => done(false)))
     }
 
-    private async _createNotify(tx: Transaction) {
-        const hash = tx.hash
+    private async _resolveAddresses(tx: Transaction) {
+        const hash = tx._getHash().toReverseHex()
 
         const inputs = tx.inputs.map(txi => {
             return {
@@ -234,12 +270,12 @@ export default class WalletProvider implements IWalletProvider {
 
         outputs.push(...inputs)
 
-        const notify = {
+        const addresses = {
             txid: hash,
             addresses: outputs.map(txo => txo.address).unique()
         }
 
-        return notify
+        return addresses
     }
 
     private async _connectOutput(inputs: { outpoint: { txid: string, index: number }, address: string }[]) {
@@ -249,6 +285,13 @@ export default class WalletProvider implements IWalletProvider {
             if (!prevTxIdx) continue
 
             const block = await this.chain.getBlock(prevTxIdx.blockHash)
+
+            if (!block) {
+                Logger.warn("Block[%s] not found", prevTxIdx.blockHash ? prevTxIdx.blockHash.toReverseHex() : "(Non-hash)")
+
+                continue
+            }
+
             const prevTx = block.transactions[prevTxIdx.index]
             const txo = prevTx.outputs[txi.outpoint.index]
 
@@ -369,6 +412,11 @@ export default class WalletProvider implements IWalletProvider {
                 index: addrIndex.index
             })
         }
+
+        const memTxs = await this.mempool.getTxsByAddress(addressBuff)
+
+        if (memTxs && memTxs.length > 0)
+            txHistorial.push(...memTxs)
 
         return txHistorial
     }
@@ -491,10 +539,14 @@ class MongoManager {
     }
 
     public async getWalletByAddress(address: string, chain: string, network: string) {
-        const wallet = await this._wallets.findOne({ chain, network, addresses: address })
-
-        return wallet
+        return this._wallets.findOne({ chain, network, addresses: address })
     }
+
+
+    public async getWalletsByAddresses(addresses: string[], chain: string, network: string) {
+        return this._wallets.find({ chain, network, addresses: { $in: addresses } }).toArray()
+    }
+
 
     public async registerWallet(wallet: WalletSchema) {
         const inserted = await this._wallets.insertOne(wallet)
@@ -503,9 +555,7 @@ class MongoManager {
     }
 
     public async getWallet(walletId: string, chain: string, network: string) {
-        const wallet = await this._wallets.findOne({ walletId, chain, network })
-
-        return wallet
+        return this._wallets.findOne({ walletId, chain, network })
     }
 
 }

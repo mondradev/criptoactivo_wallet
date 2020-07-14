@@ -9,6 +9,7 @@ import { Transaction, Block, Script, Address, PublicKey, Networks, Input, Output
 import { AddrindexEntry } from "./addrindexentry";
 import { Blockchain } from "../../chain/blockchain";
 import { EventEmitter } from "events";
+import { TxData } from "../../../../resources/iwalletprovider";
 
 const Logger = LoggerFactory.getLogger('Bitcoin (Mempool)')
 
@@ -269,6 +270,39 @@ export class Mempool {
             throw new Error("Mempool is not ready")
 
         return this._getKey(this._db, txid, Enconding.Mempool)
+    }
+
+    public async getTxsByAddress(address: Buffer): Promise<Array<TxData>> {
+
+        const addrIndexes = await new Promise<AddrindexEntry[]>(resolve => {
+            const indexes = new Array<AddrindexEntry>()
+            this._db.createReadStream({
+                gte: Enconding.Addrindex.key(Buffer.from(address).append(Buffer.alloc(32, 0))),
+                lte: Enconding.Addrindex.key(Buffer.from(address).append(Buffer.alloc(32, 0xff)))
+            })
+                .on('data', (data: { key: Buffer, value: Buffer }) =>
+                    indexes.push(Enconding.Addrindex.decode(data.value)))
+                .on('end', () => resolve(indexes))
+        })
+
+        const txsData = new Array<TxData>()
+
+        for (const idx of addrIndexes) {
+            const tx = await this.get(idx.txid)
+
+            if (!tx) continue
+
+            txsData.push({
+                block: "(Mempool)",
+                height: -1,
+                index: -1,
+                txid: tx.hash,
+                time: Math.round(new Date().getTime() / 1000),
+                data: tx.toBuffer().toHex()
+            })
+        }
+
+        return txsData
     }
 
     public on(event: 'tx', listener: (tx: Transaction) => Promise<void>) {
