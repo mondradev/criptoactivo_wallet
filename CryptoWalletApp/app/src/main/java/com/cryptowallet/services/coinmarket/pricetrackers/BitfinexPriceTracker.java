@@ -16,7 +16,11 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.services.coinmarket;
+package com.cryptowallet.services.coinmarket.pricetrackers;
+
+import com.cryptowallet.services.coinmarket.Book;
+import com.cryptowallet.services.coinmarket.PriceTracker;
+import com.cryptowallet.wallet.SupportedAssets;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -38,12 +42,17 @@ import retrofit2.http.Path;
  * almacenados.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 1.0
+ * @version 1.1
  * @see <a href="https://docs.bitfinex.com/reference#rest-public-ticker">Bitfinex API v2</a>
  * @see <a href="https://api-pub.bitfinex.com/v2/tickers?symbols=ALL">Pares disponibles en Bitfinex</a>
  */
-@SuppressWarnings("unused")
 public class BitfinexPriceTracker extends PriceTracker {
+
+    /**
+     * Libro de Bitcoin-Dolar US Bitfinex
+     */
+    public static final Book BTCUSD
+            = new Book(SupportedAssets.BTC, SupportedAssets.USD, "tBTCUSD");
 
     /**
      * URL de la API Rest de Bitfinex.
@@ -53,7 +62,7 @@ public class BitfinexPriceTracker extends PriceTracker {
     /**
      * Instancia de la clase singleton.
      */
-    private static Map<String, PriceTracker> mBooks;
+    private static Map<Book, PriceTracker> mBooks;
 
     /**
      * Servicio Bitfinex para Retrofit
@@ -63,12 +72,12 @@ public class BitfinexPriceTracker extends PriceTracker {
     /**
      * Par del seguimiento.
      */
-    private String mBook;
+    private Book mBook;
 
     /**
      * Crea una nueva instancia del seguimiento de precio en Bitfinex.
      */
-    private BitfinexPriceTracker(String book) {
+    private BitfinexPriceTracker(Book book) {
         this.mService = new Retrofit.Builder()
                 .baseUrl(API_URL)
                 .addConverterFactory(GsonConverterFactory.create())
@@ -83,7 +92,7 @@ public class BitfinexPriceTracker extends PriceTracker {
      *
      * @return Instancia del singletón.
      */
-    public static PriceTracker get(String book) {
+    public static PriceTracker get(Book book) {
         if (mBooks == null)
             mBooks = new HashMap<>();
 
@@ -97,8 +106,8 @@ public class BitfinexPriceTracker extends PriceTracker {
      * Realiza una petición para obtener el precio actual.
      */
     @Override
-    protected void request() {
-        mService.getTicker(this.mBook)
+    protected void requestPrice() {
+        mService.getTicker(this.mBook.getKey())
                 .clone()
                 .enqueue(new Callback<Float[]>() {
                     @Override
@@ -107,13 +116,14 @@ public class BitfinexPriceTracker extends PriceTracker {
                         if (!response.isSuccessful() || response.body() == null)
                             return;
 
-                        setPrice(response.body()[6]);
+                        setPrice(Math.round(response.body()[6]
+                                * mBook.getPriceAsset().getUnit()));
                     }
 
                     @Override
                     public void onFailure(@NotNull Call<Float[]> call,
                                           @NotNull Throwable t) {
-                        retryRequest();
+                        requestPrice();
                     }
                 });
 

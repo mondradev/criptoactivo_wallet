@@ -31,25 +31,24 @@ import java.util.concurrent.Executor;
  * Esta clase permite crear un seguidor de precio cada 5 minutos. En caso de no existir un
  * escucha, el seguidor deja de realizar las peticiones, hasta que se agregue un escucha nuevo.
  * <p>
- * Al extender de esta clase, se deberá implementar el método {@link PriceTracker#request()} en el
- * cual internamente deberá llamarse al método {@link PriceTracker#setPrice(float)} para actualizar
+ * Al extender de esta clase, se deberá implementar el método {@link PriceTracker#requestPrice()} en el
+ * cual internamente deberá llamarse al método {@link PriceTracker#setPrice(long)} para actualizar
  * y notificar el cambio del precio.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 1.1
+ * @version 1.2
  */
-@SuppressWarnings({"unused", "WeakerAccess"})
 public abstract class PriceTracker {
 
     /**
      * Tiempo de espera para la nueva petición.
      */
-    private static final int DELAY_TIME = 5 * 6000;
+    private static final int DELAY_TIME = 10 * 6000;
 
     /**
      * Lista de escuchas.
      */
-    private final List<ExecutableConsumer<Double>> mListeners;
+    private final List<ExecutableConsumer<Long>> mPriceChangedListeners;
 
     /**
      * Handler para realizar la petición con retraso de 5 minutos.
@@ -59,28 +58,28 @@ public abstract class PriceTracker {
     /**
      * Último precio del seguidor.
      */
-    private double mLastPrice;
+    private long mLastPrice;
 
     /**
      * Crea una nueva instancia del seguidor.
      */
     protected PriceTracker() {
-        this.mListeners = new ArrayList<>();
-        this.mLastPrice = 0.0f;
+        this.mPriceChangedListeners = new ArrayList<>();
+        this.mLastPrice = 0;
         this.mHandler = new Handler();
     }
 
     /**
      * Realiza una petición para obtener el precio actual.
      */
-    protected abstract void request();
+    protected abstract void requestPrice();
 
     /**
      * Obtiene el último precio obtenido por el seguidor.
      *
      * @return Último precio del par.
      */
-    public double getPrice() {
+    public long getPrice() {
         return this.mLastPrice;
     }
 
@@ -89,19 +88,19 @@ public abstract class PriceTracker {
      *
      * @param price Nuevo precio.
      */
-    protected void setPrice(float price) {
+    protected void setPrice(long price) {
         this.mLastPrice = price;
-        notifyChange();
+        notifyPriceChanged();
     }
 
     /**
      * Notifica a todos los escuchas y lanza la petición con un retraso de 5 minutos.
      */
-    private void notifyChange() {
-        if (mListeners.size() == 0)
+    private void notifyPriceChanged() {
+        if (mPriceChangedListeners.size() == 0)
             return;
 
-        for (ExecutableConsumer<Double> listener : mListeners)
+        for (ExecutableConsumer<Long> listener : mPriceChangedListeners)
             listener.execute(mLastPrice);
 
         retryRequest();
@@ -111,7 +110,7 @@ public abstract class PriceTracker {
      * Reintenta la petición después de {@link #DELAY_TIME}
      */
     protected void retryRequest() {
-        mHandler.postDelayed(this::request, DELAY_TIME);
+        mHandler.postDelayed(this::requestPrice, DELAY_TIME);
     }
 
     /**
@@ -119,18 +118,18 @@ public abstract class PriceTracker {
      *
      * @param listener Escucha de cambio.
      */
-    public void addChangeListener(Executor executor, Consumer<Double> listener) {
+    public void addPrieChangedListener(Executor executor, Consumer<Long> listener) {
         if (listener == null)
             throw new NullPointerException("Can't add null as listener");
 
-        for (ExecutableConsumer<Double> executableConsumer : mListeners)
+        for (ExecutableConsumer<Long> executableConsumer : mPriceChangedListeners)
             if (executableConsumer.getConsumer().equals(listener))
                 return;
 
-        mListeners.add(new ExecutableConsumer<>(executor, listener));
+        mPriceChangedListeners.add(new ExecutableConsumer<>(executor, listener));
 
-        if (mListeners.size() == 1)
-            this.request();
+        if (mPriceChangedListeners.size() == 1)
+            this.requestPrice();
     }
 
     /**
@@ -138,13 +137,13 @@ public abstract class PriceTracker {
      *
      * @param listener Escucha a remover.
      */
-    public void removeChangeListener(Consumer<Double> listener) {
+    public void removePriceChangedListener(Consumer<Long> listener) {
         if (listener == null)
             throw new NullPointerException("Can't add null as listener");
 
-        for (ExecutableConsumer<Double> executableConsumer : mListeners)
+        for (ExecutableConsumer<Long> executableConsumer : mPriceChangedListeners)
             if (executableConsumer.getConsumer().equals(listener)) {
-                mListeners.remove(executableConsumer);
+                mPriceChangedListeners.remove(executableConsumer);
                 break;
             }
     }
@@ -153,7 +152,7 @@ public abstract class PriceTracker {
      * Remueve todos los escuchas registrados.
      */
     public void removeAllListeners() {
-        mListeners.clear();
+        mPriceChangedListeners.clear();
     }
 
 }

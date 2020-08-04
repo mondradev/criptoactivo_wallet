@@ -16,8 +16,11 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.services.coinmarket;
+package com.cryptowallet.services.coinmarket.pricetrackers;
 
+import com.cryptowallet.services.coinmarket.Book;
+import com.cryptowallet.services.coinmarket.PriceTracker;
+import com.cryptowallet.wallet.SupportedAssets;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -44,8 +47,13 @@ import retrofit2.http.Query;
  * @see <a href="https://bitso.com/api_info?java#ticker">Bitso API v3</a>
  * @see <a href="https://api.bitso.com/v3/available_books/">Pares disponibles en Bitso</a>
  */
-@SuppressWarnings("unused")
 public class BitsoPriceTracker extends PriceTracker {
+
+    /**
+     * Libro de Bitcoin-PesosMxn Bitso
+     */
+    public static final Book BTCMXN
+            = new Book(SupportedAssets.BTC, SupportedAssets.MXN, "btc_mxn");
 
     /**
      * URL de la API Rest de Bitso.
@@ -55,7 +63,7 @@ public class BitsoPriceTracker extends PriceTracker {
     /**
      * Instancia de la clase singleton.
      */
-    private static Map<String, PriceTracker> mBooks;
+    private static Map<Book, PriceTracker> mBooks;
 
     /**
      * Servicio Bitso para Retrofit
@@ -65,12 +73,12 @@ public class BitsoPriceTracker extends PriceTracker {
     /**
      * Par del seguimiento.
      */
-    private String mBook;
+    private Book mBook;
 
     /**
      * Crea una nueva instancia del seguimiento de precio en Bitso.
      */
-    private BitsoPriceTracker(String book) {
+    private BitsoPriceTracker(Book book) {
         this.mService = new Retrofit.Builder()
                 .baseUrl(API_URL)
                 .addConverterFactory(GsonConverterFactory.create())
@@ -85,7 +93,7 @@ public class BitsoPriceTracker extends PriceTracker {
      *
      * @return Instancia del singletón.
      */
-    public static PriceTracker get(String book) {
+    public static PriceTracker get(Book book) {
         if (mBooks == null)
             mBooks = new HashMap<>();
 
@@ -99,8 +107,8 @@ public class BitsoPriceTracker extends PriceTracker {
      * Realiza una petición para obtener el precio actual.
      */
     @Override
-    protected void request() {
-        mService.getTicker(this.mBook)
+    protected void requestPrice() {
+        mService.getTicker(this.mBook.getKey())
                 .clone()
                 .enqueue(new Callback<TickerResponse>() {
                     @Override
@@ -110,13 +118,14 @@ public class BitsoPriceTracker extends PriceTracker {
                                 || !response.body().mSuccess)
                             return;
 
-                        setPrice(response.body().mPayload.mLast);
+                        setPrice(Math.round(response.body().mPayload.mLast
+                                * mBook.getPriceAsset().getUnit()));
                     }
 
                     @Override
                     public void onFailure(@NotNull Call<TickerResponse> call,
                                           @NotNull Throwable t) {
-                        retryRequest();
+                        requestPrice();
                     }
                 });
 
