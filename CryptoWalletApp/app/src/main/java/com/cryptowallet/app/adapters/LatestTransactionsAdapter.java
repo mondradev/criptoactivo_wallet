@@ -35,6 +35,7 @@ import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.Collections;
 import java.util.List;
@@ -240,12 +241,15 @@ public final class LatestTransactionsAdapter
             this.itemView.setOnClickListener(this);
 
             mOnCurrencyChange = isFiat -> {
-                SupportedAssets asset = isFiat ? Preferences.get().getFiat()
-                        : mItem.getCriptoAsset();
+                final WalletProvider walletProvider = WalletProvider.getInstance(itemView.getContext());
+                final long lastPrice = walletProvider.getLastPrice(mItem.getCryptoAsset());
+                final SupportedAssets asset = isFiat ? Preferences.get().getFiat()
+                        : mItem.getCryptoAsset();
+                final long fiatAmount = Utils
+                        .cryptoToFiat(mItem.getAmount(), mItem.getCryptoAsset(), lastPrice, asset);
 
                 itemView.<Button>findViewById(R.id.mRecentTxAmount)
-                        .setText(asset.toStringFriendly(isFiat
-                                ? mItem.getFiatAmount() : mItem.getAmount()));
+                        .setText(asset.toStringFriendly(isFiat ? fiatAmount : mItem.getAmount()));
             };
         }
 

@@ -33,6 +33,8 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.StyleRes;
 
+import com.cryptowallet.wallet.SupportedAssets;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -44,6 +46,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
@@ -198,10 +201,13 @@ public final class Utils {
     }
 
     /**
-     * Ejecuta una comando ignorando las excepciones lanzadas.
+     * Ejecuta una comando ignorando las excepciones lanzadas. Si existe una excepción se retorna
+     * un valor false.
      *
      * @param command Comando a ejecutar.
+     * @return True si se ejecutó sin excepciones.
      */
+    @CanIgnoreReturnValue
     public static boolean tryNotThrow(TryNotThrowCommand command) {
         try {
             command.run();
@@ -209,8 +215,8 @@ public final class Utils {
             return true;
         } catch (Exception e) {
             if (e.getStackTrace().length > 1)
-                Log.d("Utils", "Method: " + e.getStackTrace()[1]);
-            Log.d("Utils", String.format("Exception avoided: %s", e.getMessage()));
+                Log.e("Utils", "Method: " + e.getStackTrace()[1], e);
+            Log.e("Utils", String.format("Exception avoided: %s", e.getMessage()));
             return false;
         }
     }
@@ -339,6 +345,35 @@ public final class Utils {
     }
 
     /**
+     * Obtiene un nuevo <code>int</code> con el valor representado por la cadena <code>text</code>.
+     *
+     * @param text Cadena que representa el valor de entero a convertir.
+     * @return Un valor entero.
+     */
+    public static int parseInt(String text) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    /**
+     * Convierte una cantidad expresada en un cripto-activo en una cantidad expresada en un activo
+     * fiduciario a partir de su equivalencia del entero.
+     *
+     * @param amount      Monto a convertir.
+     * @param cryptoAsset Cripto-activo en el cual se expresa el monto.
+     * @param price       Precio del cripto-activo.
+     * @param fiatAsset   Activo en el cual se expresa el precio del cripto-activo.
+     * @return Un monto equivalente al monto en cripto-activo.
+     */
+    public static long cryptoToFiat(long amount, SupportedAssets cryptoAsset,
+                                    long price, SupportedAssets fiatAsset) {
+        return (amount * price) / (cryptoAsset.getUnit() * fiatAsset.getUnit());
+    }
+
+    /**
      * Provee de una función que puede lanzar excepciones.
      */
     public interface TryNotThrowCommand {
@@ -392,6 +427,24 @@ public final class Utils {
                 aggregate = aggregator.accept(item, aggregate);
 
             return aggregate;
+        }
+
+        /**
+         * Permite realizar un mapeo a una lista de valores.
+         *
+         * @param list   Lista de valores.
+         * @param mapper Función de mapeo.
+         * @param <T>    Tipo de la lista.
+         * @param <R>    Tipo de la nueva lista.
+         * @return Nueva lista.
+         */
+        public static <T, R> List<R> map(List<T> list, Function<T, R> mapper) {
+            List<R> newList = new ArrayList<>();
+
+            for (T item : list)
+                newList.add(mapper.accept(item));
+
+            return newList;
         }
 
     }

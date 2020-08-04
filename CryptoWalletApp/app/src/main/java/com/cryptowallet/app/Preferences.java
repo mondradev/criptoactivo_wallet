@@ -32,8 +32,8 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.preference.PreferenceManager;
 
 import com.cryptowallet.R;
-import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.app.authentication.Authenticator;
+import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.wallet.SupportedAssets;
 
 import java.util.ArrayList;
@@ -157,12 +157,12 @@ public final class Preferences {
     }
 
     /**
-     * Crea la instancia nueva de Preferencias.
+     * Obtiene la instancia del singleton.
      *
      * @param context Contexto de la aplicación.
      * @return Una instancia nueva de Preferencias.
      */
-    public static Preferences create(Context context) {
+    public static Preferences get(Context context) {
         if (mInstance != null)
             return get();
 
@@ -178,7 +178,7 @@ public final class Preferences {
      */
     public static Preferences get() {
         if (mInstance == null)
-            throw new IllegalStateException("Require call to #create(Context)");
+            throw new IllegalStateException("Require call to Preferences#get(Context)");
 
         return mInstance;
     }
