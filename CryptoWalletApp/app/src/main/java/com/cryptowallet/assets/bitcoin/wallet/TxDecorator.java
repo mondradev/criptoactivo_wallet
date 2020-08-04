@@ -21,8 +21,8 @@ package com.cryptowallet.assets.bitcoin.wallet;
 import androidx.annotation.NonNull;
 
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxDataResponse;
+import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
 
 import org.bitcoinj.core.Address;
@@ -78,11 +78,11 @@ public class TxDecorator implements ITransaction {
     TxDecorator(@NonNull Wallet wallet) {
         Objects.requireNonNull(wallet);
 
-        if (wallet.getAsset() != getCriptoAsset())
+        if (wallet.getCryptoAsset() != getCryptoAsset())
             throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
 
         this.mWalletParent = wallet;
-        this.mWallet = wallet.getWalletInstance();
+        this.mWallet = wallet.getBitcoinJWallet();
         this.mTx = new Transaction(wallet.getNetwork());
     }
 
@@ -99,7 +99,7 @@ public class TxDecorator implements ITransaction {
         Objects.requireNonNull(wallet);
         Objects.requireNonNull(payloadBytes);
 
-        if (wallet.getAsset() != SupportedAssets.BTC)
+        if (wallet.getCryptoAsset() != SupportedAssets.BTC)
             throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
 
         if (payloadBytes.length == 0)
@@ -107,7 +107,7 @@ public class TxDecorator implements ITransaction {
 
         this.mTx = new Transaction(wallet.getNetwork(), payloadBytes);
         this.mWalletParent = wallet;
-        this.mWallet = wallet.getWalletInstance();
+        this.mWallet = wallet.getBitcoinJWallet();
     }
 
     /**
@@ -119,7 +119,7 @@ public class TxDecorator implements ITransaction {
     private TxDecorator(Wallet wallet, Transaction tx) {
         this.mTx = tx;
         this.mWalletParent = wallet;
-        this.mWallet = wallet.getWalletInstance();
+        this.mWallet = wallet.getBitcoinJWallet();
     }
 
     /**
@@ -133,7 +133,7 @@ public class TxDecorator implements ITransaction {
         Objects.requireNonNull(data);
         Objects.requireNonNull(wallet);
 
-        if (wallet.getAsset() != SupportedAssets.BTC)
+        if (wallet.getCryptoAsset() != SupportedAssets.BTC)
             throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
 
         final TxDecorator tx = new TxDecorator(
@@ -171,7 +171,7 @@ public class TxDecorator implements ITransaction {
      */
     private void setBlockInfo(String hash, long height, long time, int index) {
         final Context context = Context.getOrCreate(mWalletParent.getNetwork());
-        if (height < -1) {
+        if (height < 0) {
             mTx.getConfidence(context)
                     .setConfidenceType(TransactionConfidence.ConfidenceType.PENDING);
         } else {
@@ -201,7 +201,7 @@ public class TxDecorator implements ITransaction {
      * @return Cripto-activo de la transacción.
      */
     @Override
-    public SupportedAssets getCriptoAsset() {
+    public SupportedAssets getCryptoAsset() {
         return SupportedAssets.BTC;
     }
 
@@ -213,7 +213,7 @@ public class TxDecorator implements ITransaction {
      * @see TxDecorator#requireDependencies()
      */
     @Override
-    public double getFee() {
+    public long getFee() {
         if (mWallet != null && !isPay()) return 0;
 
         final long walletFee = getWalletFee();
@@ -221,7 +221,7 @@ public class TxDecorator implements ITransaction {
         final Coin fee = mTx.getFee();
 
         if (fee != null)
-            return (double) fee.add(Coin.valueOf(walletFee)).value / getCriptoAsset().getUnit();
+            return fee.add(Coin.valueOf(walletFee)).value;
 
         return 0;
     }
@@ -254,16 +254,14 @@ public class TxDecorator implements ITransaction {
      * @return Cantidad de la transacción.
      */
     @Override
-    public double getAmount() {
-        long unit = getCriptoAsset().getUnit();
-
+    public long getAmount() {
         if (mWallet == null) {
             Coin total = Coin.ZERO;
 
             for (TransactionOutput output : this.mTx.getOutputs())
                 total = total.add(output.getValue());
 
-            return (double) total.value / unit;
+            return total.value;
         }
 
         Coin value = this.mTx.getValue(mWallet);
@@ -274,7 +272,7 @@ public class TxDecorator implements ITransaction {
         if (isPay())
             value = value.add(Coin.valueOf(getWalletFee()));
 
-        return Math.abs((double) value.value / unit);
+        return Math.abs(value.value);
     }
 
     /**
@@ -415,23 +413,8 @@ public class TxDecorator implements ITransaction {
      * @return Billetera contenedora.
      */
     @Override
-    public IWallet getWallet() {
+    public AbstractWallet getWallet() {
         return mWalletParent;
-    }
-
-    /**
-     * Obtiene la cantidad en su valor fiat.
-     *
-     * @return Valor fiat.
-     */
-    @Override
-    public double getFiatAmount() {
-        Objects.requireNonNull(mWalletParent, "Wallet wasn't setted");
-
-        final double price = mWalletParent.getLastPrice();
-        final double amount = getAmount();
-
-        return price * amount;
     }
 
     /**

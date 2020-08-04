@@ -18,7 +18,6 @@
 
 package com.cryptowallet.assets.bitcoin.services.retrofit;
 
-import com.cryptowallet.wallet.TransactionState;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -105,8 +104,8 @@ public class TxDataResponse {
     }
 
     /**
-     * Obtiene el identificador del bloque al cual pertenece la transacción, en caso de estar en
-     * {@link TransactionState#PENDING} devuelve un valor null.
+     * Obtiene el identificador del bloque al cual pertenece la transacción, en caso de estar en el
+     * pool de memoria, devuelve un valor null.
      *
      * @return Identificador del bloque.
      */
@@ -133,8 +132,8 @@ public class TxDataResponse {
     }
 
     /**
-     * Obtiene la altura del bloque al cual pertenece la transacción, en caso de estar en
-     * {@link TransactionState#PENDING} devuelve un valor -1.
+     * Obtiene la altura del bloque al cual pertenece la transacción, en caso de estar en el pool de
+     * memoria, devuelve un valor -1.
      *
      * @return Altura del bloque.
      */

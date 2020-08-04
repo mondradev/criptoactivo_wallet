@@ -37,21 +37,21 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Cripto-activo de la transacción.
      */
-    SupportedAssets getCriptoAsset();
+    SupportedAssets getCryptoAsset();
 
     /**
      * Obtiene la comisión gastada en la transacción.
      *
      * @return Comisión de la transacción.
      */
-    double getFee();
+    long getFee();
 
     /**
      * Obtiene la cantidad gastada en la transacción sin incluir la comisión.
      *
      * @return Cantidad de la transacción.
      */
-    double getAmount();
+    long getAmount();
 
     /**
      * Obtiene la lista de direcciones que envian alguna cantidad en la transacción.
@@ -119,14 +119,7 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Billetera contenedora.
      */
-    IWallet getWallet();
-
-    /**
-     * Obtiene la cantidad en su valor fiat.
-     *
-     * @return Valor fiat.
-     */
-    double getFiatAmount();
+    AbstractWallet getWallet();
 
     /**
      * Indica si la transacción es un pago.
