@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -33,6 +34,7 @@ import androidx.lifecycle.OnLifecycleEvent;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.cryptowallet.utils.Timeout;
+import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.Objects;
 
@@ -61,7 +63,8 @@ import java.util.Objects;
  * @version 2.1
  */
 // TODO Fix lifecycle, don't recovery state
-public abstract class LockableActivity extends AppCompatActivity implements LifecycleObserver {
+public abstract class LockableActivity extends AppCompatActivity
+        implements LifecycleObserver {
 
     /**
      * Etiqueta de la clase.
@@ -152,15 +155,25 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     }
 
     /**
+     * Obtiene la instancia del servicio de billeteras.
+     *
+     * @return Instancia del servicio.
+     */
+    public WalletProvider getWalletService() {
+        return WalletProvider.getInstance(getApplicationContext());
+    }
+
+    /**
      * Este método es llamado cuando se crea por primera vez la actividad.
      *
      * @param savedInstanceState Estado guardado de la aplicación.
      */
+    @CallSuper
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Preferences.get().loadTheme(this);
+        Preferences.get(this).loadTheme(this);
 
         mCurrentTheme = Preferences.get().getTheme().getName();
 
@@ -170,6 +183,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Este método es llamado cuando la actividad es destruída.
      */
+    @CallSuper
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -188,6 +202,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Este método es llamado cuando se recupera la aplicación al haber cambiado a otra.
      */
+    @CallSuper
     @Override
     protected void onResume() {
         super.onResume();
@@ -265,10 +280,9 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
      */
     @NonNull
     protected <T extends View> T requireView(int id) {
-        View view = findViewById(id);
+        T view = this.findViewById(id);
         Objects.requireNonNull(view);
 
-        //noinspection unchecked
-        return (T) view;
+        return view;
     }
 }

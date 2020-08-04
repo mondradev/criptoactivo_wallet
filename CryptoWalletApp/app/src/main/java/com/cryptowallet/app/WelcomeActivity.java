@@ -29,8 +29,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
-import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.WalletProvider;
+import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 
 import java.util.Objects;
 
@@ -41,8 +41,12 @@ import java.util.Objects;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.0
  */
-public class WelcomeActivity extends AppCompatActivity
-        implements DialogInterface.OnClickListener {
+public class WelcomeActivity extends AppCompatActivity implements DialogInterface.OnClickListener {
+
+    /**
+     * Instancia del servicio de las billeteras.
+     */
+    private WalletProvider mWalletProvider;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -55,6 +59,8 @@ public class WelcomeActivity extends AppCompatActivity
 
         Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_welcome);
+
+        mWalletProvider = WalletProvider.getInstance(this);
     }
 
     /**
@@ -64,7 +70,7 @@ public class WelcomeActivity extends AppCompatActivity
      * @param view Vista que desencadena el evento click.
      */
     public void onPressedCreateButton(View view) {
-        AlertMessages.showTerms(this, this);
+        AlertMessages.showTerms(this, getString(R.string.create_caption_button), this);
     }
 
     /**
@@ -92,13 +98,28 @@ public class WelcomeActivity extends AppCompatActivity
                 this,
                 new Handler()::post,
                 (IAuthenticationSucceededCallback) authenticationToken ->
-                        WalletManager.get(SupportedAssets.BTC)
-                                .initialize(authenticationToken, (hasError) -> {
-                                    if (hasError)
-                                        AlertMessages.showCreateError(getApplicationContext());
-                                    else
-                                        startActivity(new Intent(getApplicationContext(),
-                                                MainActivity.class));
-                                }));
+                        mWalletProvider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
+                            /**
+                             * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
+                             */
+                            @Override
+                            public void successful() {
+                                startActivity(new Intent(getApplicationContext(),
+                                        MainActivity.class));
+                            }
+
+                            /**
+                             * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
+                             * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
+                             * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
+                             * ya que este se realiza a través de {@link Authenticator}.
+                             *
+                             * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
+                             */
+                            @Override
+                            public void fail(Exception ex) {
+                                AlertMessages.showCreateError(WelcomeActivity.this);
+                            }
+                        }));
     }
 }

@@ -31,7 +31,6 @@ import androidx.annotation.NonNull;
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -96,8 +95,9 @@ public class BackupActitivy extends LockableActivity {
             Preferences.get().authenticate(this, new Handler()::post,
                     (IAuthenticationSucceededCallback) authenticationToken -> {
                         // TODO Generalize wallets
-                        mSeed = WalletManager.get(SupportedAssets.BTC)
-                                .getSeeds(authenticationToken);
+                        mSeed = getWalletService()
+                                .get(SupportedAssets.BTC)
+                                .getCurrentSeed(authenticationToken);
                         nextWord();
                     });
         } else
@@ -123,7 +123,7 @@ public class BackupActitivy extends LockableActivity {
      */
     private void nextWord() {
         TextView seedView = findViewById(R.id.mBackupSeed);
-        Button mNextWord = findViewById(R.id.mShowNextWordButton);
+        Button mNextWord = findViewById(R.id.mBackupNextWord);
         EditText mTestWord = findViewById(R.id.mBackupTestWord);
 
         if (mCurrentWord == -1) {

@@ -21,6 +21,7 @@ package com.cryptowallet.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -30,9 +31,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.AuthenticationCallback;
+import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationCallback;
-import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.WalletProvider;
+import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 
 import java.util.Objects;
 
@@ -48,11 +50,6 @@ import javax.annotation.Nullable;
 public final class SplashActivity extends AppCompatActivity {
 
     /**
-     * Código de una salida por una autenticación fallida o cancelada.
-     */
-    private static final int AUTHENTICATION_FAIL = 1;
-
-    /**
      * Etiqueta de log.
      */
     private static final String LOG_TAG = "Splashscreen";
@@ -64,6 +61,11 @@ public final class SplashActivity extends AppCompatActivity {
     private IAuthenticationCallback mAuthenticationCallback;
 
     /**
+     * Instancia del servicio de billetera.
+     */
+    private WalletProvider mWalletProvider;
+
+    /**
      * Este método es llamado cuando se crea la actividad.
      *
      * @param savedInstanceState Estado de la instancia.
@@ -71,6 +73,9 @@ public final class SplashActivity extends AppCompatActivity {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mWalletProvider = WalletProvider.getInstance(this);
+
         setContentView(R.layout.activity_splashscreen);
         Objects.requireNonNull(getSupportActionBar()).hide();
 
@@ -83,34 +88,26 @@ public final class SplashActivity extends AppCompatActivity {
         if (savedInstanceState == null)
             this.setupApp();
 
-        this.initApp();
-    }
+        mWalletProvider.loadWallets();
+        mWalletProvider.syncWallets();
+        mAuthenticationCallback = createAuthenticationCallback();
 
-    /**
-     * Inicializa la aplicación.
-     */
-    private void initApp() {
-        if (mAuthenticationCallback == null)
-            mAuthenticationCallback = createAuthenticationCallback();
+        final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-        new Handler().postDelayed(() -> {
-            if (!WalletManager.any()) {
-                startActivity(new Intent(this, WelcomeActivity.class));
-                finishAfterTransition();
-            } else
-                Preferences.get().authenticate(this, new Handler()::post,
-                        mAuthenticationCallback);
-
-        }, 350);
+        if (!mWalletProvider.anyCreated()) {
+            startActivity(new Intent(this, WelcomeActivity.class));
+            finishAfterTransition();
+        } else
+            Preferences.get()
+                    .authenticate(this, mainHandler::post, mAuthenticationCallback);
     }
 
     /**
      * Configura los parametros iniciales de la aplicación.
      */
     private void setupApp() {
-        WalletManager.init(this);
         LockableActivity.registerMainActivityClass(SplashActivity.class);
-        Preferences.create(this).loadLanguage(this);
+        Preferences.get(this).loadLanguage(this);
 
         Log.d(LOG_TAG, "App is ready");
     }
@@ -133,15 +130,29 @@ public final class SplashActivity extends AppCompatActivity {
              */
             @Override
             public void onAuthenticationSucceeded(byte[] authenticationToken) {
-                WalletManager.get(SupportedAssets.BTC).initialize(authenticationToken,
-                        (hasError) -> {
-                            if (hasError) {
-                                AlertMessages.showCorruptedWalletError(getApplicationContext());
-                                return;
-                            }
-                            startActivity(new Intent(getApplicationContext(), MainActivity.class));
-                            finishAfterTransition();
-                        });
+                mWalletProvider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
+                    /**
+                     * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
+                     */
+                    @Override
+                    public void successful() {
+                        startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                        finishAfterTransition();
+                    }
+
+                    /**
+                     * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
+                     * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
+                     * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
+                     * ya que este se realiza a través de {@link Authenticator}.
+                     *
+                     * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
+                     */
+                    @Override
+                    public void fail(Exception ex) {
+                        AlertMessages.showCorruptedWalletError(SplashActivity.this);
+                    }
+                });
             }
 
             /**
@@ -153,12 +164,9 @@ public final class SplashActivity extends AppCompatActivity {
              */
             @Override
             public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                moveTaskToBack(true);
-                finishAffinity();
-                System.exit(AUTHENTICATION_FAIL);
+                finishAndRemoveTask();
             }
         };
     }
-
 
 }

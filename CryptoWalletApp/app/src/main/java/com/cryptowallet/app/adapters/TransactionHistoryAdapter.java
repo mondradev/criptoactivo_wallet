@@ -19,7 +19,6 @@
 package com.cryptowallet.app.adapters;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.view.View;
 import android.widget.Button;
@@ -37,6 +36,7 @@ import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.Collections;
 import java.util.List;
@@ -269,12 +269,16 @@ public final class TransactionHistoryAdapter
             this.itemView.setOnClickListener(this);
 
             mOnCurrencyChange = isFiat -> {
-                SupportedAssets asset = isFiat ? Preferences.get().getFiat()
-                        : mItem.getCriptoAsset();
+                final WalletProvider walletProvider = WalletProvider.getInstance(itemView.getContext());
+                final long lastPrice = walletProvider.getLastPrice(mItem.getCryptoAsset());
+                final SupportedAssets asset = isFiat ? Preferences.get().getFiat()
+                        : mItem.getCryptoAsset();
+                final long fiatAmount = Utils
+                        .cryptoToFiat(mItem.getAmount(), mItem.getCryptoAsset(), lastPrice, asset);
 
                 itemView.<Button>findViewById(R.id.mTxHistAmount)
                         .setText(asset.toStringFriendly(isFiat
-                                ? mItem.getFiatAmount() : mItem.getAmount()));
+                                ? fiatAmount : mItem.getAmount()));
             };
         }
 

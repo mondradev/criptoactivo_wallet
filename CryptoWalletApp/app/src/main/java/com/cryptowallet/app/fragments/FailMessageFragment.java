@@ -28,6 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
+import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
@@ -40,18 +41,10 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
  */
 public class FailMessageFragment extends BottomSheetDialogFragment {
 
-
     /**
      * TAG del fragmento.
      */
     private static final String TAG_FRAGMENT = "FailMessageFragment";
-
-
-    /**
-     * Clave del parametro activo.
-     */
-    private static final String MESSAGE_EXTRA
-            = String.format("%s.MessageKey", FailMessageFragment.class.getName());
 
     /**
      * Muestra un cuadro de diálogo inferior con un mensaje de operación fallida.
@@ -63,7 +56,7 @@ public class FailMessageFragment extends BottomSheetDialogFragment {
                             @NonNull String message) {
         Bundle parameters = new Bundle();
 
-        parameters.putString(MESSAGE_EXTRA, message);
+        parameters.putString(Constants.EXTRA_MESSAGE, message);
 
         FailMessageFragment fragment = new FailMessageFragment();
         fragment.setArguments(parameters);
@@ -85,7 +78,7 @@ public class FailMessageFragment extends BottomSheetDialogFragment {
 
         final Bundle arguments = requireArguments();
 
-        root.<TextView>findViewById(R.id.mFailMessage).setText(arguments.getString(MESSAGE_EXTRA));
+        root.<TextView>findViewById(R.id.mFailMessage).setText(arguments.getString(Constants.EXTRA_MESSAGE));
 
         return root;
     }

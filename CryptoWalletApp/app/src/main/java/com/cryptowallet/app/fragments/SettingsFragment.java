@@ -42,7 +42,7 @@ import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
 import com.cryptowallet.app.authentication.IAuthenticationUpdatedCallback;
 import com.cryptowallet.app.authentication.TwoFactorAuthentication;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +59,7 @@ import static android.app.Activity.RESULT_OK;
  * @see Preferences
  */
 public class SettingsFragment extends PreferenceFragmentCompat {
+
 
     /**
      * Identificador de la petición de configuración de 2FA.
@@ -126,10 +127,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * Elimina todas la billeteras de la aplicación y restaura las configuraciones de la misma.
      */
     private void deleteWallets() {
-        WalletManager.forEachAsset((asset) -> {
-            if (!WalletManager.get(asset).delete())
+        WalletProvider.getInstance(this.requireContext()).forEachWallet((wallet) -> {
+            if (!wallet.delete())
                 throw new IllegalStateException("Unable to delete wallet");
-
         });
 
         Preferences.get().clear();
@@ -316,10 +316,11 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * @return Un true si la preferencia fue establecida.
      */
     private boolean onSelectedCurrency(Preference preference, Object selectedCurrency) {
-        Preferences.get().setFiat(SupportedAssets.valueOf(selectedCurrency.toString()));
+        SupportedAssets fiatAsset = SupportedAssets.valueOf(selectedCurrency.toString());
+        Preferences.get().setFiat(fiatAsset);
         requirePreference("currency").setSummary(Preferences.get().getFiat().getName());
 
-        WalletManager.forEachAsset((asset) -> WalletManager.get(asset).updatePriceListeners());
+        WalletProvider.getInstance(this.requireContext()).updateFiatCurrency(fiatAsset);
 
         return true;
     }
@@ -390,10 +391,8 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 
         Authenticator.updatePin(requireActivity(), Executors.newSingleThreadExecutor(),
                 (IAuthenticationUpdatedCallback) (byte[] oldToken, byte[] newToken) -> {
-                    WalletManager.forEachAsset(
-                            (asset) -> WalletManager.get(asset)
-                                    .updatePassword(oldToken, newToken));
-
+                    WalletProvider.getInstance(this.requireContext())
+                            .forEachWallet((wallet) -> wallet.updatePassword(oldToken, newToken));
                     // TODO Show progress
                 });
 

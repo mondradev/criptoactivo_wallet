@@ -67,7 +67,7 @@ public class BitcoinProvider {
     /**
      * URL de la api.
      */
-    private static final String WEBSERVICE_URL = "http://innsytech.com:5000/api/v1/";
+    private static final String WEBSERVICE_URL = "https://api.criptoactivo.innsytech.com/v1/";
 
     /**
      * Instancia del singleton.
@@ -126,7 +126,7 @@ public class BitcoinProvider {
      * {@link #MAX_ATTEMPS} intentos.
      */
     private <T> T tryDo(Callable<T> request) {
-        mWallet.propagateLib();
+        mWallet.propagateBitcoinJ();
 
         for (int attemp = 0; attemp < MAX_ATTEMPS; attemp++) {
             try {
@@ -161,7 +161,7 @@ public class BitcoinProvider {
 
             return tryDo(() -> {
                 history.clear();
-
+                Log.d(LOG_TAG, "Request history by address: " + addressHex);
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<List<TxDataResponse>> response = mApi.getTxHistory(networkName, addressHex, height)
                         .execute();
@@ -189,12 +189,14 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    TxDecorator getTransactionByTxID(byte[] txid) throws ExecutionException, InterruptedException {
+    public TxDecorator getTransactionByTxID(byte[] txid) throws ExecutionException, InterruptedException {
         String txidHex = Hex.toHexString(txid);
 
         ListenableFutureTask<TxDecorator> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getTransactionByTxID");
             return tryDo(() -> {
+                Log.d(LOG_TAG, "Request transaction: " + txidHex);
+
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<TxDataResponse> response = mApi.getTx(networkName, txidHex).execute();
 
@@ -219,6 +221,8 @@ public class BitcoinProvider {
         ListenableFutureTask<ChainTipInfo> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getChainTipInfo");
             return tryDo(() -> {
+                Log.d(LOG_TAG, "Request chaininfo");
+
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<ChainInfoResponse> response = mApi.getChainInfo(networkName).execute();
 
@@ -258,6 +262,8 @@ public class BitcoinProvider {
         ListenableFutureTask<Boolean> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider broadcastTx");
             return tryDo(() -> {
+                Log.d(LOG_TAG, "Request broadcast: " + hexTx);
+
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<SuccessfulResponse> response = mApi.broadcastTx(networkName, hexTx)
                         .execute();
@@ -289,6 +295,7 @@ public class BitcoinProvider {
             final Map<String, TxDecorator> deps = new HashMap<>();
             return tryDo(() -> {
                 deps.clear();
+                Log.d(LOG_TAG, "Request dependencies: " + txidHex);
 
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<List<TxDataResponse>> response = mApi.getTxDeps(networkName, txidHex)
@@ -327,6 +334,8 @@ public class BitcoinProvider {
             final List<TxDecorator> transactions = new ArrayList<>();
             Thread.currentThread().setName("Bitcoin Provider getHistory");
             return tryDo(() -> {
+                Log.d(LOG_TAG, "Request history: " + addressesHex);
+
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<List<TxDataResponse>> response = mApi
                         .getHistory(networkName, addressesHex, height).execute();
@@ -369,6 +378,7 @@ public class BitcoinProvider {
         ListenableFutureTask<Boolean> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider subscribe");
             return tryDo(() -> {
+                Log.d(LOG_TAG, "Request subscribe: " + walletId);
                 String networkName = mWallet.getNetwork().getPaymentProtocolId() + "net";
                 Response<SuccessfulResponse> response
                         = mApi.subscribe(networkName, token, walletId, Hex.toHexString(addresses))

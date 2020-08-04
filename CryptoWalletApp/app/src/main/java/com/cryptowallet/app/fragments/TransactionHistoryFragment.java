@@ -18,6 +18,10 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,12 +36,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.adapters.TransactionHistoryAdapter;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -50,6 +56,11 @@ import java.util.concurrent.Executors;
  * @version 2.0
  */
 public class TransactionHistoryFragment extends Fragment {
+
+    /**
+     * Handler del hilo principal.
+     */
+    private Handler mMainHandler;
 
     /**
      * Adaptador de la lista de transacciones.
@@ -77,6 +88,32 @@ public class TransactionHistoryFragment extends Fragment {
     private boolean mIsReady;
 
     /**
+     * Receptor del evento {@link Constants#NEW_TRANSACTION}
+     */
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        /**
+         * This method is called when the BroadcastReceiver is receiving an Intent
+         * broadcast.
+         *
+         * @param context The Context in which the receiver is running.
+         * @param intent  The Intent being received.
+         */
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            mExecutor.execute(() -> {
+                final String assetName = intent.getStringExtra(Constants.EXTRA_ASSET);
+                final String txid = intent.getStringExtra(Constants.EXTRA_TXID);
+                final SupportedAssets asset = SupportedAssets.valueOf(assetName);
+                final WalletProvider provider = WalletProvider.getInstance(requireContext());
+
+                ITransaction tx = provider.get(asset).findTransaction(txid);
+
+                mMainHandler.post(() -> mOnNewTransactionListener.accept(tx));
+            });
+        }
+    };
+
+    /**
      * Este método es llamado cuando se requiere crear la vista del fragmento.
      *
      * @param inflater           Inflador de XML.
@@ -90,7 +127,8 @@ public class TransactionHistoryFragment extends Fragment {
         View root = inflater.inflate(R.layout.fragment_transactions_history,
                 container, false);
 
-        mExecutor = Executors.newSingleThreadExecutor();
+        mExecutor = Executors.newCachedThreadPool();
+        mMainHandler = new Handler(Looper.getMainLooper());
         mAdapter = new TransactionHistoryAdapter(requireActivity());
         mAdapter.setEmptyView(root.findViewById(R.id.mTxHistEmptyLayout));
 
@@ -129,8 +167,7 @@ public class TransactionHistoryFragment extends Fragment {
 
         onRefresh();
 
-        WalletManager.addChangedTxHistoryListener(
-                new Handler(Looper.getMainLooper())::post, mOnNewTransactionListener);
+        requireActivity().registerReceiver(mReceiver, new IntentFilter(Constants.NEW_TRANSACTION));
     }
 
     /**
@@ -146,7 +183,7 @@ public class TransactionHistoryFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
-        WalletManager.removeChangedTxHistoryListener(mOnNewTransactionListener);
+        requireActivity().unregisterReceiver(mReceiver);
     }
 
     /**
@@ -154,7 +191,9 @@ public class TransactionHistoryFragment extends Fragment {
      */
     private void onRefresh() {
         mExecutor.execute(() -> {
-            mAdapter.setSource(WalletManager.getTransactions());
+            final WalletProvider provider = WalletProvider.getInstance(this.requireContext());
+
+            mAdapter.setSource(provider.getTransactions());
             mSwipeRefresh.post(() -> mSwipeRefresh.setRefreshing(false));
 
             if (!mIsReady)

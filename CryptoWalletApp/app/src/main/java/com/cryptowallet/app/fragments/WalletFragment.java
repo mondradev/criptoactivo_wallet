@@ -18,6 +18,10 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -31,13 +35,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
-import com.cryptowallet.assets.bitcoin.wallet.Wallet;
 import com.cryptowallet.utils.Consumer;
-import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.WalletProvider;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 
 /**
@@ -53,7 +59,37 @@ public class WalletFragment extends Fragment {
     /**
      * Escucha del cambio del saldo en alguna billetera.
      */
-    private Consumer<Double> mOnBalanceUpdateListener;
+    private Consumer<Long> mOnBalanceUpdateListener;
+
+    /**
+     * Handler del hilo principal.
+     */
+    private Handler mMainHandler;
+
+    /**
+     * Ejecutor de procesos de segundo plano.
+     */
+    private Executor mExecutor;
+
+    /**
+     * Receptor del evento {@link Constants#NEW_TRANSACTION}
+     */
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        /**
+         * This method is called when the BroadcastReceiver is receiving an Intent
+         * broadcast.
+         *
+         * @param context The Context in which the receiver is running.
+         * @param intent  The Intent being received.
+         */
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            mExecutor.execute(() -> {
+                final long balance = intent.getLongExtra(Constants.EXTRA_BALANCE, 0);
+                mMainHandler.post(() -> mOnBalanceUpdateListener.accept(balance));
+            });
+        }
+    };
 
     /**
      * Este método es llamado cuando se requiere crear la vista del fragmento.
@@ -89,8 +125,12 @@ public class WalletFragment extends Fragment {
         container.removeAllViews();
 
         mOnBalanceUpdateListener = (balance) -> fiatBalance.setText(fiat.toPlainText(balance));
+        mExecutor = Executors.newCachedThreadPool();
+        mMainHandler = new Handler(Looper.getMainLooper());
 
-        WalletManager.forEachAsset((asset) -> {
+        final WalletProvider provider = WalletProvider.getInstance(this.requireContext());
+
+        provider.forEachAsset((asset) -> {
             String fragmentTag = CryptoAssetFragment.class.getSimpleName() + asset.name();
             CryptoAssetFragment assetView = CryptoAssetFragment.newInstance(asset);
 
@@ -100,12 +140,11 @@ public class WalletFragment extends Fragment {
                     .commit();
         });
 
-        WalletManager.addChangedBalanceListener(
-                new Handler(Looper.getMainLooper())::post, mOnBalanceUpdateListener);
+        requireContext().registerReceiver(mReceiver, new IntentFilter(Constants.UPDATED_BALANCE));
 
         fiatSign.setText(fiat.getSign());
         fiatName.setText(fiat.name());
-        fiatBalance.setText(fiat.toPlainText(WalletManager.getBalance()));
+        fiatBalance.setText(fiat.toPlainText(provider.getFiatBalance()));
     }
 
     /**
@@ -121,6 +160,6 @@ public class WalletFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
-        WalletManager.removeChangedBalanceListener(mOnBalanceUpdateListener);
+        requireContext().unregisterReceiver(mReceiver);
     }
 }

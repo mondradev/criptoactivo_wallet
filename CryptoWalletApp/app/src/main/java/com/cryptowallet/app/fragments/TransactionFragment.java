@@ -29,13 +29,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
+import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.IWallet;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.WalletProvider;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -62,23 +63,6 @@ public class TransactionFragment extends BottomSheetDialogFragment {
     private static final String ALMOST_EQUAL_TO = "≈";
 
     /**
-     * Clave de extra para identificador de transacción.
-     */
-    private static final String TX_ID_EXTRA =
-            String.format("%s.TxIdKey", TransactionFragment.class.getName());
-
-    /**
-     * Clave de extra para tipo de activo.
-     */
-    private static final String ASSET_EXTRA =
-            String.format("%s.AssetKey", TransactionFragment.class.getName());
-
-    /**
-     * Transacción a mostrar en este fragmento.
-     */
-    private ITransaction mTx;
-
-    /**
      * Muestra un cuadro de diálogo inferior con los datos de recepción de la billetera.
      *
      * @param activity Actividad que invoca.
@@ -90,27 +74,12 @@ public class TransactionFragment extends BottomSheetDialogFragment {
             throw new IllegalArgumentException("TxId must be not null or empty");
 
         Bundle parameters = new Bundle();
-        parameters.putCharSequence(ASSET_EXTRA, asset.name());
-        parameters.putCharSequence(TX_ID_EXTRA, txid);
+        parameters.putCharSequence(Constants.EXTRA_ASSET, asset.name());
+        parameters.putCharSequence(Constants.EXTRA_TXID, txid);
 
         TransactionFragment fragment = new TransactionFragment();
         fragment.setArguments(parameters);
         fragment.show(activity.getSupportFragmentManager(), TAG_FRAGMENT);
-    }
-
-    /**
-     * Este método es invocado cuando el fragmento es creado.
-     *
-     * @param savedInstanceState Datos de estado de la aplicación.
-     */
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        final IWallet wallet = WalletManager.get(
-                SupportedAssets.valueOf(requireArguments().getString(ASSET_EXTRA)));
-
-        mTx = wallet.findTransaction(requireArguments().getString(TX_ID_EXTRA));
     }
 
     /**
@@ -126,54 +95,72 @@ public class TransactionFragment extends BottomSheetDialogFragment {
         if (root == null)
             throw new UnsupportedOperationException();
 
+        final WalletProvider walletService = WalletProvider.getInstance(this.getContext());
+        final SupportedAssets cryptoAsset
+                = SupportedAssets.valueOf(requireArguments().getString(Constants.EXTRA_ASSET));
+        final AbstractWallet wallet = walletService.get(cryptoAsset);
+
+        if (!wallet.isInitialized())
+            wallet.loadWallet();
+
+        final long lastPrice = walletService.getLastPrice(cryptoAsset);
+        final String txid = requireArguments().getString(Constants.EXTRA_TXID);
+        final ITransaction tx = wallet.findTransaction(txid);
+
+        if (tx == null)
+            throw new IllegalArgumentException("Transaction not found: " + txid);
+
         final NumberFormat formatter = NumberFormat.getIntegerInstance();
-        final SupportedAssets criptoAsset = mTx.getCriptoAsset();
+        final SupportedAssets criptoAsset = tx.getCryptoAsset();
         final SupportedAssets fiatAsset = Preferences.get().getFiat();
 
-        final int colorTxKind = Utils.resolveColor(requireContext(), mTx.isPay()
+        final long fiatAmount
+                = Utils.cryptoToFiat(tx.getAmount(), criptoAsset, lastPrice, fiatAsset);
+
+        final int colorTxKind = Utils.resolveColor(requireContext(), tx.isPay()
                 ? R.attr.colorSentTx : R.attr.colorReceivedTx);
-        final int status = mTx.getBlockHeight() >= 0 ? mTx.isConfirm()
+        final int status = tx.getBlockHeight() >= 0 ? tx.isConfirm()
                 ? R.string.confirmed_status_text
                 : R.string.unconfirmed_status_text
                 : R.string.mempool_status_text;
 
-        root.<ImageView>findViewById(R.id.mTxIcon).setImageResource(mTx.getWallet().getIcon());
+        root.<ImageView>findViewById(R.id.mTxIcon).setImageResource(tx.getWallet().getIcon());
         root.<TextView>findViewById(R.id.mTxAmount)
-                .setText(criptoAsset.toStringFriendly(mTx.getAmount(), false));
+                .setText(criptoAsset.toStringFriendly(tx.getAmount(), false));
         root.<TextView>findViewById(R.id.mTxAmount).setTextColor(colorTxKind);
         root.<TextView>findViewById(R.id.mTxFiatAmount)
                 .setText(String.format("%s %s", ALMOST_EQUAL_TO,
-                        fiatAsset.toStringFriendly(mTx.getFiatAmount(), false)));
-        root.<TextView>findViewById(R.id.mTxId).setText(mTx.getID());
+                        fiatAsset.toStringFriendly(fiatAmount, false)));
+        root.<TextView>findViewById(R.id.mTxId).setText(tx.getID());
         root.<TextView>findViewById(R.id.mTxDatetime)
                 .setText(Utils.toLocalDatetimeString(
-                        mTx.getTime(),
+                        tx.getTime(),
                         getString(R.string.today_text),
                         getString(R.string.yesterday_text)
                 ));
         root.<TextView>findViewById(R.id.mTxFee)
-                .setText(criptoAsset.toStringFriendly(mTx.getFee()));
+                .setText(criptoAsset.toStringFriendly(tx.getFee()));
         root.<TextView>findViewById(R.id.mTxSize)
-                .setText(Utils.toSizeFriendlyString(mTx.getSize()));
+                .setText(Utils.toSizeFriendlyString(tx.getSize()));
         root.<TextView>findViewById(R.id.mTxStatus).setText(status);
 
-        String fromAddress = mTx.isCoinbase()
+        String fromAddress = tx.isCoinbase()
                 ? getString(R.string.coinbase_address)
-                : Joiner.on("\n").join(mTx.getFromAddress());
+                : Joiner.on("\n").join(tx.getFromAddress());
 
         root.<TextView>findViewById(R.id.mTxFrom)
                 .setText(fromAddress);
         root.<TextView>findViewById(R.id.mTxTo)
-                .setText(Joiner.on("\n").join(mTx.getToAddress()));
+                .setText(Joiner.on("\n").join(tx.getToAddress()));
 
-        if (mTx.getBlockHeight() < 0)
+        if (tx.getBlockHeight() < 0)
             root.findViewById(R.id.mTxBlockInfo).setVisibility(View.GONE);
         else {
-            root.<TextView>findViewById(R.id.mTxBlockHash).setText(mTx.getBlockHash());
+            root.<TextView>findViewById(R.id.mTxBlockHash).setText(tx.getBlockHash());
             root.<TextView>findViewById(R.id.mTxBlockHeight).setText(
-                    formatter.format(mTx.getBlockHeight()));
+                    formatter.format(tx.getBlockHeight()));
             root.<TextView>findViewById(R.id.mTxConfirmations).setText(
-                    formatter.format(mTx.getConfirmations()));
+                    formatter.format(tx.getConfirmations()));
         }
 
         return root;

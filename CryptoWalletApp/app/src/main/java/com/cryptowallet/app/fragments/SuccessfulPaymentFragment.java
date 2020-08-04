@@ -35,6 +35,7 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentActivity;
 
 import com.cryptowallet.BuildConfig;
+import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.utils.Utils;
@@ -81,58 +82,25 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
     private static final String EXTENSION_PROOF_TEMP = ".jpeg";
 
     /**
-     * Clave del parametro activo.
-     */
-    private static final String ASSET_EXTRA
-            = String.format("%s.AssetKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
-     * Clave del parametro identificador de transacción.
-     */
-    private static final String TXID_EXTRA
-            = String.format("%s.TxIDKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
-     * Clave del parametro monto de la transacción.
-     */
-    private static final String AMOUNT_EXTRA
-            = String.format("%s.AmountKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
-     * Clave del parametro monto en fiat de la transacción.
-     */
-    private static final String FIAT_AMOUNT_EXTRA
-            = String.format("%s.FiatAmountKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
-     * Clave del parametro comisión de la transacción.
-     */
-    private static final String FEE_EXTRA
-            = String.format("%s.FeeKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
-     * Clave del parametro destino de la transacción.
-     */
-    private static final String TO_ADDRESSES_EXTRA
-            = String.format("%s.ToAddressKey", SuccessfulPaymentFragment.class.getName());
-
-    /**
      * Muestra un cuadro de diálogo inferior con los datos de la transacción enviada.
      *
-     * @param activity    Actividad que invoca.
-     * @param transaction Transacción completada.
+     * @param activity Actividad que invoca.
+     * @param tx       Transacción completada.
      */
     public static void show(@NonNull FragmentActivity activity,
-                            @NonNull ITransaction transaction) {
-        Bundle parameters = new Bundle();
+                            @NonNull ITransaction tx, long lastPrice) {
+        final Bundle parameters = new Bundle();
+        final SupportedAssets fiat = Preferences.get().getFiat();
+        final long fiatAmount
+                = Utils.cryptoToFiat(tx.getAmount(), tx.getCryptoAsset(), lastPrice, fiat);
 
-        parameters.putString(ASSET_EXTRA, transaction.getCriptoAsset().name());
-        parameters.putString(TXID_EXTRA, transaction.getID());
-        parameters.putDouble(AMOUNT_EXTRA, transaction.getAmount());
-        parameters.putDouble(FIAT_AMOUNT_EXTRA, transaction.getFiatAmount());
-        parameters.putDouble(FEE_EXTRA, transaction.getFee());
-        parameters.putStringArray(TO_ADDRESSES_EXTRA,
-                transaction.getToAddress().toArray(new String[0]));
+        parameters.putString(Constants.EXTRA_ASSET, tx.getCryptoAsset().name());
+        parameters.putString(Constants.EXTRA_TXID, tx.getID());
+        parameters.putLong(Constants.EXTRA_AMOUNT, tx.getAmount());
+        parameters.putLong(Constants.EXTRA_FIAT_AMOUNT, fiatAmount);
+        parameters.putLong(Constants.EXTRA_FEE, tx.getFee());
+        parameters.putStringArray(Constants.EXTRA_TO_ADDRESSES,
+                tx.getToAddress().toArray(new String[0]));
 
         SuccessfulPaymentFragment fragment = new SuccessfulPaymentFragment();
         fragment.setArguments(parameters);
@@ -154,20 +122,20 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
 
         final Bundle arguments = requireArguments();
         final SupportedAssets asset = Enum.valueOf(SupportedAssets.class,
-                arguments.getString(ASSET_EXTRA, SupportedAssets.BTC.name()));
+                arguments.getString(Constants.EXTRA_ASSET, SupportedAssets.BTC.name()));
 
-        String[] toAddresses = arguments.getStringArray(TO_ADDRESSES_EXTRA);
+        String[] toAddresses = arguments.getStringArray(Constants.EXTRA_TO_ADDRESSES);
         toAddresses = toAddresses == null ? new String[]{} : toAddresses;
 
-        root.<TextView>findViewById(R.id.mSuPayId).setText(arguments.getString(TXID_EXTRA));
+        root.<TextView>findViewById(R.id.mSuPayId).setText(arguments.getString(Constants.EXTRA_TXID));
         root.<TextView>findViewById(R.id.mSuPayFee)
-                .setText(asset.toStringFriendly(arguments.getDouble(FEE_EXTRA)));
+                .setText(asset.toStringFriendly(arguments.getLong(Constants.EXTRA_FEE)));
         root.<TextView>findViewById(R.id.mSuPayTo).setText(Joiner.on("\n").join(toAddresses));
 
         root.<TextView>findViewById(R.id.mSuPayMessage)
                 .setText(getString(R.string.successful_payment_pattern, toFriendlyString(
-                        arguments.getDouble(AMOUNT_EXTRA),
-                        arguments.getDouble(FIAT_AMOUNT_EXTRA),
+                        arguments.getLong(Constants.EXTRA_AMOUNT),
+                        arguments.getLong(Constants.EXTRA_FIAT_AMOUNT),
                         asset
                 )));
 
@@ -195,7 +163,7 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
      * @param asset      Activo de la transacción.
      * @return Cadena que representa el monto enviado.
      */
-    private String toFriendlyString(double amount, double fiatAmount, SupportedAssets asset) {
+    private String toFriendlyString(long amount, long fiatAmount, SupportedAssets asset) {
         SupportedAssets fiat = Preferences.get().getFiat();
 
         return String.format("%s (%s)",

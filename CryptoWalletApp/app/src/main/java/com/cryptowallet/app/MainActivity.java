@@ -77,6 +77,7 @@ public class MainActivity extends LockableActivity {
         }
     }
 
+
     /**
      * Muestra el fragmento especificado por el identificador del menú.
      *
