@@ -160,4 +160,9 @@
     <string name="successful_payment_pattern">Tu pago de %s fue completado</string>
     <string name="share_successful_payment_title">Compartir pago completado</string>
     <string name="fail_to_send_tx_error">Imposible enviar transacción, intenta de nuevo</string>
+    <string name="notify_receive_pending">Has recibido %s sin confirmar</string>
+    <string name="notify_receive_completed">Has recibido %s confirmados en el bloque %s</string>
+    <string name="receive_notification_channel_name">Recepción de pagos</string>
+    <string name="sync_notification_title">Sincronizando las billeteras</string>
+    <string name="sync_notification_message">Descargando la información pendiente de la billeteras</string>
 </resources>

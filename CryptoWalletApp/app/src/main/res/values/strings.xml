@@ -22,6 +22,8 @@
     <string name="recents_text">Last transactions</string>
     <string name="received_text">Received</string>
     <string name="sent_text">Sent</string>
+    <string name="notify_receive_pending">You have receive %s uncommited</string>
+    <string name="notify_receive_completed">You have receive %s committed in block %s</string>
     <string name="notify_receive">You have receive %s</string>
     <string name="nofity_send">You have send %s</string>
     <string name="recipient_address_text">Recipient address</string>
@@ -195,4 +197,8 @@
     <string name="share_successful_payment_title">Share successful payment</string>
     <string name="fail_to_send_tx_error">Fail to send a transaction, try again</string>
     <string name="default_notification_channel_id" translatable="false">cryptowallet_notifications</string>
+    <string name="receive_notification_channel_name">Receiving payments</string>
+    <string name="sync_notification_title">Synchronizing wallets</string>
+    <string name="sync_notification_message">Download pending information from wallets</string>
+    <string name="default_notification_channel_name" translatable="false">General</string>
 </resources>
