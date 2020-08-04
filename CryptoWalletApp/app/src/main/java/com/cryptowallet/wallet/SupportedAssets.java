@@ -18,6 +18,7 @@
 
 package com.cryptowallet.wallet;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
 
 import com.cryptowallet.R;
@@ -45,17 +46,17 @@ public enum SupportedAssets {
     /**
      * Cripto-activo Bitcoin.
      */
-    BTC(100000000, R.string.bitcoin_text),
+    BTC(100000000, R.string.bitcoin_text, R.drawable.ic_bitcoin),
 
     /**
      * Activo fiduciario Dolar estadounidense.
      */
-    USD(100, R.string.usd_text, true),
+    USD(100, R.string.usd_text, 0, true),
 
     /**
      * Activo fiduciario Peso mexicano.
      */
-    MXN(100, R.string.mxn_text, true);
+    MXN(100, R.string.mxn_text, 0, true);
 
     /**
      * Tamaño de la unidad en su porción más pequeña.
@@ -79,14 +80,21 @@ public enum SupportedAssets {
     private char mSign;
 
     /**
+     * Icono del activo.
+     */
+    @DrawableRes
+    private int mIcon;
+
+    /**
      * Crea una nueva instancia del activo.
      *
      * @param unit     La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name     Nombre utilizado en la IU.
+     * @param icon     Icono del activo.
      * @param fiatSign Signo del activo fiat.
      */
-    SupportedAssets(long unit, @StringRes int name, char fiatSign) {
-        this(unit, name, true);
+    SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon, char fiatSign) {
+        this(unit, name, icon, true);
         mSign = fiatSign;
     }
 
@@ -96,11 +104,13 @@ public enum SupportedAssets {
      * @param unit   La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name   Nombre utilizado en la IU.
      * @param isFiat Indica si el activo es fiduciario.
+     * @param icon   Icono que representa al activo.
      */
-    SupportedAssets(long unit, @StringRes int name, boolean isFiat) {
+    SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon, boolean isFiat) {
         mUnit = unit;
         mName = name;
         mFiat = isFiat;
+        mIcon = icon;
 
         if (isFiat) mSign = '$';
     }
@@ -110,9 +120,10 @@ public enum SupportedAssets {
      *
      * @param unit La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name Nombre utilizado en la IU.
+     * @param icon Icono que representa al activo.
      */
-    SupportedAssets(long unit, @StringRes int name) {
-        this(unit, name, false);
+    SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon) {
+        this(unit, name, icon, false);
     }
 
     /**
@@ -152,13 +163,24 @@ public enum SupportedAssets {
         return isFiat() ? Character.toString(mSign) : "";
     }
 
+
+    /**
+     * Obtiene el identificador del dibujable utilizado como icono.
+     *
+     * @return Recurso del dibujable del icono.
+     */
+    @DrawableRes
+    public int getIcon() {
+        return mIcon;
+    }
+
     /**
      * Obtiene la representación de una cantidad en la divisa. Ej: 100.0 -> $100.00
      *
      * @param value Valor a formatear.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toStringFriendly(double value) {
+    public String toStringFriendly(long value) {
         return toStringFriendly(value, true);
     }
 
@@ -169,12 +191,12 @@ public enum SupportedAssets {
      * @param reduce Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toStringFriendly(double value, boolean reduce) {
+    public String toStringFriendly(long value, boolean reduce) {
         final DecimalFormat format = new DecimalFormat();
 
         int minDigits = (int) Math.log10(mUnit);
         int maxDigits = (int) Math.log10(mUnit);
-        double newValue = value;
+        double newValue = (double) value / mUnit;
         String unit = "";
 
         if (reduce) {
@@ -215,7 +237,7 @@ public enum SupportedAssets {
      * @param value Valor a formatear.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toPlainText(double value) {
+    public String toPlainText(long value) {
         return toPlainText(value, true, true);
     }
 
@@ -227,7 +249,7 @@ public enum SupportedAssets {
      * @param reduce Indica si se debe abreviar el valor. Ej. 1,000 -> K o 1,000,000 -> M.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toPlainText(double value, boolean reduce) {
+    public String toPlainText(long value, boolean reduce) {
         return toPlainText(value, reduce, true);
     }
 
@@ -239,12 +261,12 @@ public enum SupportedAssets {
      * @param groupingUsed Indica si se agrupan las cifras. Ej. 1000000 -> 1,000,000
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toPlainText(double value, boolean reduce, boolean groupingUsed) {
+    public String toPlainText(long value, boolean reduce, boolean groupingUsed) {
         final NumberFormat instance = NumberFormat.getInstance();
 
         int minDigits = (int) Math.log10(mUnit);
         int maxDigits = (int) Math.log10(mUnit);
-        double newValue = value;
+        double newValue = (double) value / mUnit;
         String unit = "";
 
         if (reduce) {

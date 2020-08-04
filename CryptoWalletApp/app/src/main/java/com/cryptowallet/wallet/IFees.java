@@ -24,23 +24,23 @@ package com.cryptowallet.wallet;
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
- * @see IWallet
+ * @see AbstractWallet
  * @see ITransaction
- * @see WalletManager
+ * @see WalletProvider
  */
-public interface ITransactionFee {
+public interface IFees {
 
     /**
      * Obtiene la comisión para transacciones en tiempo promedio.
      *
      * @return Comisión de transacción.
      */
-    double getAverage();
+    long getAverage();
 
     /**
      * Obtiene la comisión para transacciones rápidas.
      *
      * @return Comisión de transacción.
      */
-    double getFaster();
+    long getFaster();
 }

@@ -18,6 +18,11 @@
 
 package com.cryptowallet.wallet.exceptions;
 
+import android.content.res.Resources;
+
+import androidx.annotation.NonNull;
+
+import com.cryptowallet.R;
 import com.cryptowallet.wallet.SupportedAssets;
 
 /**
@@ -27,17 +32,7 @@ import com.cryptowallet.wallet.SupportedAssets;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.1
  */
-public final class InSufficientBalanceException extends RuntimeException {
-
-    /**
-     * Activo del envío.
-     */
-    private final SupportedAssets mAsset;
-
-    /**
-     * Saldo requerido.
-     */
-    private final double mRequireAmount;
+public final class InsufficientBalanceException extends InvalidAmountException {
 
     /**
      * Crea una nueva excepción de saldo insuficiente.
@@ -45,41 +40,19 @@ public final class InSufficientBalanceException extends RuntimeException {
      * @param asset         Activo que se trató de enviar.
      * @param requireAmount Saldo requerido.
      */
-    public InSufficientBalanceException(SupportedAssets asset, double requireAmount) {
-        this(asset, requireAmount, null);
-    }
-
-
-    /**
-     * Crea una nueva excepción de saldo insuficiente.
-     *
-     * @param asset          Activo que se trató de enviar.
-     * @param requireAmount  Saldo requerido.
-     * @param innerException Excepción que causó este error.
-     */
-    public InSufficientBalanceException(SupportedAssets asset, double requireAmount,
-                                        Exception innerException) {
+    public InsufficientBalanceException(SupportedAssets asset, long requireAmount) {
         super(String.format("The wallet doesn't have enough balance: %s",
-                asset.toStringFriendly(requireAmount)), innerException);
-        mAsset = asset;
-        mRequireAmount = requireAmount;
+                asset.toStringFriendly(requireAmount)), asset, requireAmount);
     }
 
     /**
-     * Obtiene el saldo requerido para realizar el pago.
+     * Obtiene el identificador del mensaje de error de la excepción.
      *
-     * @return Saldo requerido.
+     * @param resources Recursos de la aplicación.
+     * @return Identificador del recurso.
      */
-    public double getRequireAmount() {
-        return mRequireAmount;
-    }
-
-    /**
-     * Obtiene el activo de la billetera que presenta la excepción..
-     *
-     * @return Activo de la billetera.
-     */
-    public SupportedAssets getAsset() {
-        return mAsset;
+    @Override
+    public String getMessageRes(@NonNull Resources resources) {
+        return resources.getString(R.string.no_enought_funds_error);
     }
 }

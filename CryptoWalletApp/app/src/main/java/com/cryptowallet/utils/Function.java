@@ -16,28 +16,22 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.wallet;
+package com.cryptowallet.utils;
 
 /**
- * Define los estados posibles de una transacción en la blockchain.
+ * Una estructura que representa una función que acepta un parametro y devuelve un resultado.
  *
+ * @param <T> Tipo del parametro que acepta el consumidor.
+ * @param <R> Tipo del valor de retorno.
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
  */
-public enum TransactionState {
+public interface Function<T, R> {
 
     /**
-     * Aun no es agregada a un bloque.
+     * Invoca la función.
+     *
+     * @param parameter Valor del parametro..
      */
-    PENDING,
-
-    /**
-     * Hay al menos una salida sin ser gastada.
-     */
-    UNSPENT,
-
-    /**
-     * Todas las salidas fueron gastadas.
-     */
-    SPENT
+    R accept(T parameter);
 }
