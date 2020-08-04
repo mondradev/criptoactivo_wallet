@@ -25,6 +25,7 @@ import android.os.Looper;
 
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.FragmentActivity;
 
 import com.cryptowallet.R;
 
@@ -40,10 +41,10 @@ final class AlertMessages {
     /**
      * Muestra una alerta de error al restaurar la billetera.
      *
-     * @param context Contexto de la aplicación.
+     * @param activity Contexto de la aplicación.
      */
-    static void showRestoreError(Context context) {
-        showCritalError(context,
+    static void showRestoreError(FragmentActivity activity) {
+        showCritalError(activity,
                 R.string.error_to_restore_title,
                 R.string.error_to_restore_message);
     }
@@ -51,10 +52,10 @@ final class AlertMessages {
     /**
      * Muestra una alerta de error al crear una nueva billetera.
      *
-     * @param context Contexto de la aplicación.
+     * @param activity Contexto de la aplicación.
      */
-    static void showCreateError(Context context) {
-        showCritalError(context,
+    static void showCreateError(FragmentActivity activity) {
+        showCritalError(activity,
                 R.string.error_to_create_title,
                 R.string.error_to_create_message);
     }
@@ -62,15 +63,18 @@ final class AlertMessages {
     /**
      * Muestra una alerta donde se presentan los terminos de uso de la aplicación de la billetera.
      *
-     * @param context  Contexto de la aplicación.
-     * @param onAgreed Una función invocada cuando los terminos son aceptados.
+     * @param context    Contexto de la aplicación.
+     * @param actionName Nombre de la acción. Esto se mostrará en el botón positivo del cuadro de
+     *                   diálogo.
+     * @param onAgreed   Una función invocada cuando los terminos son aceptados.
      */
-    static void showTerms(Context context, DialogInterface.OnClickListener onAgreed) {
+    static void showTerms(Context context, String actionName,
+                          DialogInterface.OnClickListener onAgreed) {
         new Handler(Looper.getMainLooper()).post(() ->
                 new AlertDialog.Builder(context)
                         .setTitle(R.string.terms_text)
                         .setMessage(R.string.terms_content)
-                        .setPositiveButton(R.string.agree_caption_button, onAgreed)
+                        .setPositiveButton(actionName, onAgreed)
                         .create()
                         .show());
     }
@@ -78,17 +82,17 @@ final class AlertMessages {
     /**
      * Muestra una alerta de error critico que impide continuar la aplicación.
      *
-     * @param context Contexto de la aplicación.
-     * @param title   Título de la alerta.
-     * @param message Mensaje de la alerta.
+     * @param activity Contexto de la aplicación.
+     * @param title    Título de la alerta.
+     * @param message  Mensaje de la alerta.
      */
-    private static void showCritalError(Context context, @StringRes int title, @StringRes int message) {
+    private static void showCritalError(FragmentActivity activity, @StringRes int title, @StringRes int message) {
         new Handler(Looper.getMainLooper()).post(() ->
-                new AlertDialog.Builder(context)
+                new AlertDialog.Builder(activity)
                         .setTitle(title)
                         .setMessage(message)
                         .setPositiveButton(android.R.string.ok,
-                                (dialog, button) -> System.exit(1))
+                                (dialog, button) -> activity.finishAndRemoveTask())
                         .create()
                         .show());
     }
@@ -97,9 +101,9 @@ final class AlertMessages {
     /**
      * Muestra una alerta de error al inicializar la billetera.
      *
-     * @param context Contexto de la aplicación.
+     * @param activity Contexto de la aplicación.
      */
-    static void showCorruptedWalletError(Context context) {
-        showCritalError(context, R.string.error_to_initialize_title, R.string.error_to_initialize_message);
+    static void showCorruptedWalletError(FragmentActivity activity) {
+        showCritalError(activity, R.string.error_to_initialize_title, R.string.error_to_initialize_message);
     }
 }
