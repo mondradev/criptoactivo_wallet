@@ -18,10 +18,11 @@
 
 package com.cryptowallet.assets.bitcoin.services;
 
+import com.cryptowallet.services.coinmarket.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitsoPriceTracker;
-import com.cryptowallet.utils.Consumer;
+import com.cryptowallet.utils.BiConsumer;
 
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
@@ -46,12 +47,12 @@ public class PriceTrackerTest {
     @Test
     public void bitsoPriceTracker() {
         final PriceTracker bitsoBtcMxnTracker = BitsoPriceTracker.get(BitsoPriceTracker.BTCMXN);
-        final ConsumerLong listener = mock(ConsumerLong.class);
+        final BiConsumerBookAndLong listener = mock(BiConsumerBookAndLong.class);
 
-        bitsoBtcMxnTracker.addPrieChangedListener(Executors.newSingleThreadExecutor(), listener);
+        bitsoBtcMxnTracker.addPriceChangedListener(Executors.newSingleThreadExecutor(), listener);
 
         verify(listener, timeout(2000))
-                .accept(ArgumentMatchers.longThat(price -> price > 0));
+                .accept(ArgumentMatchers.any(), ArgumentMatchers.longThat(price -> price > 0));
     }
 
     /**
@@ -61,17 +62,17 @@ public class PriceTrackerTest {
     public void bitfinexPriceTracker() {
         final PriceTracker bitfinexBtcUsdTracker
                 = BitfinexPriceTracker.get(BitfinexPriceTracker.BTCUSD);
-        final ConsumerLong listener = mock(ConsumerLong.class);
+        final BiConsumerBookAndLong listener = mock(BiConsumerBookAndLong.class);
 
-        bitfinexBtcUsdTracker.addPrieChangedListener(Executors.newSingleThreadExecutor(), listener);
+        bitfinexBtcUsdTracker.addPriceChangedListener(Executors.newSingleThreadExecutor(), listener);
 
         verify(listener, timeout(2000))
-                .accept(ArgumentMatchers.longThat(price -> price > 0));
+                .accept(ArgumentMatchers.any(), ArgumentMatchers.longThat(price -> price > 0));
     }
 
     /**
      * Consumidor de números de longitud 64 bits.
      */
-    interface ConsumerLong extends Consumer<Long> {
+    interface BiConsumerBookAndLong extends BiConsumer<Book, Long> {
     }
 }

@@ -223,11 +223,10 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         List<String> currenciesNames = new ArrayList<>();
         List<String> currenciesValues = new ArrayList<>();
 
-        for (SupportedAssets asset : SupportedAssets.values())
-            if (asset.isFiat()) {
-                currenciesNames.add(requireContext().getString(asset.getName()));
-                currenciesValues.add(asset.name());
-            }
+        for (SupportedAssets asset : SupportedAssets.getSupportedFiatAssets()) {
+            currenciesNames.add(requireContext().getString(asset.getName()));
+            currenciesValues.add(asset.name());
+        }
 
         ListPreference currenciesList = requirePreference("currency");
         currenciesList.setEntries(currenciesNames.toArray(new CharSequence[0]));

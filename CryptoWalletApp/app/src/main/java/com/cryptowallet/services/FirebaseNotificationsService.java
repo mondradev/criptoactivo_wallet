@@ -128,7 +128,7 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
                     .putExtra(Constants.EXTRA_HASH, remoteMessage.getData().get(HASH_KEY))
                     .putExtra(Constants.EXTRA_TIME, Utils.parseInt(remoteMessage.getData().get(TIME_KEY)))
                     .putExtra(Constants.EXTRA_NETWORK, remoteMessage.getData().get(NETWORK_KEY))
-                    .putExtra(Constants.EXTRA_ASSET, remoteMessage.getData().get(ASSET_KEY));
+                    .putExtra(Constants.EXTRA_CRYPTO_ASSET, remoteMessage.getData().get(ASSET_KEY));
 
             if (messageType.equals(MessageType.NEW_BLOCK)) {
                 String[] txs = new Gson()

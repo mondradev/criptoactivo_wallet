@@ -71,21 +71,15 @@ public class BitsoPriceTracker extends PriceTracker {
     private final BitsoService mService;
 
     /**
-     * Par del seguimiento.
-     */
-    private Book mBook;
-
-    /**
      * Crea una nueva instancia del seguimiento de precio en Bitso.
      */
     private BitsoPriceTracker(Book book) {
+        super(book);
         this.mService = new Retrofit.Builder()
                 .baseUrl(API_URL)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(BitsoService.class);
-
-        this.mBook = book;
     }
 
     /**
@@ -108,7 +102,7 @@ public class BitsoPriceTracker extends PriceTracker {
      */
     @Override
     protected void requestPrice() {
-        mService.getTicker(this.mBook.getKey())
+        mService.getTicker(this.getBook().getKey())
                 .clone()
                 .enqueue(new Callback<TickerResponse>() {
                     @Override
@@ -119,7 +113,7 @@ public class BitsoPriceTracker extends PriceTracker {
                             return;
 
                         setPrice(Math.round(response.body().mPayload.mLast
-                                * mBook.getPriceAsset().getUnit()));
+                                * getBook().getPriceAsset().getUnit()));
                     }
 
                     @Override

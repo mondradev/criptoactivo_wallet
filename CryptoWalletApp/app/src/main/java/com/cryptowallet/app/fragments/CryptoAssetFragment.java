@@ -18,7 +18,10 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -121,12 +124,17 @@ public class CryptoAssetFragment extends Fragment {
     /**
      * Escucha del saldo de la billetera.
      */
-    private Consumer<Long> mOnBalanceChangeListener;
+    private Consumer<AbstractWallet> mOnBalanceChangedListener;
 
     /**
      * Escucha de nuevas transacciones.
      */
     private Consumer<ITransaction> mOnNewTransactionListener;
+
+    /**
+     * Receptor del evento cambio de precio.
+     */
+    private BroadcastReceiver mOnPriceChangedReceiver;
 
     /**
      * Adaptador de las transacciones recientes.
@@ -150,7 +158,7 @@ public class CryptoAssetFragment extends Fragment {
      */
     static CryptoAssetFragment newInstance(SupportedAssets walletAsset) {
         Bundle parameters = new Bundle();
-        parameters.putCharSequence(Constants.EXTRA_ASSET, walletAsset.name());
+        parameters.putCharSequence(Constants.EXTRA_CRYPTO_ASSET, walletAsset.name());
 
         CryptoAssetFragment fragment = new CryptoAssetFragment();
         fragment.setArguments(parameters);
@@ -171,9 +179,9 @@ public class CryptoAssetFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         final WalletProvider walletService = WalletProvider.getInstance(this.requireContext());
         final SupportedAssets asset = SupportedAssets
-                .valueOf(requireArguments().getString(Constants.EXTRA_ASSET));
+                .valueOf(requireArguments().getString(Constants.EXTRA_CRYPTO_ASSET));
 
-        mOnBalanceChangeListener = this::onBalanceChange;
+        mOnBalanceChangedListener = this::onBalanceChange;
         mOnNewTransactionListener = this::onNewTransaction;
         mWallet = walletService.get(asset);
         mRoot = (CardView) inflater.inflate(R.layout.layout_cryptoasset, container,
@@ -192,7 +200,7 @@ public class CryptoAssetFragment extends Fragment {
         mFiatValueView = mRoot.findViewById(R.id.mCryptoAssetValue);
         mPriceView = mRoot.findViewById(R.id.mCryptoAssetPrice);
 
-        mWallet.addBalanceChangedListener(mHandler::post, mOnBalanceChangeListener);
+        mWallet.addBalanceChangedListener(mHandler::post, mOnBalanceChangedListener);
         mWallet.addNewTransactionListener(mHandler::post, mOnNewTransactionListener);
 
         mLastBalance = mWallet.getBalance();
@@ -209,9 +217,38 @@ public class CryptoAssetFragment extends Fragment {
         if (mAdapter.getItemCount() > 0 && walletService.getCount() == 1)
             mRoot.findViewById(R.id.mCryptoAssetExpandButton).performClick();
 
+        if (mOnPriceChangedReceiver == null)
+            createPriceChangedReceiver();
+
+        requireContext()
+                .registerReceiver(mOnPriceChangedReceiver, new IntentFilter(Constants.UPDATED_PRICE));
+
         updateViews();
 
         return mRoot;
+    }
+
+    /**
+     * Inicializa el receptor de cambio de precio.
+     */
+    private void createPriceChangedReceiver() {
+        if (mOnPriceChangedReceiver != null) return;
+
+        mOnPriceChangedReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !Constants.UPDATED_PRICE.equals(intent.getAction()))
+                    return;
+
+                if (!mWallet.getCryptoAsset().equals(
+                        intent.getSerializableExtra(Constants.EXTRA_CRYPTO_ASSET)))
+                    return;
+
+                mLastPrice = intent.getLongExtra(Constants.EXTRA_FIAT_PRICE, 0);
+
+                updateViews();
+            }
+        };
     }
 
     /**
@@ -256,7 +293,7 @@ public class CryptoAssetFragment extends Fragment {
      */
     private void callSendFragment(View view) {
         Intent intent = new Intent(requireActivity(), SendPaymentsActivity.class);
-        intent.putExtra(Constants.EXTRA_ASSET, mWallet.getCryptoAsset().name());
+        intent.putExtra(Constants.EXTRA_CRYPTO_ASSET, mWallet.getCryptoAsset().name());
 
         startActivityForResult(intent, SEND_PAYMENTS_REQUEST);
     }
@@ -278,8 +315,10 @@ public class CryptoAssetFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
-        mWallet.removeBalanceChangedListener(mOnBalanceChangeListener);
+        mWallet.removeBalanceChangedListener(mOnBalanceChangedListener);
         mWallet.removeNewTransactionListener(mOnNewTransactionListener);
+
+        requireContext().unregisterReceiver(mOnPriceChangedReceiver);
     }
 
     /**
@@ -302,10 +341,10 @@ public class CryptoAssetFragment extends Fragment {
     /**
      * Este método es invocado cuando el saldo de la billetera ha cambiado.
      *
-     * @param balance Nuevo saldo de la billetera.
+     * @param wallet Nuevo saldo de la billetera.
      */
-    private void onBalanceChange(long balance) {
-        mLastBalance = balance;
+    private void onBalanceChange(AbstractWallet wallet) {
+        mLastBalance = wallet.getBalance();
 
         updateViews();
     }

@@ -20,8 +20,8 @@ package com.cryptowallet.assets.bitcoin.services;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
-import com.cryptowallet.assets.bitcoin.wallet.Wallet;
+import com.cryptowallet.assets.bitcoin.wallet.BitcoinTransaction;
+import com.cryptowallet.assets.bitcoin.wallet.BitcoinWallet;
 import com.cryptowallet.wallet.ChainTipInfo;
 
 import org.bitcoinj.core.TransactionInput;
@@ -59,7 +59,7 @@ public class BitcoinProviderTest {
      */
     @Before
     public void setUp() {
-        mProvider = BitcoinProvider.get(new Wallet(InstrumentationRegistry
+        mProvider = BitcoinProvider.get(new BitcoinWallet(InstrumentationRegistry
                 .getInstrumentation().getTargetContext()));
     }
 
@@ -69,7 +69,7 @@ public class BitcoinProviderTest {
     @Test
     public void getHistorialByAddress() throws ExecutionException, InterruptedException {
         final byte[] address = Hex.decode("6ff022a844844d252781139cf40113760e6361688a");
-        final List<TxDecorator> history = mProvider.getHistoryByAddress(address, 0);
+        final List<BitcoinTransaction> history = mProvider.getHistoryByAddress(address, 0);
 
         assertNotEquals(0, history.size());
     }
@@ -81,7 +81,7 @@ public class BitcoinProviderTest {
     public void getTx() throws ExecutionException, InterruptedException {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
-        final TxDecorator tx = mProvider.getTransactionByTxID(txid);
+        final BitcoinTransaction tx = mProvider.getTransactionByTxID(txid);
 
         assertEquals("b21d48e744385bfd3cab90c678a538f29cfc029ef2197a8876a645e1b0b2823d",
                 tx.getID());
@@ -103,7 +103,7 @@ public class BitcoinProviderTest {
     public void getTxDependencies() throws ExecutionException, InterruptedException {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
-        final Map<String, TxDecorator> task = mProvider.getDependencies(txid);
+        final Map<String, BitcoinTransaction> task = mProvider.getDependencies(txid);
 
         assertEquals(1, task.size());
     }
@@ -115,12 +115,12 @@ public class BitcoinProviderTest {
     public void getFeeAndFromAddress() throws ExecutionException, InterruptedException {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
-        final TxDecorator tx = mProvider.getTransactionByTxID(txid);
+        final BitcoinTransaction tx = mProvider.getTransactionByTxID(txid);
 
         assertEquals("b21d48e744385bfd3cab90c678a538f29cfc029ef2197a8876a645e1b0b2823d",
                 tx.getID());
 
-        final Map<String, TxDecorator> dependencies = mProvider.getDependencies(txid);
+        final Map<String, BitcoinTransaction> dependencies = mProvider.getDependencies(txid);
 
         assertEquals(1, dependencies.size());
 
@@ -130,7 +130,7 @@ public class BitcoinProviderTest {
                 final String hash = outpoint.getHash().toString();
                 final long index = outpoint.getIndex();
 
-                TxDecorator dep = dependencies.get(hash);
+                BitcoinTransaction dep = dependencies.get(hash);
 
                 if (dep == null) continue;
 

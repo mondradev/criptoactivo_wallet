@@ -34,9 +34,13 @@ import androidx.core.app.NotificationCompat;
 
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
+import com.cryptowallet.app.Preferences;
 import com.cryptowallet.app.TxBottomSheetDialogActivity;
 import com.cryptowallet.services.WalletSyncForegroundService;
 import com.cryptowallet.services.WalletSyncService;
+import com.cryptowallet.services.coinmarket.Book;
+import com.cryptowallet.services.coinmarket.PriceTracker;
+import com.cryptowallet.utils.BiConsumer;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
@@ -57,6 +61,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Administrador de controladores de billeteras. Permite tener la funcionalidad de cada billetera
@@ -101,7 +106,7 @@ public final class WalletProvider {
     private Consumer<Intent> mProcessingRequest = intent -> {
         Thread.currentThread().setName("WalletService ProcessingRequest");
 
-        String assetValue = intent.getStringExtra(Constants.EXTRA_ASSET);
+        String assetValue = intent.getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
         String networkValue = intent.getStringExtra(Constants.EXTRA_NETWORK);
         String action = intent.getAction();
 
@@ -140,12 +145,23 @@ public final class WalletProvider {
     /**
      * Consumidor del evento saldo ha cambiado.
      */
-    private Consumer<Long> mOnBalanceChangedConsumer;
+    private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
+
+
+    /**
+     * Consumidor del evento de precio ha cambiado.
+     */
+    private BiConsumer<Book, Long> mOnPriceChangedConsumer;
 
     /**
      * Consumidor del evento nueva transacción.
      */
     private Consumer<ITransaction> mOnNewTransactionConsumer;
+
+    /**
+     * Activo fiat en el cual se expresan los precios de los cripto-activos.
+     */
+    private SupportedAssets mFiatCurrency;
 
     /**
      * Crea una instancia nueva del proveedor.
@@ -156,8 +172,9 @@ public final class WalletProvider {
         this.mContext = context.getApplicationContext();
         this.mWallets = new HashMap<>();
         this.mExecutor = Executors.newCachedThreadPool();
-        this.mOnBalanceChangedConsumer = (ignored) -> notifyChangedBalance();
+        this.mOnBalanceChangedConsumer = this::notifyBalanceChanged;
         this.mOnNewTransactionConsumer = this::notifyNewTransaction;
+        this.mOnPriceChangedConsumer = this::notifyPriceChanged;
 
         final String[] supportedWallets = mContext.getResources()
                 .getStringArray(R.array.supported_wallets);
@@ -202,14 +219,31 @@ public final class WalletProvider {
     }
 
     /**
+     * Notifica que el precio de un activo ha cambiado.
+     *
+     * @param book  Libro del activo.
+     * @param price Precio nuevo del activo.
+     */
+    private void notifyPriceChanged(Book book, Long price) {
+        Intent intent = new Intent()
+                .setAction(Constants.UPDATED_PRICE)
+                .putExtra(Constants.EXTRA_CRYPTO_ASSET, book.getCryptoAsset())
+                .putExtra(Constants.EXTRA_FIAT_PRICE, price)
+                .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency);
+
+        mContext.sendBroadcast(intent);
+    }
+
+    /**
      * Notifica que el saldo de alguna de las billeteras ha cambiado su saldo.
      */
-    private synchronized void notifyChangedBalance() {
+    private synchronized void notifyBalanceChanged(AbstractWallet wallet) {
         final long balance = getFiatBalance();
 
         Intent intent = new Intent()
-                .setAction(Constants.UPDATED_BALANCE)
-                .putExtra(Constants.EXTRA_BALANCE, balance);
+                .setAction(Constants.UPDATED_FIAT_BALANCE)
+                .putExtra(Constants.EXTRA_FIAT_BALANCE, balance)
+                .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency);
 
         mContext.sendBroadcast(intent);
     }
@@ -224,13 +258,13 @@ public final class WalletProvider {
 
         Intent intent = new Intent()
                 .setAction(Constants.NEW_TRANSACTION)
-                .putExtra(Constants.EXTRA_ASSET, newTx.getCryptoAsset().name())
+                .putExtra(Constants.EXTRA_CRYPTO_ASSET, newTx.getCryptoAsset().name())
                 .putExtra(Constants.EXTRA_TXID, newTx.getID());
 
         mContext.sendBroadcast(intent);
 
         try {
-            final String assetName = intent.getStringExtra(Constants.EXTRA_ASSET);
+            final String assetName = intent.getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
             final String txId = intent.getStringExtra(Constants.EXTRA_TXID);
             final SupportedAssets asset = SupportedAssets.valueOf(assetName);
             final AbstractWallet wallet = get(asset);
@@ -352,7 +386,7 @@ public final class WalletProvider {
     }
 
     /**
-     *
+     * Inicia el servicio de la sincronización en segundo plano.
      */
     public void syncWallets() {
         if (!anyCreated()) return;
@@ -362,6 +396,9 @@ public final class WalletProvider {
         mContext.startService(intent);
     }
 
+    /**
+     * Inicia el servicio de la sincronización en primer plano.
+     */
     public void syncWalletsForeground() {
         if (!anyCreated()) return;
 
@@ -369,7 +406,6 @@ public final class WalletProvider {
             mContext.startForegroundService(new Intent(mContext, WalletSyncForegroundService.class));
         else
             mContext.startService(new Intent(mContext, WalletSyncService.class));
-
     }
 
     /**
@@ -378,7 +414,9 @@ public final class WalletProvider {
      * @return Total en fiat.
      */
     public synchronized long getFiatBalance() {
-        return 0;
+        AtomicLong value = new AtomicLong();
+        forEachAsset(asset -> value.addAndGet(getFiatBalance(asset)));
+        return value.get();
     }
 
     /**
@@ -387,7 +425,17 @@ public final class WalletProvider {
      * @return Total del saldo expresado en fiat.
      */
     public synchronized long getFiatBalance(SupportedAssets cryptoAsset) {
-        return 0;
+        if (cryptoAsset.isFiat()) return 0;
+
+        final AbstractWallet wallet = get(cryptoAsset);
+
+        if (!wallet.isInitialized()) return 0;
+
+        final PriceTracker priceTracker = wallet.getPriceTracker(mFiatCurrency);
+        final long balance = wallet.getBalance();
+        final long price = priceTracker.getPrice();
+
+        return balance * price / wallet.getCryptoAsset().getUnit();
     }
 
     /**
@@ -486,6 +534,7 @@ public final class WalletProvider {
                 onAuthenticated.fail(ex);
             }
 
+            updateFiatCurrency(Preferences.get().getFiat());
             syncWallets();
         });
     }
@@ -533,7 +582,18 @@ public final class WalletProvider {
      * @param fiatAsset Activo a usar para los precios de los activos.
      */
     public void updateFiatCurrency(SupportedAssets fiatAsset) {
-        // TODO Actualizar los escuchas de precio.
+        final SupportedAssets prevFiatCurrency = mFiatCurrency;
+
+        mFiatCurrency = fiatAsset;
+
+        if (prevFiatCurrency != null)
+            forEachWallet(wallet -> wallet.getPriceTracker(prevFiatCurrency)
+                    .removePriceChangedListener(mOnPriceChangedConsumer));
+
+        forEachWallet(walllet -> walllet.getPriceTracker(mFiatCurrency)
+                .addPriceChangedListener(mExecutor, mOnPriceChangedConsumer));
+
+        notifyBalanceChanged(null);
     }
 
     /**
@@ -543,7 +603,7 @@ public final class WalletProvider {
      * @return Último precio del cripto-activo.
      */
     public long getLastPrice(SupportedAssets cryptoAsset) {
-        return 0;
+        return get(cryptoAsset).getPriceTracker(mFiatCurrency).getPrice();
     }
 
     /**

@@ -101,7 +101,7 @@ public class TransactionHistoryFragment extends Fragment {
         @Override
         public void onReceive(Context context, Intent intent) {
             mExecutor.execute(() -> {
-                final String assetName = intent.getStringExtra(Constants.EXTRA_ASSET);
+                final String assetName = intent.getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
                 final String txid = intent.getStringExtra(Constants.EXTRA_TXID);
                 final SupportedAssets asset = SupportedAssets.valueOf(assetName);
                 final WalletProvider provider = WalletProvider.getInstance(requireContext());

@@ -35,12 +35,12 @@ import org.jetbrains.annotations.NotNull;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
  */
-public class OverflowException extends InvalidAmountException {
+public class BitcoinOverflowException extends InvalidAmountException {
 
     /**
      * Crea una instancia de la excepción.
      */
-    public OverflowException(long amount) {
+    public BitcoinOverflowException(long amount) {
         super(SupportedAssets.BTC, amount);
     }
 

@@ -36,16 +36,29 @@ public abstract class Constants {
             = String.format("%s.extra.EXTRA_MESSAGE", BuildConfig.APPLICATION_ID);
 
     /**
-     * Clave de extra que representa el saldo del evento {@link Constants#UPDATED_BALANCE}
+     * Clave de extra que representa el saldo del evento {@link Constants#UPDATED_FIAT_BALANCE}
      */
-    public static final String EXTRA_BALANCE
-            = String.format("%s.extra.EXTRA_BALANCE", BuildConfig.APPLICATION_ID);
+    public static final String EXTRA_FIAT_BALANCE
+            = String.format("%s.extra.EXTRA_FIAT_BALANCE", BuildConfig.APPLICATION_ID);
 
     /**
-     * Clave del parametro activo.
+     * Clave de extra que representa el precio de un activo del evento
+     * {@link Constants#UPDATED_PRICE}.
      */
-    public static final String EXTRA_ASSET
-            = String.format("%s.extra.EXTRA_ASSET", BuildConfig.APPLICATION_ID);
+    public static final String EXTRA_FIAT_PRICE
+            = String.format("%s.extra.EXTRA_FIAT_PRICE", BuildConfig.APPLICATION_ID);
+
+    /**
+     * Clave del parametro cripto-activo.
+     */
+    public static final String EXTRA_CRYPTO_ASSET
+            = String.format("%s.extra.EXTRA_CRYPTO_ASSET", BuildConfig.APPLICATION_ID);
+
+    /**
+     * Clave del parametro activo fiduciario.
+     */
+    public static final String EXTRA_FIAT_ASSET
+            = String.format("%s.extra.EXTRA_FIAT_ASSET", BuildConfig.APPLICATION_ID);
 
     /**
      * Clave del parametro identificador de transacción.
@@ -128,8 +141,8 @@ public abstract class Constants {
     /**
      * Acción del evento saldo actualizado.
      */
-    public static final String UPDATED_BALANCE
-            = String.format("%s.action.UPDATED_BALANCE", BuildConfig.APPLICATION_ID);
+    public static final String UPDATED_FIAT_BALANCE
+            = String.format("%s.action.UPDATED_FIAT_BALANCE", BuildConfig.APPLICATION_ID);
 
     /**
      * Acción del evento nueva transacción.
@@ -142,6 +155,12 @@ public abstract class Constants {
      */
     public static final String NEW_BLOCK
             = String.format("%s.action.NEW_BLOCK", BuildConfig.APPLICATION_ID);
+
+    /**
+     * Acción del evento precio actualizado.
+     */
+    public static final String UPDATED_PRICE
+            = String.format("%s.action.UPDATED_PRICE", BuildConfig.APPLICATION_ID);
 
     /**
      * Esta clase es estática, no está soportada las instanciacion.

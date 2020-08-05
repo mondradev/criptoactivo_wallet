@@ -70,21 +70,15 @@ public class BitfinexPriceTracker extends PriceTracker {
     private final BitfinexService mService;
 
     /**
-     * Par del seguimiento.
-     */
-    private Book mBook;
-
-    /**
      * Crea una nueva instancia del seguimiento de precio en Bitfinex.
      */
     private BitfinexPriceTracker(Book book) {
+        super(book);
         this.mService = new Retrofit.Builder()
                 .baseUrl(API_URL)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(BitfinexService.class);
-
-        this.mBook = book;
     }
 
     /**
@@ -107,7 +101,7 @@ public class BitfinexPriceTracker extends PriceTracker {
      */
     @Override
     protected void requestPrice() {
-        mService.getTicker(this.mBook.getKey())
+        mService.getTicker(this.getBook().getKey())
                 .clone()
                 .enqueue(new Callback<Float[]>() {
                     @Override
@@ -117,7 +111,7 @@ public class BitfinexPriceTracker extends PriceTracker {
                             return;
 
                         setPrice(Math.round(response.body()[6]
-                                * mBook.getPriceAsset().getUnit()));
+                                * getBook().getPriceAsset().getUnit()));
                     }
 
                     @Override

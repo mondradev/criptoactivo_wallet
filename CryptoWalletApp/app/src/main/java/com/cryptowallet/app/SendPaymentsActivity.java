@@ -175,7 +175,7 @@ public class SendPaymentsActivity extends LockableActivity {
     /**
      * Consumidor del evento de saldo ha cambiado.
      */
-    private Consumer<Long> mOnBalanceChangedConsumer;
+    private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
 
     /**
      * Este método se ejecuta cuando se crea la actividad.
@@ -190,7 +190,7 @@ public class SendPaymentsActivity extends LockableActivity {
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         Objects.requireNonNull(getSupportActionBar()).setTitle(getString(R.string.send_text));
 
-        final String assetName = getIntent().getStringExtra(Constants.EXTRA_ASSET);
+        final String assetName = getIntent().getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
         final SupportedAssets asset = SupportedAssets.valueOf(assetName);
         final int size = (int) Math.log10(asset.getUnit());
 

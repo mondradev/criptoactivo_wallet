@@ -74,7 +74,7 @@ public class TransactionFragment extends BottomSheetDialogFragment {
             throw new IllegalArgumentException("TxId must be not null or empty");
 
         Bundle parameters = new Bundle();
-        parameters.putCharSequence(Constants.EXTRA_ASSET, asset.name());
+        parameters.putCharSequence(Constants.EXTRA_CRYPTO_ASSET, asset.name());
         parameters.putCharSequence(Constants.EXTRA_TXID, txid);
 
         TransactionFragment fragment = new TransactionFragment();
@@ -97,7 +97,7 @@ public class TransactionFragment extends BottomSheetDialogFragment {
 
         final WalletProvider walletService = WalletProvider.getInstance(this.getContext());
         final SupportedAssets cryptoAsset
-                = SupportedAssets.valueOf(requireArguments().getString(Constants.EXTRA_ASSET));
+                = SupportedAssets.valueOf(requireArguments().getString(Constants.EXTRA_CRYPTO_ASSET));
         final AbstractWallet wallet = walletService.get(cryptoAsset);
 
         if (!wallet.isInitialized())

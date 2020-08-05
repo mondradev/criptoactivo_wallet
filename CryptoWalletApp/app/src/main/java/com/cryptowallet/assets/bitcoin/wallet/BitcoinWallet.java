@@ -29,8 +29,10 @@ import androidx.annotation.Nullable;
 
 import com.cryptowallet.R;
 import com.cryptowallet.assets.bitcoin.services.BitcoinProvider;
-import com.cryptowallet.assets.bitcoin.wallet.exceptions.DustException;
-import com.cryptowallet.assets.bitcoin.wallet.exceptions.OverflowException;
+import com.cryptowallet.assets.bitcoin.wallet.exceptions.BitcoinDustException;
+import com.cryptowallet.assets.bitcoin.wallet.exceptions.BitcoinOverflowException;
+import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
+import com.cryptowallet.services.coinmarket.pricetrackers.BitsoPriceTracker;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ChainTipInfo;
@@ -107,7 +109,7 @@ import static org.bitcoinj.wallet.Wallet.BalanceType.AVAILABLE_SPENDABLE;
  * @see WalletProvider
  * @see SupportedAssets
  */
-public class Wallet extends AbstractWallet {
+public class BitcoinWallet extends AbstractWallet {
 
     /**
      * Direcciones máximas por petición.
@@ -173,7 +175,7 @@ public class Wallet extends AbstractWallet {
     /**
      * Crea una nueva instancia.
      */
-    public Wallet(@NonNull Context context) {
+    public BitcoinWallet(@NonNull Context context) {
         super(SupportedAssets.BTC, context, WALLET_FILENAME);
         mNetwork = TestNet3Params.get();
         mContextLib = new org.bitcoinj.core.Context(mNetwork);
@@ -185,6 +187,9 @@ public class Wallet extends AbstractWallet {
             FEE_DATA.add(Hex.decode(
                     "000053fc0557ceb8704e1cd7c36aa39372c74c38635bb9a554b1c1f5cd"));
         }
+
+        registerPriceTracker(SupportedAssets.MXN, BitsoPriceTracker.get(BitsoPriceTracker.BTCMXN));
+        registerPriceTracker(SupportedAssets.USD, BitfinexPriceTracker.get(BitfinexPriceTracker.BTCUSD));
     }
 
     /**
@@ -452,7 +457,7 @@ public class Wallet extends AbstractWallet {
         mInitialDownload = mBitcoinJWallet.getLastBlockSeenHeight() <= 0;
 
         if (mInitialDownload) {
-            Map<String, TxDecorator> history = new HashMap<>();
+            Map<String, BitcoinTransaction> history = new HashMap<>();
 
             int receiveAddresses = scanAddresses(ChildNumber.ZERO, history);
             int changeAddresses = scanAddresses(ChildNumber.ONE, history);
@@ -492,7 +497,7 @@ public class Wallet extends AbstractWallet {
      * @param history Historial de transacciones.
      * @return Cantidad de direcciones generadas.
      */
-    private int scanAddresses(ChildNumber purpose, Map<String, TxDecorator> history)
+    private int scanAddresses(ChildNumber purpose, Map<String, BitcoinTransaction> history)
             throws ExecutionException, InterruptedException {
         return scanAddresses(purpose, history, 0, MAX_INACTIVE_ADDRESS,
                 MAX_ADDRESS_PER_REQUEST);
@@ -505,7 +510,7 @@ public class Wallet extends AbstractWallet {
      * @param history Historial de transacciones.
      * @return Cantidad de direcciones generadas.
      */
-    private int scanAddresses(ChildNumber purpose, Map<String, TxDecorator> history, int fromIndex,
+    private int scanAddresses(ChildNumber purpose, Map<String, BitcoinTransaction> history, int fromIndex,
                               int tries, int size)
             throws ExecutionException, InterruptedException {
         final Derivator derivator = new Derivator(purpose);
@@ -516,13 +521,13 @@ public class Wallet extends AbstractWallet {
             final Set<LegacyAddress> addresses = derivator
                     .deriveAddresses(size, index);
 
-            List<TxDecorator> txDecorators = BitcoinProvider.get(this)
+            List<BitcoinTransaction> txDecorators = BitcoinProvider.get(this)
                     .getHistory(serializeAddressesList(addresses), 0);
 
             if (txDecorators.isEmpty())
                 inactiveAddress++;
             else {
-                for (TxDecorator tx : txDecorators)
+                for (BitcoinTransaction tx : txDecorators)
                     history.put(tx.getID(), tx);
 
                 inactiveAddress = 0;
@@ -546,7 +551,7 @@ public class Wallet extends AbstractWallet {
      * @param addresses    Direcciones a explorar.
      * @return Cantidad de direcciones sin actividad.
      */
-    private int computeSkippedAddress(Map<String, TxDecorator> transactions,
+    private int computeSkippedAddress(Map<String, BitcoinTransaction> transactions,
                                       Set<LegacyAddress> addresses) {
         ArrayList<LegacyAddress> list = new ArrayList<>(addresses);
         Collections.reverse(list);
@@ -570,8 +575,8 @@ public class Wallet extends AbstractWallet {
      * @param transactions Transacciones a explorar.
      * @return True si recibe monedas la dirección.
      */
-    private boolean hasHistory(LegacyAddress address, Map<String, TxDecorator> transactions) {
-        for (TxDecorator tx : transactions.values())
+    private boolean hasHistory(LegacyAddress address, Map<String, BitcoinTransaction> transactions) {
+        for (BitcoinTransaction tx : transactions.values())
             if (tx.getToAddress().contains(address.toBase58()))
                 return true;
 
@@ -597,7 +602,7 @@ public class Wallet extends AbstractWallet {
         addresses.addAll(receiveAddresses);
         addresses.addAll(changeAddresses);
 
-        Map<String, TxDecorator> transactions = new HashMap<>();
+        Map<String, BitcoinTransaction> transactions = new HashMap<>();
 
         downloadHistory(height, addresses, transactions);
 
@@ -625,12 +630,12 @@ public class Wallet extends AbstractWallet {
      * @param txs Lista de identificadores de las transacciones a descargar.
      * @return Mapa de transacciones descargadas.
      */
-    private Map<String, TxDecorator> downloadTransactions(String[] txs)
+    private Map<String, BitcoinTransaction> downloadTransactions(String[] txs)
             throws ExecutionException, InterruptedException {
-        Map<String, TxDecorator> map = new HashMap<>();
+        Map<String, BitcoinTransaction> map = new HashMap<>();
 
         for (String txid : txs) {
-            TxDecorator tx = BitcoinProvider.get(this)
+            BitcoinTransaction tx = BitcoinProvider.get(this)
                     .getTransactionByTxID(Sha256Hash.wrap(txid).getReversedBytes());
 
             if (tx == null)
@@ -650,14 +655,14 @@ public class Wallet extends AbstractWallet {
      * @param transactions Transacciones descargadas.
      */
     private void downloadHistory(int height, Set<LegacyAddress> addresses,
-                                 Map<String, TxDecorator> transactions)
+                                 Map<String, BitcoinTransaction> transactions)
             throws ExecutionException, InterruptedException {
 
-        List<TxDecorator> activity = BitcoinProvider.get(this)
+        List<BitcoinTransaction> activity = BitcoinProvider.get(this)
                 .getHistory(serializeAddressesList(addresses), height);
 
         if (!activity.isEmpty())
-            for (TxDecorator tx : activity)
+            for (BitcoinTransaction tx : activity)
                 transactions.put(tx.getID(), tx);
     }
 
@@ -711,16 +716,16 @@ public class Wallet extends AbstractWallet {
      *
      * @param transactions Transacciones a agregar a la billetera.
      */
-    private void addTransactions(final Map<String, TxDecorator> transactions) {
+    private void addTransactions(final Map<String, BitcoinTransaction> transactions) {
         if (transactions.isEmpty()) return;
 
-        List<TxDecorator> orderedTx = new ArrayList<>(transactions.values());
+        List<BitcoinTransaction> orderedTx = new ArrayList<>(transactions.values());
 
         Collections.sort(orderedTx);
 
         if (!Utils.tryNotThrow(() -> {
-            for (TxDecorator tx : orderedTx) {
-                TxDecorator known = transactions.get(tx.getID());
+            for (BitcoinTransaction tx : orderedTx) {
+                BitcoinTransaction known = transactions.get(tx.getID());
 
                 if (known == null)
                     continue;
@@ -736,7 +741,7 @@ public class Wallet extends AbstractWallet {
                             && known.getTx().getAppearsInHashes().containsKey(blockHash) ?
                             known.getTx().getAppearsInHashes().get(blockHash) : -1;
 
-                    known = TxDecorator.wrap(wtx, this);
+                    known = BitcoinTransaction.wrap(wtx, this);
 
                     if (blockHash != null && index != null)
                         known.getTx().addBlockAppearance(blockHash, index);
@@ -753,7 +758,7 @@ public class Wallet extends AbstractWallet {
                     }
 
                 if (known.requireDependencies()) {
-                    Map<String, TxDecorator> dependencies = BitcoinProvider.get(this)
+                    Map<String, BitcoinTransaction> dependencies = BitcoinProvider.get(this)
                             .getDependencies(known.getTx().getTxId().getReversedBytes());
 
                     if (dependencies == null)
@@ -763,7 +768,7 @@ public class Wallet extends AbstractWallet {
                         Log.d(LOG_TAG, "Receiving a uncommit transaction: " + known.getID());
 
                         List<Transaction> deps = Utils.Lists.map(
-                                Lists.newArrayList(dependencies.values()), TxDecorator::getTx);
+                                Lists.newArrayList(dependencies.values()), BitcoinTransaction::getTx);
                         mBitcoinJWallet.receivePending(known.getTx(), deps);
                     }
 
@@ -789,14 +794,14 @@ public class Wallet extends AbstractWallet {
      *                              especificada.
      */
     private void connectInputs(org.bitcoinj.core.Transaction tx,
-                               Map<String, TxDecorator> dependencies) throws NullPointerException {
+                               Map<String, BitcoinTransaction> dependencies) throws NullPointerException {
         for (TransactionInput input : tx.getInputs()) {
             if (input.getConnectedOutput() == null) {
                 final TransactionOutPoint outpoint = input.getOutpoint();
                 final String hash = outpoint.getHash().toString();
                 final long index = outpoint.getIndex();
 
-                TxDecorator dep = dependencies.get(hash);
+                BitcoinTransaction dep = dependencies.get(hash);
 
                 if (dep == null) continue;
 
@@ -821,18 +826,18 @@ public class Wallet extends AbstractWallet {
             throw new IllegalStateException("Wallet wasn't initialized");
 
         mBitcoinJWallet.addCoinsReceivedEventListener((wallet, tx, prevBalance, newBalance) -> {
-            if (TxDecorator.wrap(tx, this).isPay())
+            if (BitcoinTransaction.wrap(tx, this).isPay())
                 return;
 
             this.onNewTransaction(tx);
         });
         mBitcoinJWallet.addCoinsSentEventListener((wallet, tx, prevBalance, newBalance) -> {
-            if (!TxDecorator.wrap(tx, this).isPay())
+            if (!BitcoinTransaction.wrap(tx, this).isPay())
                 return;
 
             this.onNewTransaction(tx);
         });
-        mBitcoinJWallet.addChangeEventListener(wallet -> notifyBalanceChanged(getBalance()));
+        mBitcoinJWallet.addChangeEventListener(wallet -> notifyBalanceChanged());
     }
 
 
@@ -923,7 +928,7 @@ public class Wallet extends AbstractWallet {
         Objects.requireNonNull(btcAddress);
         Objects.requireNonNull(btcAmount);
 
-        TxDecorator tx = new TxDecorator(this);
+        BitcoinTransaction tx = new BitcoinTransaction(this);
         tx.getTx().addOutput(btcAmount, btcAddress);
 
         for (TransactionOutput feeOutput : getOutputToWalletFee())
@@ -982,7 +987,7 @@ public class Wallet extends AbstractWallet {
      * @param tx      Transacción a completar.
      * @param feeByKB Comisión por kilobyte.
      */
-    private void completeTx(TxDecorator tx, long feeByKB) {
+    private void completeTx(BitcoinTransaction tx, long feeByKB) {
         final List<TransactionOutput> unspents = mBitcoinJWallet.calculateAllSpendCandidates();
         final Address address = mBitcoinJWallet.currentChangeAddress();
 
@@ -1000,7 +1005,7 @@ public class Wallet extends AbstractWallet {
 
         Collections.sort(unspents, (left, right) -> left.getValue().compareTo(right.getValue()));
 
-        TxDecorator temp;
+        BitcoinTransaction temp;
         Coin fee = Coin.ZERO;
         List<TransactionOutput> candidates = new ArrayList<>();
 
@@ -1099,7 +1104,7 @@ public class Wallet extends AbstractWallet {
      * @param txd                 Transacción a firmar.
      * @param authenticationToken Token de autenticación de la billetera.
      */
-    private void signInputsOfTransaction(@NonNull TxDecorator txd, byte[] authenticationToken) {
+    private void signInputsOfTransaction(@NonNull BitcoinTransaction txd, byte[] authenticationToken) {
         Transaction tx = txd.getTx();
         List<TransactionInput> inputs = tx.getInputs();
         tx.setPurpose(Transaction.Purpose.USER_PAYMENT);
@@ -1188,12 +1193,12 @@ public class Wallet extends AbstractWallet {
     public boolean isValidAmount(long amount, boolean throwIfInvalid) throws InvalidAmountException {
         if (!Coin.valueOf(amount).isGreaterThan(Transaction.MIN_NONDUST_OUTPUT))
             if (throwIfInvalid)
-                throw new DustException();
+                throw new BitcoinDustException();
             else return false;
 
         if (Coin.valueOf(amount).isGreaterThan(mNetwork.getMaxMoney()))
             if (throwIfInvalid)
-                throw new OverflowException(amount);
+                throw new BitcoinOverflowException(amount);
             else return false;
 
         if (Coin.valueOf(amount).isGreaterThan(Coin.valueOf(getBalance())))
@@ -1221,7 +1226,7 @@ public class Wallet extends AbstractWallet {
         for (WalletTransaction tx : mBitcoinJWallet.getWalletTransactions()) {
             if (!mBitcoinJWallet.isTransactionRelevant(tx.getTransaction())) continue;
             if (tx.getTransaction().getFee() == null) continue;
-            txs.add(TxDecorator.wrap(tx.getTransaction(), this));
+            txs.add(BitcoinTransaction.wrap(tx.getTransaction(), this));
         }
 
         return txs;
@@ -1264,7 +1269,7 @@ public class Wallet extends AbstractWallet {
         if (tx == null)
             return null;
 
-        return TxDecorator.wrap(tx, this);
+        return BitcoinTransaction.wrap(tx, this);
     }
 
     /**
@@ -1281,13 +1286,13 @@ public class Wallet extends AbstractWallet {
 
         propagateBitcoinJ();
 
-        if (!(tx instanceof TxDecorator))
+        if (!(tx instanceof BitcoinTransaction))
             throw new IllegalArgumentException(
                     "The transaction cannot be sent because it isn't a Bitcoin transaction");
 
         return Utils.tryReturnBoolean(() -> {
-            signInputsOfTransaction((TxDecorator) tx, authenticationToken);
-            return BitcoinProvider.get(this).broadcastTx((TxDecorator) tx);
+            signInputsOfTransaction((BitcoinTransaction) tx, authenticationToken);
+            return BitcoinProvider.get(this).broadcastTx((BitcoinTransaction) tx);
         }, false);
     }
 
@@ -1339,7 +1344,7 @@ public class Wallet extends AbstractWallet {
 
             if ((tip.getHeight() - mBitcoinJWallet.getLastBlockSeenHeight()) > 0) return;
 
-            TxDecorator tx = BitcoinProvider.get(this)
+            BitcoinTransaction tx = BitcoinProvider.get(this)
                     .getTransactionByTxID(Sha256Hash.wrap(txid).getReversedBytes());
 
             if (tx == null) {
@@ -1349,7 +1354,7 @@ public class Wallet extends AbstractWallet {
 
             if (!mBitcoinJWallet.isTransactionRelevant(tx.getTx())) return;
 
-            Map<String, TxDecorator> txs = new HashMap<>();
+            Map<String, BitcoinTransaction> txs = new HashMap<>();
             txs.put(tx.getID(), tx);
 
             addTransactions(txs);
@@ -1375,7 +1380,7 @@ public class Wallet extends AbstractWallet {
             if (diff > 1) {
                 syncWallet();
             } else if (diff == 1) {
-                Map<String, TxDecorator> transactions = downloadTransactions(txs);
+                Map<String, BitcoinTransaction> transactions = downloadTransactions(txs);
 
                 addTransactions(transactions);
 
@@ -1458,8 +1463,8 @@ public class Wallet extends AbstractWallet {
      * @param tx Nueva transacción.
      */
     private void onNewTransaction(Transaction tx) {
-        notifyBalanceChanged(getBalance());
-        notifyNewTransaction(TxDecorator.wrap(tx, this));
+        notifyBalanceChanged();
+        notifyNewTransaction(BitcoinTransaction.wrap(tx, this));
     }
 
     /**

@@ -94,7 +94,7 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
         final long fiatAmount
                 = Utils.cryptoToFiat(tx.getAmount(), tx.getCryptoAsset(), lastPrice, fiat);
 
-        parameters.putString(Constants.EXTRA_ASSET, tx.getCryptoAsset().name());
+        parameters.putString(Constants.EXTRA_CRYPTO_ASSET, tx.getCryptoAsset().name());
         parameters.putString(Constants.EXTRA_TXID, tx.getID());
         parameters.putLong(Constants.EXTRA_AMOUNT, tx.getAmount());
         parameters.putLong(Constants.EXTRA_FIAT_AMOUNT, fiatAmount);
@@ -122,7 +122,7 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
 
         final Bundle arguments = requireArguments();
         final SupportedAssets asset = Enum.valueOf(SupportedAssets.class,
-                arguments.getString(Constants.EXTRA_ASSET, SupportedAssets.BTC.name()));
+                arguments.getString(Constants.EXTRA_CRYPTO_ASSET, SupportedAssets.BTC.name()));
 
         String[] toAddresses = arguments.getStringArray(Constants.EXTRA_TO_ADDRESSES);
         toAddresses = toAddresses == null ? new String[]{} : toAddresses;

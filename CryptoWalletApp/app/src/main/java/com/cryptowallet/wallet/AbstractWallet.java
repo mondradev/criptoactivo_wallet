@@ -22,16 +22,21 @@ import android.content.Context;
 import android.net.Uri;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.ExecutableCommand;
 import com.cryptowallet.utils.ExecutableConsumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executor;
 
@@ -70,7 +75,7 @@ public abstract class AbstractWallet {
     /**
      * Conjunto de escuchas para cuando el saldo ha cambiado.
      */
-    private CopyOnWriteArraySet<ExecutableConsumer<Long>> mBalanceChangedListeners;
+    private CopyOnWriteArraySet<ExecutableConsumer<AbstractWallet>> mBalanceChangedListeners;
 
     /**
      * Conjunto de escuchas para cuando se agrega una nueva transacción a la billetera.
@@ -81,6 +86,11 @@ public abstract class AbstractWallet {
      * Conjunto de escuchas para cuando se finaliza la sincronización.
      */
     private CopyOnWriteArraySet<ExecutableCommand> mFullSyncListener;
+
+    /**
+     * Seguidores de precio.
+     */
+    private Map<SupportedAssets, PriceTracker> mPriceTrackers;
 
     /**
      * Crea una instancia de la billetera.
@@ -94,6 +104,7 @@ public abstract class AbstractWallet {
 
         mCryptoAsset = cryptoAsset;
         mWalletFile = new File(mContext.getApplicationInfo().dataDir, walletFilename);
+        mPriceTrackers = new HashMap<>();
         mFullSyncListener = new CopyOnWriteArraySet<>();
         mNewTransactionListeners = new CopyOnWriteArraySet<>();
         mBalanceChangedListeners = new CopyOnWriteArraySet<>();
@@ -129,12 +140,10 @@ public abstract class AbstractWallet {
 
     /**
      * Notifica a los escuchas que el saldo de la billetera ha cambiado.
-     *
-     * @param balance Nuevo saldo.
      */
-    protected void notifyBalanceChanged(long balance) {
-        for (ExecutableConsumer<Long> executable : mBalanceChangedListeners)
-            executable.execute(balance);
+    protected void notifyBalanceChanged() {
+        for (ExecutableConsumer<AbstractWallet> executable : mBalanceChangedListeners)
+            executable.execute(this);
     }
 
     /**
@@ -245,8 +254,8 @@ public abstract class AbstractWallet {
      * @param executor Ejecutor del escucha del evento.
      * @param listener Función a llamar cuando el evento sea generado.
      */
-    public void addBalanceChangedListener(Executor executor, Consumer<Long> listener) {
-        for (ExecutableConsumer<Long> executable : mBalanceChangedListeners)
+    public void addBalanceChangedListener(Executor executor, Consumer<AbstractWallet> listener) {
+        for (ExecutableConsumer<AbstractWallet> executable : mBalanceChangedListeners)
             if (executable.getConsumer().equals(listener))
                 return;
 
@@ -258,8 +267,8 @@ public abstract class AbstractWallet {
      *
      * @param listener Función a llamar cuando el evento sea generado.
      */
-    public void removeBalanceChangedListener(Consumer<Long> listener) {
-        for (ExecutableConsumer<Long> executable : mBalanceChangedListeners)
+    public void removeBalanceChangedListener(Consumer<AbstractWallet> listener) {
+        for (ExecutableConsumer<AbstractWallet> executable : mBalanceChangedListeners)
             if (executable.getConsumer().equals(listener))
                 mBalanceChangedListeners.remove(executable);
     }
@@ -289,6 +298,34 @@ public abstract class AbstractWallet {
             if (executable.getConsumer().equals(listener))
                 mNewTransactionListeners.remove(executable);
     }
+
+
+    /**
+     * Obtiene el seguidor del precio según el activo utilizado para visualizarlo.
+     *
+     * @param fiat Activo fiduciario.
+     * @return Seguidor de precio.
+     * @throws IllegalArgumentException En caso de no existir un seguidor de precio.
+     */
+    public PriceTracker getPriceTracker(SupportedAssets fiat) {
+        if (!mPriceTrackers.containsKey(fiat))
+            throw new IllegalArgumentException("Fiat asset unsopported");
+
+        return mPriceTrackers.get(fiat);
+    }
+
+    /**
+     * Registra un seguidor de precio.
+     *
+     * @param fiat         Activo fiat en el cual se expresa el precio.
+     * @param priceTracker Seguidor de precio.
+     */
+    protected void registerPriceTracker(SupportedAssets fiat, @NonNull PriceTracker priceTracker) {
+        if (mPriceTrackers.containsKey(fiat)) return;
+
+        mPriceTrackers.put(fiat, priceTracker);
+    }
+
 
     /**
      * Obtiene el total del saldo de la billetera. El saldo es expresado en su unidad mínima, lo cual
@@ -373,6 +410,7 @@ public abstract class AbstractWallet {
      * @throws InvalidAmountException Si throwIfInvalid es true, la causa de la validación
      *                                fallida es lanzada como excepción.
      */
+    @CanIgnoreReturnValue
     public abstract boolean isValidAmount(long amount, boolean throwIfInvalid)
             throws InvalidAmountException;
 

@@ -48,7 +48,7 @@ public class TxBottomSheetDialogActivity extends LockableActivity {
     public static Intent createIntent(Context context, ITransaction tx) {
         Intent intent = new Intent(context, TxBottomSheetDialogActivity.class);
         intent.putExtra(Constants.EXTRA_TXID, tx.getID());
-        intent.putExtra(Constants.EXTRA_ASSET, tx.getCryptoAsset().name());
+        intent.putExtra(Constants.EXTRA_CRYPTO_ASSET, tx.getCryptoAsset().name());
 
         return intent;
     }
@@ -66,7 +66,7 @@ public class TxBottomSheetDialogActivity extends LockableActivity {
         LockableActivity.registerMainActivityClass(SplashActivity.class);
 
         final String txid = getIntent().getStringExtra(Constants.EXTRA_TXID);
-        final String assetName = getIntent().getStringExtra(Constants.EXTRA_ASSET);
+        final String assetName = getIntent().getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
 
         Objects.requireNonNull(txid);
         Objects.requireNonNull(assetName);

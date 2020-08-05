@@ -24,8 +24,8 @@ import com.cryptowallet.assets.bitcoin.services.retrofit.BitcoinApi;
 import com.cryptowallet.assets.bitcoin.services.retrofit.ChainInfoResponse;
 import com.cryptowallet.assets.bitcoin.services.retrofit.SuccessfulResponse;
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxDataResponse;
-import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
-import com.cryptowallet.assets.bitcoin.wallet.Wallet;
+import com.cryptowallet.assets.bitcoin.wallet.BitcoinTransaction;
+import com.cryptowallet.assets.bitcoin.wallet.BitcoinWallet;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ChainTipInfo;
 import com.google.common.util.concurrent.ListenableFutureTask;
@@ -87,14 +87,14 @@ public class BitcoinProvider {
     /**
      * Parametros de la red.
      */
-    private final Wallet mWallet;
+    private final BitcoinWallet mWallet;
 
     /**
      * Crea una nueva instancia del proveedor de datos.
      *
      * @param wallet Parametros de red.
      */
-    private BitcoinProvider(Wallet wallet) {
+    private BitcoinProvider(BitcoinWallet wallet) {
         mWallet = wallet;
         mExecutor = Executors.newSingleThreadExecutor();
         mApi = new Retrofit.Builder()
@@ -110,7 +110,7 @@ public class BitcoinProvider {
      * @param wallet Instancia de la billetera que contendrá las transacciones.
      * @return Un proveedor de billetera.
      */
-    public static BitcoinProvider get(Wallet wallet) {
+    public static BitcoinProvider get(BitcoinWallet wallet) {
         if (mInstance == null)
             mInstance = new BitcoinProvider(wallet);
 
@@ -152,11 +152,11 @@ public class BitcoinProvider {
      * @return Una tarea encargada de gestionar la petición.
      */
     @SuppressWarnings({"SameParameterValue", "WeakerAccess"})
-    public List<TxDecorator> getHistoryByAddress(byte[] address, int height)
+    public List<BitcoinTransaction> getHistoryByAddress(byte[] address, int height)
             throws ExecutionException, InterruptedException {
         final String addressHex = Hex.toHexString(address);
-        final List<TxDecorator> history = new ArrayList<>();
-        ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
+        final List<BitcoinTransaction> history = new ArrayList<>();
+        ListenableFutureTask<List<BitcoinTransaction>> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getHistoryByAddress");
 
             return tryDo(() -> {
@@ -172,7 +172,7 @@ public class BitcoinProvider {
                 List<TxDataResponse> historyData = response.body();
 
                 for (TxDataResponse data : historyData)
-                    history.add(TxDecorator.fromTxData(data, mWallet));
+                    history.add(BitcoinTransaction.fromTxData(data, mWallet));
 
                 return history;
             });
@@ -189,10 +189,10 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción en bytes.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public TxDecorator getTransactionByTxID(byte[] txid) throws ExecutionException, InterruptedException {
+    public BitcoinTransaction getTransactionByTxID(byte[] txid) throws ExecutionException, InterruptedException {
         String txidHex = Hex.toHexString(txid);
 
-        ListenableFutureTask<TxDecorator> task = ListenableFutureTask.create(() -> {
+        ListenableFutureTask<BitcoinTransaction> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getTransactionByTxID");
             return tryDo(() -> {
                 Log.d(LOG_TAG, "Request transaction: " + txidHex);
@@ -203,7 +203,7 @@ public class BitcoinProvider {
                 if (!response.isSuccessful() || response.body() == null)
                     return null;
 
-                return TxDecorator.fromTxData(response.body(), mWallet);
+                return BitcoinTransaction.fromTxData(response.body(), mWallet);
             });
         });
 
@@ -253,7 +253,7 @@ public class BitcoinProvider {
      * @param transaction Transacción a propagar.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public Boolean broadcastTx(TxDecorator transaction) {
+    public Boolean broadcastTx(BitcoinTransaction transaction) {
         if (transaction == null)
             throw new NullPointerException("Transaction is null");
 
@@ -286,13 +286,13 @@ public class BitcoinProvider {
      * @param txid Identificador de la transacción.
      * @return Una tarea encargada de gestionar la petición.
      */
-    public Map<String, TxDecorator> getDependencies(byte[] txid)
+    public Map<String, BitcoinTransaction> getDependencies(byte[] txid)
             throws ExecutionException, InterruptedException {
         String txidHex = Hex.toHexString(txid);
 
-        ListenableFutureTask<Map<String, TxDecorator>> task = ListenableFutureTask.create(() -> {
+        ListenableFutureTask<Map<String, BitcoinTransaction>> task = ListenableFutureTask.create(() -> {
             Thread.currentThread().setName("Bitcoin Provider getDependencies");
-            final Map<String, TxDecorator> deps = new HashMap<>();
+            final Map<String, BitcoinTransaction> deps = new HashMap<>();
             return tryDo(() -> {
                 deps.clear();
                 Log.d(LOG_TAG, "Request dependencies: " + txidHex);
@@ -307,7 +307,7 @@ public class BitcoinProvider {
                 List<TxDataResponse> depsData = response.body();
 
                 for (TxDataResponse data : depsData) {
-                    TxDecorator transaction = TxDecorator.fromTxData(data, mWallet);
+                    BitcoinTransaction transaction = BitcoinTransaction.fromTxData(data, mWallet);
                     deps.put(transaction.getID(), transaction);
                 }
 
@@ -326,12 +326,12 @@ public class BitcoinProvider {
      * @param addresses Direcciones a consultar.
      * @return Un tarea encargada de gestionar la petición.
      */
-    public List<TxDecorator> getHistory(byte[] addresses, int height)
+    public List<BitcoinTransaction> getHistory(byte[] addresses, int height)
             throws ExecutionException, InterruptedException {
         final String addressesHex = Hex.toHexString(addresses);
 
-        ListenableFutureTask<List<TxDecorator>> task = ListenableFutureTask.create(() -> {
-            final List<TxDecorator> transactions = new ArrayList<>();
+        ListenableFutureTask<List<BitcoinTransaction>> task = ListenableFutureTask.create(() -> {
+            final List<BitcoinTransaction> transactions = new ArrayList<>();
             Thread.currentThread().setName("Bitcoin Provider getHistory");
             return tryDo(() -> {
                 Log.d(LOG_TAG, "Request history: " + addressesHex);
@@ -346,7 +346,7 @@ public class BitcoinProvider {
                 List<TxDataResponse> txData = response.body();
 
                 for (TxDataResponse data : txData)
-                    transactions.add(TxDecorator.fromTxData(data, mWallet));
+                    transactions.add(BitcoinTransaction.fromTxData(data, mWallet));
 
                 return transactions;
             });

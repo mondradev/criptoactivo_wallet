@@ -33,12 +33,12 @@ import com.cryptowallet.wallet.exceptions.InvalidAmountException;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
  */
-public class DustException extends InvalidAmountException {
+public class BitcoinDustException extends InvalidAmountException {
 
     /**
      * Crea una instancia de la excepción.
      */
-    public DustException() {
+    public BitcoinDustException() {
         super(SupportedAssets.BTC, 0);
     }
 

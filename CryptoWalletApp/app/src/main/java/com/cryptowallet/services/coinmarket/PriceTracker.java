@@ -20,8 +20,10 @@ package com.cryptowallet.services.coinmarket;
 
 import android.os.Handler;
 
-import com.cryptowallet.utils.Consumer;
-import com.cryptowallet.utils.ExecutableConsumer;
+import com.cryptowallet.utils.BiConsumer;
+import com.cryptowallet.utils.ExecutableBiConsumer;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +50,7 @@ public abstract class PriceTracker {
     /**
      * Lista de escuchas.
      */
-    private final List<ExecutableConsumer<Long>> mPriceChangedListeners;
+    private final List<ExecutableBiConsumer<Book, Long>> mPriceChangedListeners;
 
     /**
      * Handler para realizar la petición con retraso de 5 minutos.
@@ -61,18 +63,33 @@ public abstract class PriceTracker {
     private long mLastPrice;
 
     /**
+     * Libro de seguimiento.
+     */
+    private Book mBook;
+
+    /**
      * Crea una nueva instancia del seguidor.
      */
-    protected PriceTracker() {
+    protected PriceTracker(@NonNull Book book) {
         this.mPriceChangedListeners = new ArrayList<>();
         this.mLastPrice = 0;
         this.mHandler = new Handler();
+        this.mBook = book;
     }
 
     /**
      * Realiza una petición para obtener el precio actual.
      */
     protected abstract void requestPrice();
+
+    /**
+     * Obtiene el libro utilizado para realizar el seguimiento del precio en el intercambio.
+     *
+     * @return Libro del activo.
+     */
+    public Book getBook() {
+        return mBook;
+    }
 
     /**
      * Obtiene el último precio obtenido por el seguidor.
@@ -100,8 +117,8 @@ public abstract class PriceTracker {
         if (mPriceChangedListeners.size() == 0)
             return;
 
-        for (ExecutableConsumer<Long> listener : mPriceChangedListeners)
-            listener.execute(mLastPrice);
+        for (ExecutableBiConsumer<Book, Long> listener : mPriceChangedListeners)
+            listener.execute(mBook, mLastPrice);
 
         retryRequest();
     }
@@ -118,15 +135,15 @@ public abstract class PriceTracker {
      *
      * @param listener Escucha de cambio.
      */
-    public void addPrieChangedListener(Executor executor, Consumer<Long> listener) {
+    public void addPriceChangedListener(Executor executor, BiConsumer<Book, Long> listener) {
         if (listener == null)
             throw new NullPointerException("Can't add null as listener");
 
-        for (ExecutableConsumer<Long> executableConsumer : mPriceChangedListeners)
+        for (ExecutableBiConsumer<Book, Long> executableConsumer : mPriceChangedListeners)
             if (executableConsumer.getConsumer().equals(listener))
                 return;
 
-        mPriceChangedListeners.add(new ExecutableConsumer<>(executor, listener));
+        mPriceChangedListeners.add(new ExecutableBiConsumer<>(executor, listener));
 
         if (mPriceChangedListeners.size() == 1)
             this.requestPrice();
@@ -137,11 +154,11 @@ public abstract class PriceTracker {
      *
      * @param listener Escucha a remover.
      */
-    public void removePriceChangedListener(Consumer<Long> listener) {
+    public void removePriceChangedListener(BiConsumer<Book, Long> listener) {
         if (listener == null)
             throw new NullPointerException("Can't add null as listener");
 
-        for (ExecutableConsumer<Long> executableConsumer : mPriceChangedListeners)
+        for (ExecutableBiConsumer<Book, Long> executableConsumer : mPriceChangedListeners)
             if (executableConsumer.getConsumer().equals(listener)) {
                 mPriceChangedListeners.remove(executableConsumer);
                 break;

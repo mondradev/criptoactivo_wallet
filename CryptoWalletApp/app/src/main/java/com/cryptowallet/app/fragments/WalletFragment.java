@@ -85,7 +85,7 @@ public class WalletFragment extends Fragment {
         @Override
         public void onReceive(Context context, Intent intent) {
             mExecutor.execute(() -> {
-                final long balance = intent.getLongExtra(Constants.EXTRA_BALANCE, 0);
+                final long balance = intent.getLongExtra(Constants.EXTRA_FIAT_BALANCE, 0);
                 mMainHandler.post(() -> mOnBalanceUpdateListener.accept(balance));
             });
         }
@@ -140,7 +140,7 @@ public class WalletFragment extends Fragment {
                     .commit();
         });
 
-        requireContext().registerReceiver(mReceiver, new IntentFilter(Constants.UPDATED_BALANCE));
+        requireContext().registerReceiver(mReceiver, new IntentFilter(Constants.UPDATED_PRICE));
 
         fiatSign.setText(fiat.getSign());
         fiatName.setText(fiat.name());

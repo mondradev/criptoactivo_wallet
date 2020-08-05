@@ -53,7 +53,7 @@ import java.util.Set;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.0
  */
-public class TxDecorator implements ITransaction {
+public class BitcoinTransaction implements ITransaction {
 
     /**
      * Transacción de Bitcoin.
@@ -68,14 +68,14 @@ public class TxDecorator implements ITransaction {
     /**
      * Billetera que contiene la transacción.
      */
-    private Wallet mWalletParent;
+    private BitcoinWallet mWalletParent;
 
     /**
      * Crea una nueva transacción vacía.
      *
      * @param wallet Billetera que la contiene.
      */
-    TxDecorator(@NonNull Wallet wallet) {
+    BitcoinTransaction(@NonNull BitcoinWallet wallet) {
         Objects.requireNonNull(wallet);
 
         if (wallet.getCryptoAsset() != getCryptoAsset())
@@ -94,7 +94,7 @@ public class TxDecorator implements ITransaction {
      * @throws ProtocolException En caso que exista un error al generar la transacción a partir de
      *                           los datos especificados.
      */
-    private TxDecorator(@NonNull Wallet wallet, @NonNull byte[] payloadBytes)
+    private BitcoinTransaction(@NonNull BitcoinWallet wallet, @NonNull byte[] payloadBytes)
             throws ProtocolException {
         Objects.requireNonNull(wallet);
         Objects.requireNonNull(payloadBytes);
@@ -116,7 +116,7 @@ public class TxDecorator implements ITransaction {
      * @param wallet Billetera que la contiene.
      * @param tx     Transacción de Bitcoin.
      */
-    private TxDecorator(Wallet wallet, Transaction tx) {
+    private BitcoinTransaction(BitcoinWallet wallet, Transaction tx) {
         this.mTx = tx;
         this.mWalletParent = wallet;
         this.mWallet = wallet.getBitcoinJWallet();
@@ -129,14 +129,14 @@ public class TxDecorator implements ITransaction {
      * @param wallet Billetera que la contiene.
      * @return Una transacción de Bitcoin.
      */
-    public static TxDecorator fromTxData(@NonNull TxDataResponse data, @NonNull Wallet wallet) {
+    public static BitcoinTransaction fromTxData(@NonNull TxDataResponse data, @NonNull BitcoinWallet wallet) {
         Objects.requireNonNull(data);
         Objects.requireNonNull(wallet);
 
         if (wallet.getCryptoAsset() != SupportedAssets.BTC)
             throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
 
-        final TxDecorator tx = new TxDecorator(
+        final BitcoinTransaction tx = new BitcoinTransaction(
                 wallet,
                 data.getDataAsBuffer()
         );
@@ -157,8 +157,8 @@ public class TxDecorator implements ITransaction {
      * @param tx Transacción de bitcoin.
      * @return Una transacción.
      */
-    static TxDecorator wrap(Transaction tx, Wallet wallet) {
-        return new TxDecorator(wallet, tx);
+    static BitcoinTransaction wrap(Transaction tx, BitcoinWallet wallet) {
+        return new BitcoinTransaction(wallet, tx);
     }
 
     /**
@@ -210,7 +210,7 @@ public class TxDecorator implements ITransaction {
      * asignadas correctamente.
      *
      * @return Comisión de la transacción.
-     * @see TxDecorator#requireDependencies()
+     * @see BitcoinTransaction#requireDependencies()
      */
     @Override
     public long getFee() {
@@ -280,7 +280,7 @@ public class TxDecorator implements ITransaction {
      * que todas la dependencias estén asignadas correctamente.
      *
      * @return Lista de direcciones remitentes.
-     * @see TxDecorator#requireDependencies()
+     * @see BitcoinTransaction#requireDependencies()
      */
     @NonNull
     @Override
@@ -477,10 +477,10 @@ public class TxDecorator implements ITransaction {
      */
     @Override
     public int compareTo(@NonNull ITransaction o) {
-        if (!(o instanceof TxDecorator))
+        if (!(o instanceof BitcoinTransaction))
             return getTime().compareTo(o.getTime());
 
-        TxDecorator tx = (TxDecorator) o;
+        BitcoinTransaction tx = (BitcoinTransaction) o;
 
         final int timeCompare = getTime().compareTo(tx.getTime());
 
@@ -522,8 +522,8 @@ public class TxDecorator implements ITransaction {
      *
      * @return Una transacción nueva.
      */
-    public TxDecorator copy() {
-        final TxDecorator wtx = new TxDecorator(mWalletParent);
+    public BitcoinTransaction copy() {
+        final BitcoinTransaction wtx = new BitcoinTransaction(mWalletParent);
         final Context context = Context.getOrCreate(mWalletParent.getNetwork());
         final TransactionConfidence confidence = mTx.getConfidence(context);
         final int height = confidence.getConfidenceType()
