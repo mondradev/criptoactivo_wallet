@@ -23,7 +23,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import com.cryptowallet.assets.bitcoin.wallet.TxDecorator;
 import com.cryptowallet.assets.bitcoin.wallet.Wallet;
 import com.cryptowallet.wallet.ChainTipInfo;
-import com.google.common.util.concurrent.ListenableFutureTask;
 
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutPoint;
@@ -37,16 +36,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 
 /**
  * Prueba las funciones del proveedor de datos para billeteras de Bitcoin.
@@ -62,18 +55,12 @@ public class BitcoinProviderTest {
     private BitcoinProvider mProvider;
 
     /**
-     * Ejecutor de resultados.
-     */
-    private Executor mExecutor;
-
-    /**
      * Configuración inicial.
      */
     @Before
     public void setUp() {
         mProvider = BitcoinProvider.get(new Wallet(InstrumentationRegistry
                 .getInstrumentation().getTargetContext()));
-        mExecutor = Executors.newSingleThreadExecutor();
     }
 
     /**
@@ -82,16 +69,9 @@ public class BitcoinProviderTest {
     @Test
     public void getHistorialByAddress() throws ExecutionException, InterruptedException {
         final byte[] address = Hex.decode("6ff022a844844d252781139cf40113760e6361688a");
-        final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<List<TxDecorator>> task
-                = mProvider.getHistoryByAddress(address, 0);
+        final List<TxDecorator> history = mProvider.getHistoryByAddress(address, 0);
 
-        task.addListener(onSuccess, mExecutor);
-
-        verify(onSuccess, timeout(1000)).run();
-
-        assertNotNull(task.get());
-        assertNotEquals(0, task.get().size());
+        assertNotEquals(0, history.size());
     }
 
     /**
@@ -101,16 +81,10 @@ public class BitcoinProviderTest {
     public void getTx() throws ExecutionException, InterruptedException {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
-        final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<TxDecorator> task = mProvider.getTransactionByTxID(txid);
+        final TxDecorator tx = mProvider.getTransactionByTxID(txid);
 
-        task.addListener(onSuccess, mExecutor);
-
-        verify(onSuccess, timeout(1000)).run();
-
-        assertNotNull(task.get());
         assertEquals("b21d48e744385bfd3cab90c678a538f29cfc029ef2197a8876a645e1b0b2823d",
-                task.get().getID());
+                tx.getID());
     }
 
     /**
@@ -118,15 +92,8 @@ public class BitcoinProviderTest {
      */
     @Test
     public void getChaininfo() throws ExecutionException, InterruptedException {
-        final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<ChainTipInfo> task = mProvider.getChainTipInfo();
-
-        task.addListener(onSuccess, mExecutor);
-
-        verify(onSuccess, timeout(1000)).run();
-
-        assertNotNull(task.get());
-        assertEquals(TestNet3Params.get().getId(), task.get().getNetwork().getId());
+        final ChainTipInfo chainTip = mProvider.getChainTipInfo();
+        assertEquals(TestNet3Params.get().getId(), chainTip.getNetwork().getId());
     }
 
     /**
@@ -136,15 +103,9 @@ public class BitcoinProviderTest {
     public void getTxDependencies() throws ExecutionException, InterruptedException {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
-        final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<Map<String, TxDecorator>> task = mProvider.getDependencies(txid);
+        final Map<String, TxDecorator> task = mProvider.getDependencies(txid);
 
-        task.addListener(onSuccess, mExecutor);
-
-        verify(onSuccess, timeout(1000)).run();
-
-        assertNotNull(task.get());
-        assertEquals(1, task.get().size());
+        assertEquals(1, task.size());
     }
 
     /**
@@ -154,26 +115,14 @@ public class BitcoinProviderTest {
     public void getFeeAndFromAddress() throws ExecutionException, InterruptedException {
         final byte[] txid = Hex
                 .decode("3d82b2b0e145a676887a19f29e02fc9cf238a578c690ab3cfd5b3844e7481db2");
-        final Runnable onSuccess = mock(Runnable.class);
-        final ListenableFutureTask<TxDecorator> task = mProvider.getTransactionByTxID(txid);
+        final TxDecorator tx = mProvider.getTransactionByTxID(txid);
 
-        task.addListener(onSuccess, mExecutor);
-
-        verify(onSuccess, timeout(5000)).run();
-        assertNotNull(task.get());
         assertEquals("b21d48e744385bfd3cab90c678a538f29cfc029ef2197a8876a645e1b0b2823d",
-                task.get().getID());
+                tx.getID());
 
-        final ListenableFutureTask<Map<String, TxDecorator>> task2 = mProvider.getDependencies(txid);
+        final Map<String, TxDecorator> dependencies = mProvider.getDependencies(txid);
 
-        task2.addListener(onSuccess, mExecutor);
-
-        verify(onSuccess, timeout(20000)).run();
-        assertNotNull(task2.get());
-        assertEquals(1, task2.get().size());
-
-
-        final TxDecorator tx = task.get();
+        assertEquals(1, dependencies.size());
 
         for (TransactionInput input : tx.getTx().getInputs()) {
             if (input.getConnectedOutput() == null) {
@@ -181,7 +130,7 @@ public class BitcoinProviderTest {
                 final String hash = outpoint.getHash().toString();
                 final long index = outpoint.getIndex();
 
-                TxDecorator dep = task2.get().get(hash);
+                TxDecorator dep = dependencies.get(hash);
 
                 if (dep == null) continue;
 
