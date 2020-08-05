@@ -26,6 +26,8 @@ import com.google.common.base.Strings;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Enumera los activos que maneja la billetera. Cada activo contiene datos unicos que los definen
@@ -88,19 +90,6 @@ public enum SupportedAssets {
     /**
      * Crea una nueva instancia del activo.
      *
-     * @param unit     La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
-     * @param name     Nombre utilizado en la IU.
-     * @param icon     Icono del activo.
-     * @param fiatSign Signo del activo fiat.
-     */
-    SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon, char fiatSign) {
-        this(unit, name, icon, true);
-        mSign = fiatSign;
-    }
-
-    /**
-     * Crea una nueva instancia del activo.
-     *
      * @param unit   La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
      * @param name   Nombre utilizado en la IU.
      * @param isFiat Indica si el activo es fiduciario.
@@ -124,6 +113,21 @@ public enum SupportedAssets {
      */
     SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon) {
         this(unit, name, icon, false);
+    }
+
+    /**
+     * Obtiene la lista de los activos fiduciarios soportados.
+     *
+     * @return Lista de activos.
+     */
+    public static List<SupportedAssets> getSupportedFiatAssets() {
+        List<SupportedAssets> fiat = new ArrayList<>();
+
+        for (SupportedAssets asset : SupportedAssets.values())
+            if (asset.isFiat())
+                fiat.add(asset);
+
+        return fiat;
     }
 
     /**
@@ -153,7 +157,6 @@ public enum SupportedAssets {
         return mName;
     }
 
-
     /**
      * Obtiene el signo de la divisa si es un activo fiat.
      *
@@ -162,7 +165,6 @@ public enum SupportedAssets {
     public String getSign() {
         return isFiat() ? Character.toString(mSign) : "";
     }
-
 
     /**
      * Obtiene el identificador del dibujable utilizado como icono.
@@ -240,7 +242,6 @@ public enum SupportedAssets {
     public String toPlainText(long value) {
         return toPlainText(value, true, true);
     }
-
 
     /**
      * Obtiene la representación de la cantidad formateada con el número de digitos máximos.
