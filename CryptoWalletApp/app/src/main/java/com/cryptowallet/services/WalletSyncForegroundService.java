@@ -24,6 +24,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -33,14 +34,22 @@ import androidx.core.app.NotificationCompat;
 import com.cryptowallet.R;
 
 /**
+ * Servicio de primer plano que permite la invocación del servicio de segundo plano para realizar
+ * la sincronización de las billeteras. Este servicio es invocado desde
+ * {@link com.cryptowallet.SyncOnBootReceiver}.
  *
+ * @author Ing. Javier Flores (jjflores@innsytech.com)
+ * @version 1.0
  */
 public class WalletSyncForegroundService extends Service {
 
+    /**
+     * Identificador de la notificación del servicio.
+     */
     private static final int ONGOING_NOTIFICATION_ID = 1;
 
     /**
-     * Called by the system when the service is first created.  Do not call this method directly.
+     * Este método es invocado cuando se crea el servicio.
      */
     @Override
     public void onCreate() {
@@ -71,12 +80,28 @@ public class WalletSyncForegroundService extends Service {
         startForeground(ONGOING_NOTIFICATION_ID, notification);
     }
 
+    /**
+     * Este método es invocado después de crear el servicio, cuando se invoca con
+     * {@link #startService(Intent)}.
+     *
+     * @param intent  Intención que invoca el servicio.
+     * @param flags   Banderas utilizadas para la ejecución.
+     * @param startId Identificador de la llamada.
+     * @return Bandera que indica como está siendo ejecutado el servicio.
+     */
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         startService(new Intent(this, WalletSyncService.class));
         return START_NOT_STICKY;
     }
 
+    /**
+     * Este método es invocado después de crear el servicio, cuando se invoca con
+     * {@link #bindService(Intent, ServiceConnection, int)}.
+     *
+     * @param intent Intención que invoca el servicio.
+     * @return Instancia que permite la interacción con el servicio.
+     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {

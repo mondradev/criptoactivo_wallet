@@ -20,6 +20,7 @@ package com.cryptowallet.services;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -31,12 +32,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
+ * Servicio que permite la sincronización de las billeteras creadas o restauradas. La sincronización
+ * se hace una billetera a la vez.
  *
+ * @author Ing. Javier Flores (jjflores@innsytech.com)
+ * @version 1.0
  */
 public class WalletSyncService extends Service {
 
+    /**
+     * Objeto utilizado para sincronizar el acceso al servicio.
+     */
     private static final Object mLockService = new Object();
 
+    /**
+     * Indica si está corriendo el servicio de sincronización.
+     */
     private static boolean mRunning;
 
     /**
@@ -45,7 +56,8 @@ public class WalletSyncService extends Service {
     private static ExecutorService mExecutor;
 
     /**
-     * Called by the system when the service is first created.  Do not call this method directly.
+     * Este método es invocado cuando se crea el servicio. En esta función se invoca el hilo donde
+     * se ejecuta la sincronización de cada billetera.
      */
     @Override
     public void onCreate() {
@@ -64,7 +76,7 @@ public class WalletSyncService extends Service {
                 mExecutor.submit(() -> {
                     mRunning = true;
 
-                    Log.d(WalletSyncService.class.getSimpleName(), "Sync starting");
+                    Log.d(WalletSyncService.class.getSimpleName(), "Synchronizing each wallet");
 
                     walletProvider.forEachAsset((asset) -> {
                         walletProvider.loadWallets();
@@ -79,21 +91,31 @@ public class WalletSyncService extends Service {
         }
     }
 
+    /**
+     * Este método es invocado después de crear el servicio, cuando se invoca con
+     * {@link #startService(Intent)}.
+     *
+     * @param intent  Intención que invoca el servicio.
+     * @param flags   Banderas utilizadas para la ejecución.
+     * @param startId Identificador de la llamada.
+     * @return Bandera que indica como está siendo ejecutado el servicio.
+     */
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
         return START_STICKY;
     }
 
+    /**
+     * Este método es invocado después de crear el servicio, cuando se invoca con
+     * {@link #bindService(Intent, ServiceConnection, int)}.
+     *
+     * @param intent Intención que invoca el servicio.
+     * @return Instancia que permite la interacción con el servicio.
+     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.d(WalletSyncService.class.getSimpleName(), "Service destroyed");
     }
 }
