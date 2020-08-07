@@ -201,4 +201,5 @@
     <string name="sync_notification_title">Synchronizing wallets</string>
     <string name="sync_notification_message">Download pending information from wallets</string>
     <string name="default_notification_channel_name" translatable="false">General</string>
+    <string name="loaders_text">Just a minute please</string>
 </resources>

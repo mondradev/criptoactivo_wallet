@@ -15,17 +15,10 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
-<resources>
-    <declare-styleable name="CustomAttr">
-        <attr name="fullScreenDialogTheme" format="reference" />
-        <attr name="pinKeyboardTheme" format="reference" />
-        <attr name="iconButtonStyle" format="reference" />
-        <attr name="toggleIconStyle" format="reference" />
-        <attr name="txEmptyListDrawable" format="reference" />
-        <attr name="colorSentTx" format="color" />
-        <attr name="colorReceivedTx" format="color" />
-        <attr name="colorPendingTx" format="color" />
-        <attr name="colorBackground" format="color" />
-    </declare-styleable>
-</resources>
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <translate
+        android:duration="@android:integer/config_shortAnimTime"
+        android:fromYDelta="0%p"
+        android:interpolator="@android:anim/accelerate_interpolator"
+        android:toYDelta="100%p" />
+</set>

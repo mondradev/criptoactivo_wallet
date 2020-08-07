@@ -21,6 +21,12 @@
     <!-- Splash background -->
     <style name="SplashTheme" parent="Theme.MaterialComponents.Light.NoActionBar" />
 
+    <!-- Animaciones -->
+    <style name="AppTheme.Animation_Slide">
+        <item name="android:windowEnterAnimation">@anim/slide_up</item>
+        <item name="android:windowExitAnimation">@anim/slide_down</item>
+    </style>
+
     <!-- Light Theme -->
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.DarkActionBar">
         <item name="colorPrimary">@color/lightPrimary</item>
@@ -37,6 +43,7 @@
 
         <item name="bottomSheetDialogTheme">@style/AppTheme.BottomSheetDialog</item>
         <item name="pinKeyboardTheme">@style/AppTheme.PinKeyboard</item>
+        <item name="fullScreenDialogTheme">@style/AppTheme.FullScreenDialog</item>
 
         <item name="borderlessButtonStyle">@style/Widget.MaterialComponents.Button.TextButton</item>
         <item name="iconButtonStyle">@style/AppTheme.Button.OnlyIcon</item>
@@ -88,6 +95,18 @@
         <item name="iconTint">?attr/colorPrimary</item>
         <item name="android:textAppearance">?attr/textAppearanceHeadline4</item>
         <item name="cornerRadius">100dp</item>
+    </style>
+
+    <style name="AppTheme.FullScreenDialog" parent="Theme.MaterialComponents.Light.Dialog">
+        <item name="colorAccent">@color/lightAccent</item>
+        <item name="colorPrimary">@color/lightPrimary</item>
+        <item name="colorPrimaryDark">@color/lightDarkPrimary</item>
+        <item name="actionMenuTextColor">@color/lightAccent</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
 
     <!-- Dark Theme (TODO Dark theme style) -->
