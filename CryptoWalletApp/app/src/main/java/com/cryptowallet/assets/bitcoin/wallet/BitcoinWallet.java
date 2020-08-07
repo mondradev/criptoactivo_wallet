@@ -139,6 +139,11 @@ public class BitcoinWallet extends AbstractWallet {
     private static final int MAX_INACTIVE_ADDRESS = 10;
 
     /**
+     * Tiempo de espera para volver a sincronizar.
+     */
+    private static final long DELAY_TIME = 60 * 1000;
+
+    /**
      * Parametros de la red de Bitcoin.
      */
     private final NetworkParameters mNetwork;
@@ -381,7 +386,7 @@ public class BitcoinWallet extends AbstractWallet {
             final BitcoinProvider provider = BitcoinProvider.get(this);
             ChainTipInfo tipInfo = provider.getChainTipInfo();
 
-            if (tipInfo != null) {
+            if (tipInfo != null && tipInfo.getStatus() == ChainTipInfo.NetworkStatus.SYNCHRONIZED) {
 
                 historyRequest(tipInfo);
 
@@ -399,9 +404,14 @@ public class BitcoinWallet extends AbstractWallet {
             ChainTipInfo newChainInfo = provider.getChainTipInfo();
 
             if (tipInfo == null || newChainInfo == null
-                    || tipInfo.getHeight() != newChainInfo.getHeight())
+                    || tipInfo.getHeight() != newChainInfo.getHeight()) {
+
+                if (tipInfo == null || newChainInfo == null
+                        || tipInfo.getStatus() != ChainTipInfo.NetworkStatus.SYNCHRONIZED)
+                    Thread.sleep(DELAY_TIME);
+
                 syncWallet();
-            else {
+            } else {
                 Log.i(LOG_TAG, "Sync is completed: current height "
                         + mBitcoinJWallet.getLastBlockSeenHeight());
 
