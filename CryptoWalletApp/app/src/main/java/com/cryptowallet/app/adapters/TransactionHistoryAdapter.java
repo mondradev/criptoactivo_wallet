@@ -269,7 +269,7 @@ public final class TransactionHistoryAdapter
             this.itemView.setOnClickListener(this);
 
             mOnCurrencyChange = isFiat -> {
-                final WalletProvider walletProvider = WalletProvider.getInstance(itemView.getContext());
+                final WalletProvider walletProvider = WalletProvider.getInstance();
                 final long lastPrice = walletProvider.getLastPrice(mItem.getCryptoAsset());
                 final SupportedAssets asset = isFiat ? Preferences.get().getFiat()
                         : mItem.getCryptoAsset();

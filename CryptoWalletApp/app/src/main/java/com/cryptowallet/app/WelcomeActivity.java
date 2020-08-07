@@ -60,7 +60,7 @@ public class WelcomeActivity extends AppCompatActivity implements DialogInterfac
         Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_welcome);
 
-        mWalletProvider = WalletProvider.getInstance(this);
+        mWalletProvider = WalletProvider.getInstance();
     }
 
     /**

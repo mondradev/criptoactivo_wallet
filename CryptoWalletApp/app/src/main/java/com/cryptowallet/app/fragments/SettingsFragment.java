@@ -127,7 +127,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * Elimina todas la billeteras de la aplicación y restaura las configuraciones de la misma.
      */
     private void deleteWallets() {
-        WalletProvider.getInstance(this.requireContext()).forEachWallet((wallet) -> {
+        WalletProvider.getInstance().forEachWallet((wallet) -> {
             if (!wallet.delete())
                 throw new IllegalStateException("Unable to delete wallet");
         });
@@ -319,7 +319,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         Preferences.get().setFiat(fiatAsset);
         requirePreference("currency").setSummary(Preferences.get().getFiat().getName());
 
-        WalletProvider.getInstance(this.requireContext()).updateFiatCurrency(fiatAsset);
+        WalletProvider.getInstance().updateFiatCurrency(fiatAsset);
 
         return true;
     }
@@ -390,7 +390,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 
         Authenticator.updatePin(requireActivity(), Executors.newSingleThreadExecutor(),
                 (IAuthenticationUpdatedCallback) (byte[] oldToken, byte[] newToken) -> {
-                    WalletProvider.getInstance(this.requireContext())
+                    WalletProvider.getInstance()
                             .forEachWallet((wallet) -> wallet.updatePassword(oldToken, newToken));
                     // TODO Show progress
                 });

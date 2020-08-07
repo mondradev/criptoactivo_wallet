@@ -160,7 +160,7 @@ public abstract class LockableActivity extends AppCompatActivity
      * @return Instancia del servicio.
      */
     public WalletProvider getWalletService() {
-        return WalletProvider.getInstance(getApplicationContext());
+        return WalletProvider.getInstance();
     }
 
     /**

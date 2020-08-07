@@ -44,8 +44,9 @@ public class SyncOnBootReceiver extends BroadcastReceiver {
         if (intent == null) return;
 
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            WalletProvider.getInstance(context).loadWallets();
-            WalletProvider.getInstance(context).syncWalletsForeground();
+            WalletProvider.initialize(context);
+            WalletProvider.getInstance().loadWallets();
+            WalletProvider.getInstance().syncWalletsForeground();
         }
     }
 }

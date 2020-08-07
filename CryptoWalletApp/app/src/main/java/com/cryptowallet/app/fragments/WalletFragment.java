@@ -128,7 +128,7 @@ public class WalletFragment extends Fragment {
         mExecutor = Executors.newCachedThreadPool();
         mMainHandler = new Handler(Looper.getMainLooper());
 
-        final WalletProvider provider = WalletProvider.getInstance(this.requireContext());
+        final WalletProvider provider = WalletProvider.getInstance();
 
         provider.forEachAsset((asset) -> {
             String fragmentTag = CryptoAssetFragment.class.getSimpleName() + asset.name();
@@ -140,7 +140,10 @@ public class WalletFragment extends Fragment {
                     .commit();
         });
 
-        requireContext().registerReceiver(mReceiver, new IntentFilter(Constants.UPDATED_PRICE));
+        IntentFilter filter = new IntentFilter(Constants.UPDATED_FIAT_BALANCE);
+        filter.addAction(Constants.UPDATED_PRICE);
+
+        requireContext().registerReceiver(mReceiver, filter);
 
         fiatSign.setText(fiat.getSign());
         fiatName.setText(fiat.name());

@@ -95,7 +95,7 @@ public class TransactionFragment extends BottomSheetDialogFragment {
         if (root == null)
             throw new UnsupportedOperationException();
 
-        final WalletProvider walletService = WalletProvider.getInstance(this.getContext());
+        final WalletProvider walletService = WalletProvider.getInstance();
         final SupportedAssets cryptoAsset
                 = SupportedAssets.valueOf(requireArguments().getString(Constants.EXTRA_CRYPTO_ASSET));
         final AbstractWallet wallet = walletService.get(cryptoAsset);

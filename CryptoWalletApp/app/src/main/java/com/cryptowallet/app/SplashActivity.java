@@ -74,7 +74,8 @@ public final class SplashActivity extends AppCompatActivity {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mWalletProvider = WalletProvider.getInstance(this);
+        WalletProvider.initialize(this);
+        mWalletProvider = WalletProvider.getInstance();
 
         setContentView(R.layout.activity_splashscreen);
         Objects.requireNonNull(getSupportActionBar()).hide();

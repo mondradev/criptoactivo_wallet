@@ -177,7 +177,7 @@ public class CryptoAssetFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        final WalletProvider walletService = WalletProvider.getInstance(this.requireContext());
+        final WalletProvider walletService = WalletProvider.getInstance();
         final SupportedAssets asset = SupportedAssets
                 .valueOf(requireArguments().getString(Constants.EXTRA_CRYPTO_ASSET));
 
@@ -258,7 +258,7 @@ public class CryptoAssetFragment extends Fragment {
      */
     private void onNewTransaction(ITransaction tx) {
         if (mAdapter.getItemCount() == 0
-                && WalletProvider.getInstance(this.requireContext()).getCount() == 1)
+                && WalletProvider.getInstance().getCount() == 1)
             expandCard();
 
         mAdapter.add(tx);
@@ -328,7 +328,9 @@ public class CryptoAssetFragment extends Fragment {
         Objects.requireNonNull(mLastBalance);
         Objects.requireNonNull(mLastPrice);
 
-        long total = mLastBalance * mLastPrice;
+        long total = WalletProvider.getInstance()
+                .getFiatBalance(mWallet.getCryptoAsset());
+
         SupportedAssets mFiatAsset = Preferences.get().getFiat();
         SupportedAssets asset = mWallet.getCryptoAsset();
 

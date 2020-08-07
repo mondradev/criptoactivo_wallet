@@ -92,8 +92,7 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
      */
     @Override
     public void onNewToken(@NonNull String token) {
-        WalletProvider.getInstance(this)
-                .forEachWallet(wallet -> wallet.updatePushToken(token));
+        WalletProvider.getInstance().updatePushToken(token);
     }
 
     /**
@@ -101,8 +100,9 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
      */
     @Override
     public void onCreate() {
-        WalletProvider.getInstance(this).loadWallets();
-        WalletProvider.getInstance(this).syncWallets();
+        WalletProvider.initialize(this);
+        WalletProvider.getInstance().loadWallets();
+        WalletProvider.getInstance().syncWallets();
     }
 
     /**
@@ -123,7 +123,7 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
         if (messageType.equals(MessageType.UNKNOWN)) return;
 
         Utils.tryNotThrow(() -> {
-            Intent intent = new Intent(getApplicationContext(), WalletProvider.class)
+            Intent intent = new Intent()
                     .putExtra(Constants.EXTRA_HEIGHT, Utils.parseInt(remoteMessage.getData().get(HEIGHT_KEY)))
                     .putExtra(Constants.EXTRA_HASH, remoteMessage.getData().get(HASH_KEY))
                     .putExtra(Constants.EXTRA_TIME, Utils.parseInt(remoteMessage.getData().get(TIME_KEY)))
@@ -140,7 +140,7 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
                         .putExtra(Constants.EXTRA_TXID, remoteMessage.getData().get(TXID_KEY));
             }
 
-            WalletProvider.getInstance(this).sendRequest(intent);
+            WalletProvider.getInstance().sendRequest(intent);
         });
     }
 

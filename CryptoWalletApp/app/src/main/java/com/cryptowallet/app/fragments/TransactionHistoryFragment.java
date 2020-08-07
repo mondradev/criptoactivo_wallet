@@ -104,7 +104,7 @@ public class TransactionHistoryFragment extends Fragment {
                 final String assetName = intent.getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
                 final String txid = intent.getStringExtra(Constants.EXTRA_TXID);
                 final SupportedAssets asset = SupportedAssets.valueOf(assetName);
-                final WalletProvider provider = WalletProvider.getInstance(requireContext());
+                final WalletProvider provider = WalletProvider.getInstance();
 
                 ITransaction tx = provider.get(asset).findTransaction(txid);
 
@@ -191,7 +191,7 @@ public class TransactionHistoryFragment extends Fragment {
      */
     private void onRefresh() {
         mExecutor.execute(() -> {
-            final WalletProvider provider = WalletProvider.getInstance(this.requireContext());
+            final WalletProvider provider = WalletProvider.getInstance();
 
             mAdapter.setSource(provider.getTransactions());
             mSwipeRefresh.post(() -> mSwipeRefresh.setRefreshing(false));

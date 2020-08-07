@@ -118,7 +118,7 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
                 mWordsContainer.addView(createWordChip(word));
         });
 
-        mWordsList = WalletProvider.getInstance(this).getWordsList();
+        mWordsList = WalletProvider.getInstance().getWordsList();
         mSeedWordsText.setFocusable(true);
     }
 
@@ -205,7 +205,7 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
             if ((seedStr.size() % 3) != 0)
                 return;
 
-            final WalletProvider provider = WalletProvider.getInstance(this);
+            final WalletProvider provider = WalletProvider.getInstance();
 
             if (!provider.verifyMnemonicCode(seedStr))
                 throw new IllegalArgumentException();
@@ -231,7 +231,7 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
      */
     @Override
     public void onClick(DialogInterface dialog, int which) {
-        final WalletProvider provider = WalletProvider.getInstance(this);
+        final WalletProvider provider = WalletProvider.getInstance();
 
         Authenticator.reset(this.getApplicationContext());
         Authenticator.registerPin(
