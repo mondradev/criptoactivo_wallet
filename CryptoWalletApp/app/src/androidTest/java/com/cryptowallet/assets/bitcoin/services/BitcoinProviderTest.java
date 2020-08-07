@@ -48,6 +48,7 @@ import static org.junit.Assert.assertNotEquals;
  * @version 1.0
  */
 public class BitcoinProviderTest {
+    // canal pretty birth alien rain top chase toilet source time element glare
 
     /**
      * Proveedor de billetera.

@@ -19,12 +19,14 @@
 package com.cryptowallet.wallet;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.cryptowallet.BuildConfig;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.ExecutableCommand;
@@ -32,6 +34,8 @@ import com.cryptowallet.utils.ExecutableConsumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
+import org.bouncycastle.util.encoders.Hex;
 
 import java.io.File;
 import java.util.HashMap;
@@ -53,6 +57,12 @@ import java.util.concurrent.Executor;
 public abstract class AbstractWallet {
 
     /**
+     * Clave del identificador de la billetera.
+     */
+    private static final String WALLET_ID
+            = String.format("%s.keys.WALLET_ID", BuildConfig.APPLICATION_ID);
+
+    /**
      * Cripto-activo de la billetera.
      */
     private final SupportedAssets mCryptoAsset;
@@ -61,6 +71,11 @@ public abstract class AbstractWallet {
      * Archivo de la billetera.
      */
     private final File mWalletFile;
+
+    /**
+     * Preferencias de aplicación.
+     */
+    private final SharedPreferences mPreference;
 
     /**
      * Identificador de la billetera.
@@ -108,6 +123,11 @@ public abstract class AbstractWallet {
         mFullSyncListener = new CopyOnWriteArraySet<>();
         mNewTransactionListeners = new CopyOnWriteArraySet<>();
         mBalanceChangedListeners = new CopyOnWriteArraySet<>();
+        mPreference = mContext.getSharedPreferences(
+                String.format("%s.PREFERENCE", this.getClass().getName()), Context.MODE_PRIVATE);
+        mWalletId = mPreference.contains(WALLET_ID)
+                ? Hex.decodeStrict(mPreference.getString(WALLET_ID, ""))
+                : new byte[32];
     }
 
     /**
@@ -136,6 +156,9 @@ public abstract class AbstractWallet {
      */
     protected void generateWalletId(byte[] data) {
         this.mWalletId = Utils.sha256(data);
+        mPreference.edit()
+                .putString(WALLET_ID, Hex.toHexString(mWalletId))
+                .apply();
     }
 
     /**
@@ -175,6 +198,9 @@ public abstract class AbstractWallet {
 
         if (exists())
             deleted = mWalletFile.delete();
+
+        mPreference.edit().remove(WALLET_ID).apply();
+        mWalletId = new byte[32];
 
         return deleted;
     }
@@ -309,7 +335,7 @@ public abstract class AbstractWallet {
      */
     public PriceTracker getPriceTracker(SupportedAssets fiat) {
         if (!mPriceTrackers.containsKey(fiat))
-            throw new IllegalArgumentException("Fiat asset unsopported");
+            throw new IllegalArgumentException("Fiat asset unsupported: " + fiat);
 
         return mPriceTrackers.get(fiat);
     }
@@ -325,7 +351,6 @@ public abstract class AbstractWallet {
 
         mPriceTrackers.put(fiat, priceTracker);
     }
-
 
     /**
      * Obtiene el total del saldo de la billetera. El saldo es expresado en su unidad mínima, lo cual
@@ -467,12 +492,12 @@ public abstract class AbstractWallet {
     }
 
     /**
-     * Actualiza el token de notificaciones push (FCM). En esta función se deberá indicar al servidor
-     * que ocurrió esto, para permitir que las notificaciones se reciban correctamente.
+     * Este método es invocado cuando el token de notificaciones push (FCM) es actualizado. En este
+     * método se deberá registrar el token en el servidor.
      *
-     * @param token Token nuevo de FCM.
+     * @param token Token nuevo.
      */
-    public abstract void updatePushToken(String token);
+    public abstract void onUpdatePushToken(String token);
 
     /**
      * Solicita la transacción especificada, si esta transacción no es relavante para la billetera,

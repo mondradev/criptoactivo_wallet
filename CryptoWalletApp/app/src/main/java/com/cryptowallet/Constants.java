@@ -163,6 +163,11 @@ public abstract class Constants {
             = String.format("%s.action.UPDATED_PRICE", BuildConfig.APPLICATION_ID);
 
     /**
+     * Hash nulo.
+     */
+    public static final byte[] HASH_NULL = new byte[32];
+
+    /**
      * Esta clase es estática, no está soportada las instanciacion.
      *
      * @throws UnsupportedOperationException Al intentar crear una instancia.

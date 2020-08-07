@@ -42,6 +42,7 @@ import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.WalletProvider;
 import com.cryptowallet.wallet.exceptions.InsufficientBalanceException;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 
 import org.bitcoinj.core.AbstractBlockChain;
@@ -263,6 +264,8 @@ public class BitcoinWallet extends AbstractWallet {
                     Log.i(LOG_TAG, "Creating a new wallet");
                 }
 
+                generateWalletId(mBitcoinJWallet.getKeyChainSeed().getSeedBytes());
+
                 final String password = Hex.toHexString(authenticationToken);
                 final KeyCrypterScrypt scrypt
                         = new KeyCrypterScrypt(calculateIterations(password));
@@ -270,11 +273,11 @@ public class BitcoinWallet extends AbstractWallet {
                 mBitcoinJWallet.encrypt(scrypt, scrypt.deriveKey(password));
                 mBitcoinJWallet.saveToFile(getWalletFile());
 
-                loadWallet();
-            } else if (mBitcoinJWallet == null)
-                loadWallet();
+                onUpdatePushToken(WalletProvider.getInstance().getPushToken());
+            }
 
-            loadWalletId(authenticationToken);
+            loadWallet();
+
         } catch (Exception ex) {
             setInitialized(false);
             throw ex;
@@ -354,24 +357,6 @@ public class BitcoinWallet extends AbstractWallet {
      */
     org.bitcoinj.wallet.Wallet getBitcoinJWallet() {
         return mBitcoinJWallet;
-    }
-
-    /**
-     * Carga en memoria el identificador de la billetera.
-     *
-     * @param authenticationToken Token de autenticación.
-     */
-    private void loadWalletId(@NonNull byte[] authenticationToken) {
-        propagateBitcoinJ();
-
-        KeyCrypter keyCrypter = mBitcoinJWallet.getKeyCrypter();
-        Objects.requireNonNull(keyCrypter);
-
-        KeyParameter key = keyCrypter.deriveKey(Hex.toHexString(authenticationToken));
-        DeterministicSeed seed = mBitcoinJWallet.getKeyChainSeed()
-                .decrypt(keyCrypter, "", key);
-
-        generateWalletId(seed.getSeedBytes());
     }
 
     /**
@@ -1297,12 +1282,15 @@ public class BitcoinWallet extends AbstractWallet {
     }
 
     /**
-     * Actualiza el token de notificaciones push (FCM).
+     * Este método es invocado cuando el token de notificaciones push (FCM) es actualizado. En este
+     * método se deberá registrar el token en el servidor.
      *
      * @param token Token nuevo.
      */
     @Override
-    public void updatePushToken(String token) {
+    public void onUpdatePushToken(String token) {
+        if (mBitcoinJWallet == null || Strings.isNullOrEmpty(token)) return;
+
         final DeterministicKeyChain activeKeyChain = mBitcoinJWallet.getActiveKeyChain();
 
         final Set<LegacyAddress> receiveAddresses = new Derivator(ChildNumber.ZERO)
@@ -1331,7 +1319,9 @@ public class BitcoinWallet extends AbstractWallet {
      * @param txid Identificador de la transacción.
      */
     @Override
-    public void requestNewTransaction(String txid) {
+    public synchronized void requestNewTransaction(String txid) {
+        propagateBitcoinJ();
+
         Utils.tryNotThrow(() -> {
             if (!exists() || !isInitialized()) return;
 
@@ -1370,8 +1360,10 @@ public class BitcoinWallet extends AbstractWallet {
      * @param txs           Identificadores de las transacciones.
      */
     @Override
-    public void requestNewBlock(int height, String hash, long timeInSeconds,
-                                String[] txs) {
+    public synchronized void requestNewBlock(int height, String hash, long timeInSeconds,
+                                             String[] txs) {
+        propagateBitcoinJ();
+
         Utils.tryNotThrow(() -> {
             if (!exists() || !isInitialized()) return;
 

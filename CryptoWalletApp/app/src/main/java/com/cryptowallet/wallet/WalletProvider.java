@@ -24,6 +24,7 @@ import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
@@ -32,6 +33,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
+import com.cryptowallet.BuildConfig;
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
@@ -46,6 +48,8 @@ import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.iid.FirebaseInstanceId;
 
 import org.bitcoinj.crypto.MnemonicCode;
 import org.bouncycastle.util.encoders.Hex;
@@ -79,27 +83,31 @@ public final class WalletProvider {
      * Etiqueta del log.
      */
     private static final String LOG_TAG = WalletProvider.class.getSimpleName();
-
+    /**
+     * Clave del token de notificaciones FCM.
+     */
+    private static final String TOKEN_FCM
+            = String.format("%s.keys.TOKEN_FCM", BuildConfig.APPLICATION_ID);
     /**
      * Instancia del singletón.
      */
     private static WalletProvider mInstance;
-
     /**
      * Contexto de la aplicación de android.
      */
     private final Context mContext;
-
+    /**
+     * Preferencias de aplicación.
+     */
+    private final SharedPreferences mPreference;
     /**
      * Ejecutor para actividades en un subproceso.
      */
     private ExecutorService mExecutor;
-
     /**
      * Colección de controladores de billetera.
      */
     private Map<SupportedAssets, AbstractWallet> mWallets;
-
     /**
      * Comando para procesar las peticiones al servicio.
      */
@@ -141,23 +149,18 @@ public final class WalletProvider {
             wallet.requestNewBlock(height, hash, time, txs);
         }
     };
-
     /**
      * Consumidor del evento saldo ha cambiado.
      */
     private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
-
-
     /**
      * Consumidor del evento de precio ha cambiado.
      */
     private BiConsumer<Book, Long> mOnPriceChangedConsumer;
-
     /**
      * Consumidor del evento nueva transacción.
      */
     private Consumer<ITransaction> mOnNewTransactionConsumer;
-
     /**
      * Activo fiat en el cual se expresan los precios de los cripto-activos.
      */
@@ -172,9 +175,12 @@ public final class WalletProvider {
         this.mContext = context.getApplicationContext();
         this.mWallets = new HashMap<>();
         this.mExecutor = Executors.newCachedThreadPool();
-        this.mOnBalanceChangedConsumer = this::notifyBalanceChanged;
+        this.mOnBalanceChangedConsumer = (ignored) -> this.notifyBalanceChanged();
         this.mOnNewTransactionConsumer = this::notifyNewTransaction;
         this.mOnPriceChangedConsumer = this::notifyPriceChanged;
+        this.mFiatCurrency = Preferences.get(mContext).getFiat();
+        this.mPreference = mContext.getSharedPreferences(
+                String.format("%s.PREFERENCE", this.getClass().getName()), Context.MODE_PRIVATE);
 
         final String[] supportedWallets = mContext.getResources()
                 .getStringArray(R.array.supported_wallets);
@@ -187,6 +193,15 @@ public final class WalletProvider {
                 registerWallet(wallet);
             }
         });
+
+        FirebaseApp.initializeApp(mContext);
+        FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(instanceIdResult -> {
+            if (instanceIdResult.getResult() == null) return;
+
+            String newToken = instanceIdResult.getResult().getToken();
+
+            mPreference.edit().putString(TOKEN_FCM, newToken).apply();
+        });
     }
 
     /**
@@ -194,11 +209,32 @@ public final class WalletProvider {
      *
      * @return Instancia del singletón.
      */
-    public static WalletProvider getInstance(Context context) {
+    public synchronized static WalletProvider getInstance() {
         if (mInstance == null)
-            mInstance = new WalletProvider(context);
+            throw new IllegalStateException("Make sure to call WalletProvider.initialize(Context) first");
 
         return mInstance;
+    }
+
+    /**
+     * Inicializa el proveedor de billeteras.
+     *
+     * @param context Contexto de android.
+     */
+    public synchronized static void initialize(Context context) {
+        if (mInstance == null)
+            mInstance = new WalletProvider(context);
+    }
+
+    /**
+     * Actualiza el token de notificaciones push (FCM). En esta función se deberá indicar al servidor
+     * que ocurrió esto, para permitir que las notificaciones se reciban correctamente.
+     *
+     * @param token Token nuevo de FCM.
+     */
+    public final void updatePushToken(String token) {
+        mPreference.edit().putString(TOKEN_FCM, token).apply();
+        forEachWallet(wallet -> wallet.onUpdatePushToken(token));
     }
 
     /**
@@ -232,12 +268,14 @@ public final class WalletProvider {
                 .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency);
 
         mContext.sendBroadcast(intent);
+
+        notifyBalanceChanged();
     }
 
     /**
      * Notifica que el saldo de alguna de las billeteras ha cambiado su saldo.
      */
-    private synchronized void notifyBalanceChanged(AbstractWallet wallet) {
+    private synchronized void notifyBalanceChanged() {
         final long balance = getFiatBalance();
 
         Intent intent = new Intent()
@@ -386,14 +424,27 @@ public final class WalletProvider {
     }
 
     /**
+     * Obtiene el token de las notificaciones push (FCM).
+     *
+     * @return Token del equipo.
+     */
+    public final String getPushToken() {
+        return mPreference.getString(TOKEN_FCM, "");
+    }
+
+    /**
      * Inicia el servicio de la sincronización en segundo plano.
      */
     public void syncWallets() {
         if (!anyCreated()) return;
+        try {
 
-        Intent intent = new Intent(mContext, WalletSyncService.class);
+            Intent intent = new Intent(mContext, WalletSyncService.class);
 
-        mContext.startService(intent);
+            mContext.startService(intent);
+        } catch (RuntimeException ignored) {
+            syncWalletsForeground();
+        }
     }
 
     /**
@@ -593,7 +644,7 @@ public final class WalletProvider {
         forEachWallet(walllet -> walllet.getPriceTracker(mFiatCurrency)
                 .addPriceChangedListener(mExecutor, mOnPriceChangedConsumer));
 
-        notifyBalanceChanged(null);
+        notifyBalanceChanged();
     }
 
     /**

@@ -26,6 +26,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.concurrent.ExecutorService;
@@ -70,7 +71,8 @@ public class WalletSyncService extends Service {
                         .setName(WalletProvider.class.getSimpleName() + " Thread"));
             }
 
-            WalletProvider walletProvider = WalletProvider.getInstance(getApplicationContext());
+            WalletProvider.initialize(getApplicationContext());
+            WalletProvider walletProvider = WalletProvider.getInstance();
 
             if (!mRunning && walletProvider.anyCreated())
                 mExecutor.submit(() -> {
@@ -78,10 +80,9 @@ public class WalletSyncService extends Service {
 
                     Log.d(WalletSyncService.class.getSimpleName(), "Synchronizing each wallet");
 
-                    walletProvider.forEachAsset((asset) -> {
-                        walletProvider.loadWallets();
-                        walletProvider.get(asset).syncWallet();
-                    });
+                    walletProvider.loadWallets();
+                    walletProvider.forEachWallet(AbstractWallet::syncWallet);
+                    walletProvider.updatePushToken(walletProvider.getPushToken());
 
                     stopService(new Intent(this, WalletSyncForegroundService.class));
                     stopSelf();
