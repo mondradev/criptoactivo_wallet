@@ -19,7 +19,10 @@
 package com.cryptowallet.app;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -178,6 +181,24 @@ public class SendPaymentsActivity extends LockableActivity {
     private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
 
     /**
+     * Receptor del evento {@link Constants#NEW_TRANSACTION}
+     */
+    private BroadcastReceiver mPriceReceiver = new BroadcastReceiver() {
+        /**
+         * This method is called when the BroadcastReceiver is receiving an Intent
+         * broadcast.
+         *
+         * @param context The Context in which the receiver is running.
+         * @param intent  The Intent being received.
+         */
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            mHandler.post(() -> mOnBalanceChangedConsumer.accept(mWallet));
+        }
+    };
+
+
+    /**
      * Este método se ejecuta cuando se crea la actividad.
      *
      * @param savedInstanceState Instancia almacena el estado de la actividad.
@@ -226,8 +247,13 @@ public class SendPaymentsActivity extends LockableActivity {
         InputFilter[] feeCustomFilters = {new DecimalsFilter(22, size)};
         mSendFeeCustomText.setFilters(feeCustomFilters);
 
+        IntentFilter filter = new IntentFilter(Constants.UPDATED_FIAT_BALANCE);
+        filter.addAction(Constants.UPDATED_PRICE);
+
+        registerReceiver(mPriceReceiver, filter);
+
         updateFilters();
-        checkEnoughtBalance();
+        updateInfo();
     }
 
     /**
@@ -238,6 +264,7 @@ public class SendPaymentsActivity extends LockableActivity {
         super.onDestroy();
 
         mWallet.removeBalanceChangedListener(mOnBalanceChangedConsumer);
+        unregisterReceiver(mPriceReceiver);
     }
 
     /**
@@ -312,13 +339,18 @@ public class SendPaymentsActivity extends LockableActivity {
     private void checkEnoughtBalance() {
         final SupportedAssets asset = getCurrency();
         final long cryptoAmount = parseToCrypto(mSendAmountText.getText().toString());
+        final String address = mSendAddressText.getText().toString();
 
         try {
-            mWallet.isValidAmount(cryptoAmount, true);
+            long fee = 0;
+            long total = 0;
 
-            final String address = mSendAddressText.getText().toString();
-            final long fee = calculateTotalFee(address, cryptoAmount, getFee());
-            final long total = cryptoAmount + fee;
+            if (cryptoAmount > 0 && mWallet.isValidAddress(address)) {
+                mWallet.isValidAmount(cryptoAmount, true);
+
+                fee = calculateTotalFee(address, cryptoAmount, getFee());
+                total = cryptoAmount + fee;
+            }
 
             mSendAmountLayout.setError(null);
             mSendFeeCustomLayout.setError(null);

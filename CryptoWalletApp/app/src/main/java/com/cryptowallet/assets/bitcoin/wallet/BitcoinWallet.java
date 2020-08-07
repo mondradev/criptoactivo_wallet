@@ -944,6 +944,8 @@ public class BitcoinWallet extends AbstractWallet {
      * @return Un dirección de Bitcoin.
      */
     private Address parseAddress(String address) {
+        if (Strings.isNullOrEmpty(address)) return null;
+
         try {
             return LegacyAddress.fromBase58(mNetwork, address);
         } catch (AddressFormatException ignored) {

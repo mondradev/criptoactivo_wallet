@@ -74,7 +74,7 @@ public class WalletFragment extends Fragment {
     /**
      * Receptor del evento {@link Constants#NEW_TRANSACTION}
      */
-    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver mPriceReceiver = new BroadcastReceiver() {
         /**
          * This method is called when the BroadcastReceiver is receiving an Intent
          * broadcast.
@@ -143,7 +143,7 @@ public class WalletFragment extends Fragment {
         IntentFilter filter = new IntentFilter(Constants.UPDATED_FIAT_BALANCE);
         filter.addAction(Constants.UPDATED_PRICE);
 
-        requireContext().registerReceiver(mReceiver, filter);
+        requireContext().registerReceiver(mPriceReceiver, filter);
 
         fiatSign.setText(fiat.getSign());
         fiatName.setText(fiat.name());
@@ -163,6 +163,6 @@ public class WalletFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
-        requireContext().unregisterReceiver(mReceiver);
+        requireContext().unregisterReceiver(mPriceReceiver);
     }
 }
