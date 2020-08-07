@@ -54,6 +54,11 @@ public class MainActivity extends LockableActivity {
     private Fragment mCurrentFragment;
 
     /**
+     * Posición del fragmento.
+     */
+    private int mCurrentPos = -1;
+
+    /**
      * Este método es llamado cuando se crea por primera vez la actividad.
      *
      * @param savedInstanceState Estado guardado de la aplicación.
@@ -96,11 +101,11 @@ public class MainActivity extends LockableActivity {
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
             case R.id.mMenuWallet:
-                return showFragment(WalletFragment.class);
+                return showFragment(WalletFragment.class, 0);
             case R.id.mMenuHistory:
-                return showFragment(TransactionHistoryFragment.class);
+                return showFragment(TransactionHistoryFragment.class, 1);
             case R.id.mMenuSettings:
-                return showFragment(SettingsFragment.class);
+                return showFragment(SettingsFragment.class, 2);
             default:
                 return false;
         }
@@ -122,9 +127,10 @@ public class MainActivity extends LockableActivity {
      * Muestra el fragmento especificado por la clase.
      *
      * @param fragment Clase del fragmento a mostrar.
+     * @param newPos   Posición del fragmento a mostrar.
      * @return True si el fragmento se visualizó.
      */
-    private boolean showFragment(@NonNull Class<? extends Fragment> fragment) {
+    private boolean showFragment(@NonNull Class<? extends Fragment> fragment, int newPos) {
         if (mCurrentFragment != null && !mCurrentFragment.isVisible())
             return false;
 
@@ -135,13 +141,20 @@ public class MainActivity extends LockableActivity {
             Fragment fragmentInstance = fragment.newInstance();
 
             FragmentTransaction transaction = getSupportFragmentManager()
-                    .beginTransaction()
-                    .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left)
-                    .replace(R.id.mMainContainer, fragmentInstance, fragmentInstance.getTag());
+                    .beginTransaction();
 
-            transaction.commit();
+            if (mCurrentPos > newPos)
+                transaction = transaction
+                        .setCustomAnimations(R.anim.enter_from_left, R.anim.exit_to_right);
+            else if (mCurrentPos < newPos)
+                transaction = transaction
+                        .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left);
+
+            transaction.replace(R.id.mMainContainer, fragmentInstance, fragmentInstance.getTag())
+                    .commit();
 
             mCurrentFragment = fragmentInstance;
+            mCurrentPos = newPos;
 
             return true;
         }, false);

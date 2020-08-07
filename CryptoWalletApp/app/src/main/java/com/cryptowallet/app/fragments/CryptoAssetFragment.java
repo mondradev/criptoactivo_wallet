@@ -184,6 +184,7 @@ public class CryptoAssetFragment extends Fragment {
         mOnBalanceChangedListener = this::onBalanceChange;
         mOnNewTransactionListener = this::onNewTransaction;
         mWallet = walletService.get(asset);
+        mLastPrice = WalletProvider.getInstance().getLastPrice(asset);
         mRoot = (CardView) inflater.inflate(R.layout.layout_cryptoasset, container,
                 false);
 
