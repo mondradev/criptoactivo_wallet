@@ -232,37 +232,40 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
     @Override
     public void onClick(DialogInterface dialog, int which) {
         final WalletProvider provider = WalletProvider.getInstance();
-
         Authenticator.reset(this.getApplicationContext());
         Authenticator.registerPin(
                 this,
                 new Handler()::post,
-                (IAuthenticationSucceededCallback) authenticationToken ->
-                        provider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
-                            /**
-                             * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
-                             */
-                            @Override
-                            public void successful() {
-                                finishAffinity();
-                                startActivity(new Intent(getApplicationContext(), MainActivity.class));
-                            }
+                (IAuthenticationSucceededCallback) authenticationToken -> {
+                    ProgressDialog.show(RestoreActivity.this);
+                    provider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
+                        /**
+                         * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
+                         */
+                        @Override
+                        public void successful() {
+                            ProgressDialog.hide();
+                            finishAffinity();
+                            startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                        }
 
-                            /**
-                             * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
-                             * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
-                             * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
-                             * ya que este se realiza a través de {@link Authenticator}.
-                             *
-                             * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
-                             */
-                            @Override
-                            public void fail(Exception ex) {
-                                Log.e("Restore", Objects.requireNonNull(ex.getMessage()));
+                        /**
+                         * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
+                         * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
+                         * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
+                         * ya que este se realiza a través de {@link Authenticator}.
+                         *
+                         * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
+                         */
+                        @Override
+                        public void fail(Exception ex) {
+                            Log.e("Restore", Objects.requireNonNull(ex.getMessage()));
 
-                                AlertMessages.showRestoreError(RestoreActivity.this);
-                            }
-                        }));
+                            AlertMessages.showRestoreError(RestoreActivity.this);
+                        }
+                    });
+                }
+        );
     }
 
 }

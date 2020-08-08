@@ -49,6 +49,12 @@ public class MainActivity extends LockableActivity {
             = String.format("%s.IsRecreatingKey", MainActivity.class.getName());
 
     /**
+     * Clave que indica la posición del fragmento seleccionado.
+     */
+    private static final String CURRENT_POS_KEY
+            = String.format("%s.CurrentPosKey", MainActivity.class.getName());
+
+    /**
      * Fragmento mostrado actualmente.
      */
     private Fragment mCurrentFragment;
@@ -80,6 +86,9 @@ public class MainActivity extends LockableActivity {
 
             showFragment(R.id.mMenuWallet);
         }
+
+        if (savedInstanceState != null)
+            mCurrentPos = savedInstanceState.getInt(CURRENT_POS_KEY);
     }
 
 
@@ -121,6 +130,7 @@ public class MainActivity extends LockableActivity {
         super.onSaveInstanceState(outState);
 
         outState.putBoolean(IS_RECREATING_KEY, true);
+        outState.putInt(CURRENT_POS_KEY, mCurrentPos);
     }
 
     /**

@@ -128,12 +128,10 @@
                 android:name="com.google.firebase.messaging.default_notification_channel_id"
                 android:resource="@string/default_notification_channel_id" />
         </service>
-
         <service
             android:name=".services.WalletSyncForegroundService"
             android:enabled="true"
             android:exported="false" />
-
         <service
             android:name=".services.WalletSyncService"
             android:enabled="true"

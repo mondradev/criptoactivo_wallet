@@ -23,7 +23,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -37,6 +39,7 @@ import com.cryptowallet.wallet.WalletProvider;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 
 import java.util.Objects;
+import java.util.concurrent.Executors;
 
 import javax.annotation.Nullable;
 
@@ -66,6 +69,11 @@ public final class SplashActivity extends AppCompatActivity {
     private WalletProvider mWalletProvider;
 
     /**
+     * Handler del hilo principal.
+     */
+    private Handler mHandler;
+
+    /**
      * Este método es llamado cuando se crea la actividad.
      *
      * @param savedInstanceState Estado de la instancia.
@@ -80,8 +88,9 @@ public final class SplashActivity extends AppCompatActivity {
         setContentView(R.layout.activity_splashscreen);
         Objects.requireNonNull(getSupportActionBar()).hide();
 
-        TextView caption = findViewById(R.id.mSplashCopyright);
-        ImageView icon = findViewById(R.id.mSplashLogo);
+        final TextView caption = findViewById(R.id.mSplashCopyright);
+        final ImageView icon = findViewById(R.id.mSplashLogo);
+        final ProgressBar bar = findViewById(R.id.mSplashProgress);
 
         icon.setImageResource(R.drawable.ic_cryptowallet);
         caption.setText(R.string.copyright);
@@ -89,18 +98,36 @@ public final class SplashActivity extends AppCompatActivity {
         if (savedInstanceState == null)
             this.setupApp();
 
-        mWalletProvider.loadWallets();
-        mWalletProvider.syncWallets();
         mAuthenticationCallback = createAuthenticationCallback();
 
-        final Handler mainHandler = new Handler(Looper.getMainLooper());
+        mHandler = new Handler(Looper.getMainLooper());
 
-        if (!mWalletProvider.anyCreated()) {
-            startActivity(new Intent(this, WelcomeActivity.class));
-            finishAfterTransition();
-        } else
-            Preferences.get()
-                    .authenticate(this, mainHandler::post, mAuthenticationCallback);
+        Executors.newCachedThreadPool().submit(() -> {
+            Thread.currentThread().setName("Initial load");
+
+            if (!mWalletProvider.anyCreated()) {
+                startActivity(new Intent(this, WelcomeActivity.class));
+                finishAfterTransition();
+            } else {
+                bar.setVisibility(View.VISIBLE);
+
+                mWalletProvider.loadWallets();
+                mWalletProvider.syncWallets();
+
+                Preferences.get()
+                        .authenticate(this, mHandler::post, mAuthenticationCallback);
+
+                hideProgressBar();
+            }
+        });
+    }
+
+    /**
+     * Oculta la barra de progreso.
+     */
+    private void hideProgressBar() {
+        ProgressBar progressBar = this.findViewById(R.id.mSplashProgress);
+        mHandler.post(() -> progressBar.setVisibility(View.GONE));
     }
 
     /**
@@ -131,6 +158,8 @@ public final class SplashActivity extends AppCompatActivity {
              */
             @Override
             public void onAuthenticationSucceeded(byte[] authenticationToken) {
+                ProgressDialog.show(SplashActivity.this);
+
                 mWalletProvider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
                     /**
                      * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.

@@ -607,7 +607,13 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param authenticationToken Token de autenticación de la billetera.
      */
     public void sendCoins(ITransaction tx, byte[] authenticationToken) {
-        if (mWallet.sendTx(tx, authenticationToken))
+        ProgressDialog.show(SendPaymentsActivity.this);
+
+        final boolean sent = mWallet.sendTx(tx, authenticationToken);
+
+        ProgressDialog.hide();
+
+        if (sent)
             SuccessfulPaymentFragment.show(this, tx,
                     getWalletService().getLastPrice(mWallet.getCryptoAsset()));
         else

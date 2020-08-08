@@ -97,29 +97,32 @@ public class WelcomeActivity extends AppCompatActivity implements DialogInterfac
         Authenticator.registerPin(
                 this,
                 new Handler()::post,
-                (IAuthenticationSucceededCallback) authenticationToken ->
-                        mWalletProvider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
-                            /**
-                             * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
-                             */
-                            @Override
-                            public void successful() {
-                                startActivity(new Intent(getApplicationContext(),
-                                        MainActivity.class));
-                            }
+                (IAuthenticationSucceededCallback) authenticationToken -> {
+                    ProgressDialog.show(WelcomeActivity.this);
+                    mWalletProvider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
+                        /**
+                         * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
+                         */
+                        @Override
+                        public void successful() {
+                            ProgressDialog.hide();
+                            startActivity(new Intent(getApplicationContext(),
+                                    MainActivity.class));
+                        }
 
-                            /**
-                             * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
-                             * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
-                             * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
-                             * ya que este se realiza a través de {@link Authenticator}.
-                             *
-                             * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
-                             */
-                            @Override
-                            public void fail(Exception ex) {
-                                AlertMessages.showCreateError(WelcomeActivity.this);
-                            }
-                        }));
+                        /**
+                         * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
+                         * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
+                         * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
+                         * ya que este se realiza a través de {@link Authenticator}.
+                         *
+                         * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
+                         */
+                        @Override
+                        public void fail(Exception ex) {
+                            AlertMessages.showCreateError(WelcomeActivity.this);
+                        }
+                    });
+                });
     }
 }
