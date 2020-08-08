@@ -46,6 +46,7 @@ import com.cryptowallet.app.authentication.exceptions.AuthenticationException;
 import com.cryptowallet.app.authentication.exceptions.PinAuthenticationRegisterException;
 import com.cryptowallet.app.authentication.exceptions.PinAuthenticationUpdateException;
 import com.cryptowallet.utils.Utils;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
@@ -244,8 +245,12 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         Context context = requireContext();
 
-        return new BottomSheetDialog(context,
+        BottomSheetDialog sheetDialog = new BottomSheetDialog(context,
                 Utils.resolveStyle(context, R.attr.pinKeyboardTheme));
+        sheetDialog.setOnShowListener(dialog -> ((BottomSheetDialog) dialog).getBehavior()
+                .setState(BottomSheetBehavior.STATE_EXPANDED));
+
+        return sheetDialog;
     }
 
     /**
@@ -289,6 +294,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      */
     private void onPressedNumberButton(View sender) {
         MaterialButton keyButton = (MaterialButton) sender;
+        mRoot.findViewById(R.id.mAuthKeyboardLayout).setEnabled(false);
 
         if (keyButton.getIcon() != null) {
             onPressedBackspaceButton();
@@ -329,7 +335,10 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                     else
                         handleFail();
                 }
-            }, 150);
+                mRoot.findViewById(R.id.mAuthKeyboardLayout).setEnabled(true);
+            }, 100);
+        else
+            mRoot.findViewById(R.id.mAuthKeyboardLayout).setEnabled(true);
     }
 
 
