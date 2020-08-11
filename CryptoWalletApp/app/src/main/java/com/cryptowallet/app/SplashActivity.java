@@ -57,7 +57,6 @@ public final class SplashActivity extends AppCompatActivity {
      */
     private static final String LOG_TAG = "Splashscreen";
 
-
     /**
      * Instancia de las funciones de respuesta del autenticador.
      */
@@ -140,7 +139,6 @@ public final class SplashActivity extends AppCompatActivity {
 
         Log.d(LOG_TAG, "App is ready");
     }
-
 
     /**
      * Crea las funciones de vuelta de la autenticación de usuario.
