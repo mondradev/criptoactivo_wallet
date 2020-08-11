@@ -32,11 +32,12 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.cryptowallet.R;
+import com.cryptowallet.app.SyncOnBootReceiver;
 
 /**
  * Servicio de primer plano que permite la invocación del servicio de segundo plano para realizar
  * la sincronización de las billeteras. Este servicio es invocado desde
- * {@link com.cryptowallet.SyncOnBootReceiver}.
+ * {@link SyncOnBootReceiver}.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0

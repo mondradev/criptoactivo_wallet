@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.wallet;
+package com.cryptowallet.services;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -38,13 +38,14 @@ import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.app.TxBottomSheetDialogActivity;
-import com.cryptowallet.services.WalletSyncForegroundService;
-import com.cryptowallet.services.WalletSyncService;
 import com.cryptowallet.services.coinmarket.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.BiConsumer;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
+import com.cryptowallet.wallet.AbstractWallet;
+import com.cryptowallet.wallet.ITransaction;
+import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -83,31 +84,38 @@ public final class WalletProvider {
      * Etiqueta del log.
      */
     private static final String LOG_TAG = WalletProvider.class.getSimpleName();
+
     /**
      * Clave del token de notificaciones FCM.
      */
     private static final String TOKEN_FCM
             = String.format("%s.keys.TOKEN_FCM", BuildConfig.APPLICATION_ID);
+
     /**
      * Instancia del singletón.
      */
     private static WalletProvider mInstance;
+
     /**
      * Contexto de la aplicación de android.
      */
     private final Context mContext;
+
     /**
      * Preferencias de aplicación.
      */
     private final SharedPreferences mPreference;
+
     /**
      * Ejecutor para actividades en un subproceso.
      */
     private ExecutorService mExecutor;
+
     /**
      * Colección de controladores de billetera.
      */
     private Map<SupportedAssets, AbstractWallet> mWallets;
+
     /**
      * Comando para procesar las peticiones al servicio.
      */
@@ -153,14 +161,17 @@ public final class WalletProvider {
      * Consumidor del evento saldo ha cambiado.
      */
     private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
+
     /**
      * Consumidor del evento de precio ha cambiado.
      */
     private BiConsumer<Book, Long> mOnPriceChangedConsumer;
+
     /**
      * Consumidor del evento nueva transacción.
      */
     private Consumer<ITransaction> mOnNewTransactionConsumer;
+
     /**
      * Activo fiat en el cual se expresan los precios de los cripto-activos.
      */
@@ -171,7 +182,7 @@ public final class WalletProvider {
      *
      * @param context Contexto de la aplicación.s
      */
-    private WalletProvider(Context context) {
+    private WalletProvider(@NonNull Context context) {
         this.mContext = context.getApplicationContext();
         this.mWallets = new HashMap<>();
         this.mExecutor = Executors.newCachedThreadPool();
@@ -209,7 +220,8 @@ public final class WalletProvider {
      *
      * @return Instancia del singletón.
      */
-    public synchronized static WalletProvider getInstance() {
+    @NonNull
+    public static WalletProvider getInstance() {
         if (mInstance == null)
             throw new IllegalStateException("Make sure to call WalletProvider.initialize(Context) first");
 
@@ -433,9 +445,9 @@ public final class WalletProvider {
     }
 
     /**
-     * Inicia el servicio de la sincronización en segundo plano.
+     * Inicia la sincronización de las billeteras.
      */
-    public void syncWallets() {
+    public synchronized void syncWallets() {
         if (!anyCreated()) return;
         try {
 
@@ -575,7 +587,7 @@ public final class WalletProvider {
      *                        que indica si la autenticación finalizó correctamente.
      */
     public synchronized void authenticateWallet(byte[] token, IOnAuthenticated onAuthenticated) {
-        mExecutor.submit(() -> {
+        mExecutor.execute(() -> {
             try {
                 for (AbstractWallet wallet : mWallets.values())
                     wallet.authenticateWallet(token);

@@ -27,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.cryptowallet.BuildConfig;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.ExecutableCommand;

@@ -31,6 +31,7 @@ import com.cryptowallet.R;
 import com.cryptowallet.assets.bitcoin.services.BitcoinProvider;
 import com.cryptowallet.assets.bitcoin.wallet.exceptions.BitcoinDustException;
 import com.cryptowallet.assets.bitcoin.wallet.exceptions.BitcoinOverflowException;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitsoPriceTracker;
 import com.cryptowallet.utils.Utils;
@@ -39,7 +40,6 @@ import com.cryptowallet.wallet.ChainTipInfo;
 import com.cryptowallet.wallet.IFees;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletProvider;
 import com.cryptowallet.wallet.exceptions.InsufficientBalanceException;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
 import com.google.common.base.Strings;
@@ -1337,6 +1337,9 @@ public class BitcoinWallet extends AbstractWallet {
         Utils.tryNotThrow(() -> {
             if (!exists() || !isInitialized()) return;
 
+            if (mSynchronizing || mBitcoinJWallet.getLastBlockSeenHeight() < 0)
+                return;
+
             ChainTipInfo tip = BitcoinProvider.get(this).getChainTipInfo();
 
             if (tip == null) {
@@ -1378,6 +1381,9 @@ public class BitcoinWallet extends AbstractWallet {
 
         Utils.tryNotThrow(() -> {
             if (!exists() || !isInitialized()) return;
+
+            if (mSynchronizing || mBitcoinJWallet.getLastBlockSeenHeight() < 0)
+                return;
 
             int diff = height - mBitcoinJWallet.getLastBlockSeenHeight();
 

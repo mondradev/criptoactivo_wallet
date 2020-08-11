@@ -35,7 +35,7 @@ import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.AuthenticationCallback;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationCallback;
-import com.cryptowallet.wallet.WalletProvider;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 
 import java.util.Objects;
@@ -83,7 +83,6 @@ public final class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         WalletProvider.initialize(this);
-        mWalletProvider = WalletProvider.getInstance();
 
         setContentView(R.layout.activity_splashscreen);
         Objects.requireNonNull(getSupportActionBar()).hide();
@@ -104,6 +103,8 @@ public final class SplashActivity extends AppCompatActivity {
 
         Executors.newCachedThreadPool().submit(() -> {
             Thread.currentThread().setName("Initial load");
+
+            mWalletProvider = WalletProvider.getInstance();
 
             if (!mWalletProvider.anyCreated()) {
                 startActivity(new Intent(this, WelcomeActivity.class));

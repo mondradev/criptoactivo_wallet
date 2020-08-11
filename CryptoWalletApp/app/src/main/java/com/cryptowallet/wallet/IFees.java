@@ -18,6 +18,8 @@
 
 package com.cryptowallet.wallet;
 
+import com.cryptowallet.services.WalletProvider;
+
 /**
  * Representa una estructura para proveer las comisiones según la velocidad de envío que se require
  * para que la transacción sera aceptada.

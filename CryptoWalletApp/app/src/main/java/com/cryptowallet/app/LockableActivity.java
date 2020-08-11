@@ -33,8 +33,8 @@ import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Timeout;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.Objects;
 

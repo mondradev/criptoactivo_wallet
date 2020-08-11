@@ -39,11 +39,11 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.adapters.TransactionHistoryAdapter;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;

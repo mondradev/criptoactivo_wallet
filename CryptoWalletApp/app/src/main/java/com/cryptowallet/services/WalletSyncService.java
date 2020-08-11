@@ -18,6 +18,7 @@
 
 package com.cryptowallet.services;
 
+import android.annotation.SuppressLint;
 import android.app.Service;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -26,8 +27,8 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.cryptowallet.Constants;
 import com.cryptowallet.wallet.AbstractWallet;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,14 +48,14 @@ public class WalletSyncService extends Service {
     private static final Object mLockService = new Object();
 
     /**
-     * Indica si está corriendo el servicio de sincronización.
-     */
-    private static boolean mRunning;
-
-    /**
      * Ejecutor para actividades en un subproceso.
      */
     private static ExecutorService mExecutor;
+
+    /**
+     * Indica si está corriendo el servicio de sincronización.
+     */
+    private static boolean mSynchronizing;
 
     /**
      * Este método es invocado cuando se crea el servicio. En esta función se invoca el hilo donde
@@ -70,25 +71,6 @@ public class WalletSyncService extends Service {
                 mExecutor.submit(() -> Thread.currentThread()
                         .setName(WalletProvider.class.getSimpleName() + " Thread"));
             }
-
-            WalletProvider.initialize(getApplicationContext());
-            WalletProvider walletProvider = WalletProvider.getInstance();
-
-            if (!mRunning && walletProvider.anyCreated())
-                mExecutor.submit(() -> {
-                    mRunning = true;
-
-                    Log.d(WalletSyncService.class.getSimpleName(), "Synchronizing each wallet");
-
-                    walletProvider.loadWallets();
-                    walletProvider.forEachWallet(AbstractWallet::syncWallet);
-                    walletProvider.updatePushToken(walletProvider.getPushToken());
-
-                    stopService(new Intent(this, WalletSyncForegroundService.class));
-                    stopSelf();
-
-                    mRunning = false;
-                });
         }
     }
 
@@ -104,6 +86,23 @@ public class WalletSyncService extends Service {
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+
+        if (!mSynchronizing)
+            mExecutor.submit(() -> {
+                mSynchronizing = true;
+
+                Log.d(WalletSyncService.class.getSimpleName(), "Synchronizing each wallet");
+
+                WalletProvider.getInstance().loadWallets();
+                WalletProvider.getInstance().forEachWallet(AbstractWallet::syncWallet);
+                WalletProvider.getInstance()
+                        .updatePushToken(WalletProvider.getInstance().getPushToken());
+
+                stopService(new Intent(this, WalletSyncForegroundService.class));
+
+                mSynchronizing = false;
+            });
+
         return START_STICKY;
     }
 
@@ -119,4 +118,20 @@ public class WalletSyncService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+    /**
+     * Este método es invocado cuando la aplicación es removida de la lista de recientes.
+     *
+     * @param rootIntent Intención que invocó el servicio.
+     */
+    @SuppressLint("WrongConstant")
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+
+        Intent intent = new Intent(Constants.START);
+        intent.addFlags(Constants.FLAG_RECEIVER_INCLUDE_BACKGROUND);
+        sendBroadcast(intent);
+    }
+
 }

@@ -29,7 +29,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
-import com.cryptowallet.wallet.WalletProvider;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 
 import java.util.Objects;

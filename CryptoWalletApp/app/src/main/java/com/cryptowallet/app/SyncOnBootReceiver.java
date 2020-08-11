@@ -16,13 +16,13 @@
  * limitations under the License.
  */
 
-package com.cryptowallet;
+package com.cryptowallet.app;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-import com.cryptowallet.wallet.WalletProvider;
+import com.cryptowallet.services.WalletProvider;
 
 /**
  * Crea un receptor de la acción {@link Intent#ACTION_BOOT_COMPLETED}. Esta clase invoca el servicio

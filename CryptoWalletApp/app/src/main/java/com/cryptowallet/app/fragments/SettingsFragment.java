@@ -41,8 +41,8 @@ import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
 import com.cryptowallet.app.authentication.IAuthenticationUpdatedCallback;
 import com.cryptowallet.app.authentication.TwoFactorAuthentication;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.ArrayList;
 import java.util.List;

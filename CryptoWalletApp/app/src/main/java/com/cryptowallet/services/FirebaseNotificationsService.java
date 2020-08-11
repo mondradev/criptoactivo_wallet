@@ -25,7 +25,6 @@ import androidx.annotation.NonNull;
 
 import com.cryptowallet.Constants;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.WalletProvider;
 import com.google.common.base.Strings;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
@@ -92,6 +91,7 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
      */
     @Override
     public void onNewToken(@NonNull String token) {
+        if (true) return;
         WalletProvider.getInstance().updatePushToken(token);
     }
 
@@ -100,6 +100,7 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
      */
     @Override
     public void onCreate() {
+        if (true) return;
         WalletProvider.initialize(this);
         WalletProvider.getInstance().loadWallets();
         WalletProvider.getInstance().syncWallets();

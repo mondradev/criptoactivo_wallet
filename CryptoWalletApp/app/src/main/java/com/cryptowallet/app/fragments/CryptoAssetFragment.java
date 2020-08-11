@@ -43,11 +43,11 @@ import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.app.SendPaymentsActivity;
 import com.cryptowallet.app.adapters.LatestTransactionsAdapter;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.Objects;
 

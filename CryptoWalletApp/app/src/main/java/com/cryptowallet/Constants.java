@@ -30,6 +30,11 @@ import android.content.Intent;
 public abstract class Constants {
 
     /**
+     * Bandera que indica que se invoca como servicio en segundo plano.
+     */
+    public static final int FLAG_RECEIVER_INCLUDE_BACKGROUND = 0x01000000;
+
+    /**
      * Clave del parametro activo.
      */
     public static final String EXTRA_MESSAGE
@@ -149,6 +154,13 @@ public abstract class Constants {
      */
     public static final String NEW_TRANSACTION
             = String.format("%s.action.NEW_TRANSACTION", BuildConfig.APPLICATION_ID);
+
+    /**
+     * Acción del evento iniciar. Esto es reccibido por el receptor
+     * {@link com.cryptowallet.app.SyncOnBootReceiver }.
+     */
+    public static final String START
+            = String.format("%s.action.START", BuildConfig.APPLICATION_ID);
 
     /**
      * Acción del evento nuevo bloque.

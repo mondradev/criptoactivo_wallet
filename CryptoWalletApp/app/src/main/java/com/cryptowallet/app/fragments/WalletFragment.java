@@ -38,9 +38,9 @@ import androidx.fragment.app.Fragment;
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;

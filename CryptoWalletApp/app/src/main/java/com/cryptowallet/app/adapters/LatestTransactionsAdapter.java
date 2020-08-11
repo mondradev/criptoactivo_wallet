@@ -31,11 +31,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.app.fragments.TransactionFragment;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletProvider;
 
 import java.util.Collections;
 import java.util.List;
