@@ -91,7 +91,6 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
      */
     @Override
     public void onNewToken(@NonNull String token) {
-        if (true) return;
         WalletProvider.getInstance().updatePushToken(token);
     }
 
@@ -100,7 +99,6 @@ public class FirebaseNotificationsService extends FirebaseMessagingService {
      */
     @Override
     public void onCreate() {
-        if (true) return;
         WalletProvider.initialize(this);
         WalletProvider.getInstance().loadWallets();
         WalletProvider.getInstance().syncWallets();
