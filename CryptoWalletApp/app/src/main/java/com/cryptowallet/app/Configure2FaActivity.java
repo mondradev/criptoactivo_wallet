@@ -22,6 +22,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.os.Bundle;
 import android.text.InputFilter;
+import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
@@ -41,6 +42,8 @@ import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.common.base.Strings;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -64,10 +67,10 @@ public class Configure2FaActivity extends LockableActivity {
     /**
      * Identificadores de los digitos del código de autenticación.
      */
-    private final int[] mDigitsAuthCode = new int[]{
+    private final List<Integer> mDigitsAuthCode = Arrays.asList(
             R.id.m2FaCodeDigit1, R.id.m2FaCodeDigit2, R.id.m2FaCodeDigit3,
             R.id.m2FaCodeDigit4, R.id.m2FaCodeDigit5, R.id.m2FaCodeDigit6
-    };
+    );
 
     /**
      * Frase secreta.
@@ -124,6 +127,26 @@ public class Configure2FaActivity extends LockableActivity {
                                 view.requestFocus();
                         }
             });
+
+            editor.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_UP && keyCode == KeyEvent.KEYCODE_DEL) {
+                    CharSequence text = ((TextView) v).getText();
+                    if (!Objects.toString(text).isEmpty()) return false;
+
+                    final int currentIndex = mDigitsAuthCode.indexOf(v.getId());
+
+                    if (currentIndex <= 0) return false;
+
+                    final int idView = mDigitsAuthCode.get(currentIndex - 1);
+
+                    final EditText editText = this.findViewById(idView);
+
+                    editText.requestFocus();
+                    editText.setSelection(editText.getText().length());
+                }
+
+                return false;
+            });
         }
 
         mLifeCycleObserver = new LifecycleObserver() {
@@ -134,36 +157,41 @@ public class Configure2FaActivity extends LockableActivity {
                 stopTimer();
                 unlockApp();
             }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-            public void onResumen() {
-                if (!mOnPause) return;
-
-                mOnPause = false;
-
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                if (clipboard == null) return;
-
-                ClipData clipData = clipboard.getPrimaryClip();
-                if (clipData == null) return;
-                if (clipData.getItemCount() == 0) return;
-
-                CharSequence text = clipData.getItemAt(0)
-                        .coerceToText(getApplicationContext());
-
-                if (text.length() != 6)
-                    return;
-
-                if (!Pattern.matches("[0-9]{6}", text)) return;
-
-                for (int i = 0; i < mDigitsAuthCode.length; i++)
-                    requireEditTextById(mDigitsAuthCode[i])
-                            .setText(Character.toString(text.charAt(i)));
-            }
-
         };
 
         ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifeCycleObserver);
+    }
+
+    /**
+     * @param hasFocus
+     */
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        if (!mOnPause) return;
+
+        mOnPause = false;
+
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+
+        ClipData clipData = clipboard.getPrimaryClip();
+
+        if (clipData == null) return;
+        if (clipData.getItemCount() == 0) return;
+
+        CharSequence text = clipData.getItemAt(0)
+                .coerceToText(getApplicationContext());
+
+        if (text.length() != 6)
+            return;
+
+        if (!Pattern.matches("[0-9]{6}", text)) return;
+
+        for (int i = 0; i < mDigitsAuthCode.size(); i++)
+            requireEditTextById(mDigitsAuthCode.get(i))
+                    .setText(Character.toString(text.charAt(i)));
+
+        requireEditTextById(R.id.m2FaCodeDigit6).setSelection(1);
     }
 
     /**
