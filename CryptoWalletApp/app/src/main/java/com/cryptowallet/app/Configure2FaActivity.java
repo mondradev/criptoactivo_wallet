@@ -112,8 +112,6 @@ public class Configure2FaActivity extends LockableActivity {
                 QR_CODE_SIZE
         ));
 
-        // TODO Delete with keyboard the code
-
         for (int id : mDigitsAuthCode) {
             final EditText editor = requireEditTextById(id);
 
@@ -163,11 +161,13 @@ public class Configure2FaActivity extends LockableActivity {
     }
 
     /**
-     * @param hasFocus
+     * Este método es llamado cuando la aplicación gana o pierde el foco.
+     *
+     * @param hasFocus Indica si la aplicación gana o pierde el foco.
      */
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-        if (!mOnPause) return;
+        if (!mOnPause || !hasFocus) return;
 
         mOnPause = false;
 
