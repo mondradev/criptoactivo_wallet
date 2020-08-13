@@ -208,7 +208,7 @@ public enum SupportedAssets {
                 newValue /= 1000;
             }
 
-            if (newValue >= 10000) {
+            if (newValue >= 1000) {
                 unit = "M";
                 newValue /= 1000;
             }
@@ -276,7 +276,7 @@ public enum SupportedAssets {
                 newValue /= 1000;
             }
 
-            if (newValue >= 10000) {
+            if (newValue >= 1000) {
                 unit = "M";
                 newValue /= 1000;
             }
