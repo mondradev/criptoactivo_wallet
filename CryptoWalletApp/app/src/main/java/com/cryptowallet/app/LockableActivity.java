@@ -63,8 +63,7 @@ import java.util.Objects;
  * @version 2.1
  */
 // TODO Fix lifecycle, don't recovery state
-public abstract class LockableActivity extends AppCompatActivity
-        implements LifecycleObserver {
+public abstract class LockableActivity extends AppCompatActivity {
 
     /**
      * Etiqueta de la clase.
@@ -90,6 +89,10 @@ public abstract class LockableActivity extends AppCompatActivity
      * Indica que la aplicación está bloqueada.
      */
     private static boolean mLocked;
+
+    private static Runnable mOnResume;
+    private static Runnable mOnPause;
+    private static LifecycleObserver mLifecycleObserver;
 
     /**
      * Tema actual de la aplicación.
@@ -130,8 +133,7 @@ public abstract class LockableActivity extends AppCompatActivity
     /**
      * Llama la actividad principal requiriendo que esta sea bloqueada.
      */
-    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    private void callLockScreen() {
+    protected void onResumeApp() {
         if (mMainActivity == null)
             throw new UnsupportedOperationException(
                     "Requires register the class by #registerMainActivityClass(Class)");
@@ -151,7 +153,15 @@ public abstract class LockableActivity extends AppCompatActivity
         mLocked = true;
 
         LockableActivity.this.startActivity(intent);
-        LockableActivity.this.finishAfterTransition();
+        LockableActivity.this.finish();
+    }
+
+
+    /**
+     * Este método es llamado cuando se sale de la aplicación.
+     */
+    protected void onLeaveApp() {
+        createLockTimer();
     }
 
     /**
@@ -177,26 +187,34 @@ public abstract class LockableActivity extends AppCompatActivity
 
         mCurrentTheme = Preferences.get().getTheme().getName();
 
-        ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
-    }
+        mOnResume = this::onResumeApp;
+        mOnPause = this::onLeaveApp;
 
-    /**
-     * Este método es llamado cuando la actividad es destruída.
-     */
-    @CallSuper
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+        if (mLifecycleObserver == null) {
+            mLifecycleObserver = new LifecycleObserver() {
 
-        ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
-    }
+                @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                public void onResume() {
+                    if (mOnResume != null)
+                        mOnResume.run();
+                }
 
-    /**
-     * Este método es llamado cuando se sale de la aplicación.
-     */
-    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-    public void onLeaveApp() {
-        createLockTimer();
+                @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+                public void onPause() {
+                    if (mOnPause != null)
+                        mOnPause.run();
+                }
+
+                @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+                public void onDestroy() {
+                    ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifecycleObserver);
+                    mLifecycleObserver = null;
+                }
+
+            };
+
+            ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifecycleObserver);
+        }
     }
 
     /**
