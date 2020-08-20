@@ -32,6 +32,7 @@ import com.google.common.util.concurrent.ListenableFutureTask;
 
 import org.bouncycastle.util.encoders.Hex;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -128,14 +129,21 @@ public class BitcoinProvider {
     private <T> T tryDo(Callable<T> request) {
         mWallet.propagateBitcoinJ();
 
+        int maxAttemps = MAX_ATTEMPS;
+
         for (int attemp = 0; attemp < MAX_ATTEMPS; attemp++) {
             try {
                 T response = request.call();
 
                 if (response != null)
                     return response;
+            } catch (ConnectException e) {
+                Log.e(LOG_TAG, "" + e.getMessage());
+                Utils.tryNotThrow(() -> Thread.sleep(5000));
             } catch (Exception e) {
                 Log.e(LOG_TAG, "Unable to complete the request: " + e.getMessage());
+                Utils.tryNotThrow(() -> Thread.sleep(10000));
+                maxAttemps = maxAttemps > MAX_ATTEMPS ? maxAttemps : 10;
             } finally {
                 Thread.currentThread().setName("Bitcoin Provider");
             }

@@ -30,10 +30,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleObserver;
-import androidx.lifecycle.OnLifecycleEvent;
-import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.TwoFactorAuthentication;
@@ -76,11 +72,6 @@ public class Configure2FaActivity extends LockableActivity {
      * Frase secreta.
      */
     private String mSecretPhrase;
-
-    /**
-     * Observador del ciclo de vida de la aplicación.
-     */
-    private LifecycleObserver mLifeCycleObserver;
 
     /**
      * Indica que la aplicación está a la espera del código de autenticación.
@@ -146,18 +137,14 @@ public class Configure2FaActivity extends LockableActivity {
                 return false;
             });
         }
+    }
 
-        mLifeCycleObserver = new LifecycleObserver() {
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-            public void onStop() {
-                mOnPause = true;
-                stopTimer();
-                unlockApp();
-            }
-        };
-
-        ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifeCycleObserver);
+    /**
+     * Este método es llamado cuando se sale de la aplicación.
+     */
+    @Override
+    protected void onLeaveApp() {
+        mOnPause = true;
     }
 
     /**
@@ -192,16 +179,6 @@ public class Configure2FaActivity extends LockableActivity {
                     .setText(Character.toString(text.charAt(i)));
 
         requireEditTextById(R.id.m2FaCodeDigit6).setSelection(1);
-    }
-
-    /**
-     * Este método es llamado cuando la actividad es destruída.
-     */
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifeCycleObserver);
     }
 
     /**
