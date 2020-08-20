@@ -21,6 +21,7 @@ package com.cryptowallet.app;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import com.cryptowallet.services.WalletProvider;
 
@@ -44,6 +45,8 @@ public class SyncOnBootReceiver extends BroadcastReceiver {
         if (intent == null) return;
 
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+            Log.i(SyncOnBootReceiver.class.getSimpleName(), "On boot completed");
+
             WalletProvider.initialize(context);
             WalletProvider.getInstance().loadWallets();
             WalletProvider.getInstance().syncWalletsForeground();

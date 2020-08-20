@@ -24,6 +24,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="false"
@@ -36,12 +37,20 @@
         android:theme="@style/AppTheme">
 
         <receiver
-            android:name=".app.SyncOnBootReceiver"
+            android:name="com.cryptowallet.app.SyncOnBootReceiver"
+            android:enabled="true"
+            android:exported="true"
             android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+
             <intent-filter>
                 <action android:name="com.cryptowallet.action.START" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.REBOOT" />
+
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+
         </receiver>
 
         <activity android:name=".app.TxBottomSheetDialogActivity" />
@@ -51,9 +60,11 @@
             android:authorities="${applicationId}.provider"
             android:exported="false"
             android:grantUriPermissions="true">
+
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_provider" />
+
         </provider>
 
         <activity android:name=".app.MainActivity" />
@@ -62,7 +73,6 @@
         <activity android:name=".app.SplashActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
@@ -126,9 +136,13 @@
         </service>
         <service
             android:name=".services.WalletSyncForegroundService"
+            android:enabled="true"
+            android:stopWithTask="false"
             android:exported="false" />
         <service
             android:name=".services.WalletSyncService"
+            android:enabled="true"
+            android:stopWithTask="false"
             android:exported="false" />
     </application>
 

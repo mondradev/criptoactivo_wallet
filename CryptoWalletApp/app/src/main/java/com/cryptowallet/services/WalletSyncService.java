@@ -89,6 +89,8 @@ public class WalletSyncService extends Service {
 
         if (!mSynchronizing)
             mExecutor.submit(() -> {
+                stopService(new Intent(this, WalletSyncForegroundService.class));
+
                 mSynchronizing = true;
 
                 Log.d(WalletSyncService.class.getSimpleName(), "Synchronizing each wallet");
@@ -97,8 +99,6 @@ public class WalletSyncService extends Service {
                 WalletProvider.getInstance().forEachWallet(AbstractWallet::syncWallet);
                 WalletProvider.getInstance()
                         .updatePushToken(WalletProvider.getInstance().getPushToken());
-
-                stopService(new Intent(this, WalletSyncForegroundService.class));
 
                 mSynchronizing = false;
             });

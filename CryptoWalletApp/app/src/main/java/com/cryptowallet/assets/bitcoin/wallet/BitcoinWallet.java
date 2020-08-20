@@ -454,14 +454,20 @@ public class BitcoinWallet extends AbstractWallet {
         if (mInitialDownload) {
             Map<String, BitcoinTransaction> history = new HashMap<>();
 
-            int receiveAddresses = scanAddresses(ChildNumber.ZERO, history);
-            int changeAddresses = scanAddresses(ChildNumber.ONE, history);
+            final int receiveAddresses = scanAddresses(ChildNumber.ZERO, history);
+            final int changeAddresses = scanAddresses(ChildNumber.ONE, history);
 
             Log.d(LOG_TAG, String.format("New addresses with activity found: %d",
                     receiveAddresses + changeAddresses));
 
-            freshAddresses(KeyChain.KeyPurpose.RECEIVE_FUNDS, receiveAddresses);
-            freshAddresses(KeyChain.KeyPurpose.CHANGE, changeAddresses);
+            final DeterministicKeyChain activeKeyChain = mBitcoinJWallet.getActiveKeyChain();
+            final int totalExterna = activeKeyChain.getIssuedExternalKeys() - 1;
+            final int totalInternal = activeKeyChain.getIssuedInternalKeys() - 1;
+
+            freshAddresses(KeyChain.KeyPurpose.RECEIVE_FUNDS,
+                    receiveAddresses - totalExterna);
+            freshAddresses(KeyChain.KeyPurpose.CHANGE,
+                    changeAddresses - totalInternal);
 
             addTransactions(history);
 
@@ -821,14 +827,24 @@ public class BitcoinWallet extends AbstractWallet {
             throw new IllegalStateException("Wallet wasn't initialized");
 
         mBitcoinJWallet.addCoinsReceivedEventListener((wallet, tx, prevBalance, newBalance) -> {
+            propagateBitcoinJ();
+
             if (BitcoinTransaction.wrap(tx, this).isPay())
                 return;
+
+            if (tx.isPending())
+                Log.d(LOG_TAG, "A uncommited transaction was received");
 
             this.onNewTransaction(tx);
         });
         mBitcoinJWallet.addCoinsSentEventListener((wallet, tx, prevBalance, newBalance) -> {
+            propagateBitcoinJ();
+
             if (!BitcoinTransaction.wrap(tx, this).isPay())
                 return;
+
+            if (tx.isPending())
+                Log.d(LOG_TAG, "A uncommited transaction was received");
 
             this.onNewTransaction(tx);
         });
@@ -1332,9 +1348,9 @@ public class BitcoinWallet extends AbstractWallet {
      */
     @Override
     public synchronized void requestNewTransaction(String txid) {
-        propagateBitcoinJ();
-
         Utils.tryNotThrow(() -> {
+            propagateBitcoinJ();
+
             if (!exists() || !isInitialized()) return;
 
             if (mSynchronizing || mBitcoinJWallet.getLastBlockSeenHeight() < 0)
@@ -1377,9 +1393,9 @@ public class BitcoinWallet extends AbstractWallet {
     @Override
     public synchronized void requestNewBlock(int height, String hash, long timeInSeconds,
                                              String[] txs) {
-        propagateBitcoinJ();
-
         Utils.tryNotThrow(() -> {
+            propagateBitcoinJ();
+
             if (!exists() || !isInitialized()) return;
 
             if (mSynchronizing || mBitcoinJWallet.getLastBlockSeenHeight() < 0)

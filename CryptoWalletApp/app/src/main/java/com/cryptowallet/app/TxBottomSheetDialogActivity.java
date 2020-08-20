@@ -25,6 +25,7 @@ import android.os.Bundle;
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.fragments.TransactionFragment;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
 
@@ -64,6 +65,7 @@ public class TxBottomSheetDialogActivity extends LockableActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transparent);
         LockableActivity.registerMainActivityClass(SplashActivity.class);
+        WalletProvider.initialize(this);
 
         final String txid = getIntent().getStringExtra(Constants.EXTRA_TXID);
         final String assetName = getIntent().getStringExtra(Constants.EXTRA_CRYPTO_ASSET);

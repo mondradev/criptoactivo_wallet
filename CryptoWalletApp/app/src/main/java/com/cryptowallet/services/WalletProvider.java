@@ -18,6 +18,7 @@
 
 package com.cryptowallet.services;
 
+import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -367,7 +368,7 @@ public final class WalletProvider {
                 R.raw.snd_receive_money));
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext,
-                mContext.getString(R.string.default_notification_channel_id))
+                mContext.getString(R.string.payments_notification_channel_id))
                 .setSmallIcon(asset.getIcon())
                 .setContentTitle(mContext.getString(asset.getName()))
                 .setContentText(message)
@@ -394,7 +395,7 @@ public final class WalletProvider {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    mContext.getString(R.string.default_notification_channel_id),
+                    mContext.getString(R.string.payments_notification_channel_id),
                     mContext.getString(R.string.receive_notification_channel_name),
                     NotificationManager.IMPORTANCE_HIGH
             );
@@ -447,11 +448,13 @@ public final class WalletProvider {
     /**
      * Inicia la sincronización de las billeteras.
      */
+    @SuppressLint("WrongConstant")
     public synchronized void syncWallets() {
         if (!anyCreated()) return;
         try {
 
             Intent intent = new Intent(mContext, WalletSyncService.class);
+            intent.addFlags(Constants.FLAG_RECEIVER_INCLUDE_BACKGROUND);
 
             mContext.startService(intent);
         } catch (RuntimeException ignored) {
