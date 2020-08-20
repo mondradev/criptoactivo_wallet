@@ -100,6 +100,11 @@ public class SendPaymentsActivity extends LockableActivity {
     private static final int PERMISSION_CAMERA_REQUEST = 4;
 
     /**
+     * Permiso de la cámara.
+     */
+    private static final String[] PERMISSION_CAMERA = {Manifest.permission.CAMERA};
+
+    /**
      * Tipo de comisión seleccionada.
      */
     @IntVal({FEE_NORMAL, FEE_FAST, FEE_CUSTOM})
@@ -197,6 +202,10 @@ public class SendPaymentsActivity extends LockableActivity {
         }
     };
 
+    /**
+     * Indica si existe una petición de permisos.
+     */
+    private boolean mOnRequestPermission;
 
     /**
      * Este método se ejecuta cuando se crea la actividad.
@@ -233,16 +242,16 @@ public class SendPaymentsActivity extends LockableActivity {
         mSendFeeCustomLayout.setHint(getString(R.string.fee_by_kb_pattern, asset.name()));
         mSendAmountLayout.setHint(getString(R.string.amount_pattern, asset.name()));
 
-        mSendAmountLayout.setEndIconOnClickListener(this::onCurrencyChange);
+        mSendAmountLayout.setEndIconOnClickListener(this::onCurrencyChanged);
         mSendAddressLayout.setEndIconOnClickListener(this::onScan);
 
         mWallet.addBalanceChangedListener(mHandler::post, mOnBalanceChangedConsumer);
-        mSendAddressText.addTextChangedListener((IAfterTextChangedListener) this::onAddressChange);
-        mSendAmountText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChange);
-        mSendFeeCustomText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChange);
+        mSendAddressText.addTextChangedListener((IAfterTextChangedListener) this::onAddressChanged);
+        mSendAmountText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChanged);
+        mSendFeeCustomText.addTextChangedListener((IAfterTextChangedListener) this::onAmountChanged);
 
         this.<MaterialButtonToggleGroup>requireView(R.id.mSendFeeSelector)
-                .addOnButtonCheckedListener(this::onFeeChange);
+                .addOnButtonCheckedListener(this::onFeeChanged);
 
         InputFilter[] feeCustomFilters = {new DecimalsFilter(22, size)};
         mSendFeeCustomText.setFilters(feeCustomFilters);
@@ -254,6 +263,30 @@ public class SendPaymentsActivity extends LockableActivity {
 
         updateFilters();
         updateInfo();
+    }
+
+    /**
+     * Llama la actividad principal requiriendo que esta sea bloqueada.
+     */
+    @Override
+    protected void onResumeApp() {
+        if (!mOnRequestPermission)
+            super.onResumeApp();
+
+        mOnRequestPermission = false;
+    }
+
+    /**
+     * Este método es llamado cuando se sale de la aplicación.
+     */
+    @Override
+    public void onLeaveApp() {
+        super.onLeaveApp();
+
+        if (!mOnRequestPermission) return;
+
+        stopTimer();
+        unlockApp();
     }
 
     /**
@@ -280,9 +313,11 @@ public class SendPaymentsActivity extends LockableActivity {
                     getString(R.string.camera_permission_error),
                     Snackbar.LENGTH_SHORT
             ).setAction(R.string.request_text,
-                    v -> ActivityCompat.requestPermissions(this, new String[]{
-                            Manifest.permission.CAMERA
-                    }, PERMISSION_CAMERA_REQUEST)
+                    v -> {
+                        mOnRequestPermission = true;
+                        ActivityCompat.requestPermissions(this,
+                                PERMISSION_CAMERA, PERMISSION_CAMERA_REQUEST);
+                    }
             ).show();
         else
             startActivityForResult(new Intent(this, ScanQrActivity.class),
@@ -329,8 +364,12 @@ public class SendPaymentsActivity extends LockableActivity {
     private long parseToCrypto(String value) {
         final long amount = (long) (Utils.parseDouble(value) * mWallet.getCryptoAsset().getUnit());
 
+        long lastPrice = getWalletService().getLastPrice(mWallet.getCryptoAsset());
+
+        if (mIsFiat && lastPrice == 0) return 0;
+
         return mIsFiat
-                ? amount / getWalletService().getLastPrice(mWallet.getCryptoAsset()) : amount;
+                ? amount / lastPrice : amount;
     }
 
     /**
@@ -398,7 +437,7 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @param view Botón que invoca el método.
      */
-    private void onCurrencyChange(View view) {
+    private void onCurrencyChanged(View view) {
         Utils.tryNotThrow(() -> CheckableImageButton.class
                 .getMethod("setChecked", boolean.class).invoke(view, !mIsFiat));
 
@@ -433,7 +472,10 @@ public class SendPaymentsActivity extends LockableActivity {
     private long normalizeValue(long amount) {
         final long lastPrice = getWalletService().getLastPrice(mWallet.getCryptoAsset());
 
-        return mIsFiat ? amount * lastPrice : amount / lastPrice;
+        if (amount == 0 || (lastPrice == 0 && mIsFiat)) return 0;
+
+        return mIsFiat ? amount * lastPrice / mWallet.getCryptoAsset().getUnit()
+                : mWallet.getCryptoAsset().getUnit() * amount / lastPrice;
     }
 
     /**
@@ -453,7 +495,7 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @param address Dirección nueva.
      */
-    private void onAddressChange(Editable address) {
+    private void onAddressChanged(Editable address) {
         mHasValidAddressError = !mWallet.isValidAddress(address.toString());
 
         if (mHasValidAddressError && !Strings.isNullOrEmpty(address.toString()))
@@ -470,7 +512,7 @@ public class SendPaymentsActivity extends LockableActivity {
      *
      * @param ignored Cantidad nueva (ignorada en el método).
      */
-    private void onAmountChange(Editable ignored) {
+    private void onAmountChanged(Editable ignored) {
         checkEnoughtBalance();
     }
 
@@ -481,7 +523,7 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param checkedId Identificador del botón que esta cambiando su estado "checked".
      * @param isChecked Indica si el botón está seleccionado ("checked").
      */
-    private void onFeeChange(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
+    private void onFeeChanged(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
         if (!isChecked) return;
 
         mSendFeeCustomLayout.setVisibility(checkedId == R.id.mSendFeeCustomButton
