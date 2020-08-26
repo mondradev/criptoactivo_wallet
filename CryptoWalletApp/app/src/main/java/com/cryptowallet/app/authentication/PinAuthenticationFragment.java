@@ -63,7 +63,7 @@ import java.util.concurrent.Executors;
  * de los valores del PIN requerido para la autenticación del usuario.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.0
+ * @version 2.1
  * @see PinAuthenticationMode
  */
 public class PinAuthenticationFragment extends BottomSheetDialogFragment {
@@ -171,7 +171,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
         this.mHandler = new Handler(Looper.getMainLooper());
         this.mPinDigits = new ArrayList<>();
         this.mAuthenticatorExecutor = Executors.newSingleThreadExecutor();
-
         this.mLifecycleObserver = new LifecycleObserver() {
 
             @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
@@ -180,6 +179,8 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
             }
 
         };
+        this.mAuthenticatorExecutor.execute(() -> Thread.currentThread().setName("Authenticator"));
+        this.mAuthenticatorExecutor.execute(Looper::prepare);
     }
 
     /**
@@ -232,10 +233,10 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                 .getLifecycle().addObserver(mLifecycleObserver);
 
         createNumericalKeyboard();
+        clearPinDigits();
 
         return view;
     }
-
 
     /**
      * Este método es llamado se crea una nueva instancia del diálogo.
@@ -282,9 +283,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                     if (row.getChildAt(j) instanceof Button)
                         row.getChildAt(j).setOnClickListener(this::onPressedNumberButton);
             }
-
-
-        clearPinDigits();
     }
 
     /**
@@ -327,6 +325,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
 
         if (mPosition == DIGITS)
             mHandler.postDelayed(() -> {
+
                 if (mPinConfirmation == null)
                     handleCompletedPin();
                 else {
@@ -335,7 +334,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                     else
                         handleFail();
                 }
-                mRoot.findViewById(R.id.mAuthKeyboardLayout).setEnabled(true);
             }, 100);
         else
             mRoot.findViewById(R.id.mAuthKeyboardLayout).setEnabled(true);
@@ -366,17 +364,19 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                 processing(() -> validatePin(mPin));
             else if (mPinConfirmation == null)
                 confirm();
-            else {
+            else
                 processing(() -> {
                     try {
                         byte[] token;
+
+                        AuthenticationHelper instance = AuthenticationHelper
+                                .getInstance(this.requireContext());
+
                         if (mMode == PinAuthenticationMode.UPDATE) {
-                            token = AuthenticationHelper.getInstance(this.requireContext())
-                                    .update(mAuthenticationToken, mPin);
+                            token = instance.update(mAuthenticationToken, mPin);
                             handleUpdate(token);
                         } else
-                            token = AuthenticationHelper.getInstance(this.requireContext())
-                                    .register(mPin);
+                            token = instance.register(mPin);
 
                         handleSuccess(token);
                     } catch (PinAuthenticationUpdateException ex) {
@@ -389,7 +389,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                                 "Unable to register PIN due to internal application error");
                     }
                 });
-            }
         else processing(() -> validatePin(mPin));
     }
 
@@ -413,17 +412,15 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      * @param command Comando a ejecutar.
      */
     private void processing(Runnable command) {
-        // TODO: Create animation for loadder
-
-        final Dialog dialog = Objects.requireNonNull(this.getDialog());
+        final Dialog dialog = requireDialog();
         dialog.setCanceledOnTouchOutside(false);
-        mRoot.findViewById(R.id.mAuthKeyboardLayout).setVisibility(View.GONE);
 
         mAuthenticatorExecutor.execute(() -> {
             command.run();
+
             mHandler.post(() -> {
                 dialog.setCanceledOnTouchOutside(true);
-                mRoot.findViewById(R.id.mAuthKeyboardLayout).setVisibility(View.VISIBLE);
+                mRoot.findViewById(R.id.mAuthKeyboardLayout).setEnabled(true);
             });
         });
     }
@@ -462,6 +459,8 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      * Esta función es llamada cuando el validador del PIN indica que no es correcto.
      */
     private void handleFail() {
+        startErrorAnimation();
+
         mHandler.post(() -> {
             mAttemp++;
 
@@ -480,8 +479,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
             if (caption == null)
                 throw new Resources.NotFoundException();
 
-            caption.setText(R.string.not_match_pin_error);
-
             clearPinDigits();
         });
     }
@@ -490,10 +487,27 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      * Esta función es llamada cuando ocurre un problema inrecuperable en el autenticador.
      */
     private void handleError(int code, String message) {
+        startErrorAnimation();
+
         mHandler.post(() -> {
             mExecutor.execute(() -> mAuthPinCallback.onAuthenticationError(code, message));
             dismiss();
         });
+    }
+
+    /**
+     * Inicia la animación de error en la entrada.
+     */
+    private void startErrorAnimation() {
+        final int[] stateSet = {android.R.attr.state_checked, android.R.attr.state_selected};
+
+        for (ImageView view : mPinDigits)
+            if (view == null)
+                throw new Resources.NotFoundException();
+            else
+                view.setImageState(stateSet, true);
+
+        Utils.tryNotThrow(() -> Thread.sleep(550));
     }
 
     /**
@@ -502,6 +516,8 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      * @param authenticationToken Token de autenticación.
      */
     private void handleSuccess(byte[] authenticationToken) {
+        startSuccessAnimation();
+
         mHandler.post(() -> {
             if (mMode == PinAuthenticationMode.UPDATE && mAuthenticationToken == null) {
                 mAuthenticationToken = authenticationToken;
@@ -515,13 +531,31 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
     }
 
     /**
+     * Inicia la animación de la entrada correcta.
+     */
+    private void startSuccessAnimation() {
+        final int[] stateSet = {android.R.attr.state_checked, android.R.attr.state_pressed};
+
+        for (ImageView view : mPinDigits) {
+            if (view == null)
+                throw new Resources.NotFoundException();
+            else
+                view.setImageState(stateSet, true);
+
+            Utils.tryNotThrow(() -> Thread.sleep(10));
+        }
+
+        Utils.tryNotThrow(() -> Thread.sleep(600));
+    }
+
+    /**
      * Establece el indicador de digito del pin en su color activo.
      *
      * @param pinDigit Indicador de digito.
      */
     private void fillPin(@NonNull ImageView pinDigit) {
-        pinDigit.setColorFilter(
-                Utils.resolveColor(mRoot.getContext(), R.attr.colorAccent));
+        final int[] stateSet = {android.R.attr.state_checked};
+        pinDigit.setImageState(stateSet, true);
     }
 
 
@@ -544,35 +578,37 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      * @param pinDigit Indicador de digito.
      */
     private void clearPin(@NonNull ImageView pinDigit) {
-        pinDigit.setColorFilter(
-                Utils.resolveColor(mRoot.getContext(), R.attr.colorOnSurface));
+        final int[] stateSet = {-android.R.attr.state_checked, -android.R.attr.state_selected};
+        pinDigit.setImageState(stateSet, true);
     }
 
     /**
      * Establece los inidicadores del pin en su color base.
      */
     private void clearPinDigits() {
-        for (ImageView view : mPinDigits)
-            if (view == null)
+        mHandler.post(() -> {
+            for (ImageView view : mPinDigits)
+                if (view == null)
+                    throw new Resources.NotFoundException();
+                else
+                    clearPin(view);
+
+            mPin = new byte[DIGITS];
+            mPosition = 0;
+
+            TextView caption = mRoot.findViewById(R.id.mAuthDescription);
+
+            if (caption == null)
                 throw new Resources.NotFoundException();
+
+            if (mPinConfirmation != null)
+                caption.setText(R.string.confirm_pin_text);
+            else if (mMode == PinAuthenticationMode.REGISTER
+                    || (mMode == PinAuthenticationMode.UPDATE && mAuthenticationToken != null))
+                caption.setText(R.string.new_pin);
             else
-                clearPin(view);
-
-        mPin = new byte[DIGITS];
-        mPosition = 0;
-
-        TextView caption = mRoot.findViewById(R.id.mAuthDescription);
-
-        if (caption == null)
-            throw new Resources.NotFoundException();
-
-        if (mPinConfirmation != null)
-            caption.setText(R.string.confirm_pin_text);
-        else if (mMode == PinAuthenticationMode.REGISTER
-                || (mMode == PinAuthenticationMode.UPDATE && mAuthenticationToken != null))
-            caption.setText(R.string.new_pin);
-        else
-            caption.setText(R.string.enter_pin);
+                caption.setText(R.string.enter_pin);
+        });
     }
 
 }

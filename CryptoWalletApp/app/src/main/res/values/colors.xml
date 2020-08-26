@@ -27,6 +27,8 @@
     <color name="lightSendTx">#F44336</color>
     <color name="lightReceiveTx">#4CAF50</color>
     <color name="lightPendingTx">#F44336</color>
+    <color name="lightSuccess">#00C976</color>
+    <color name="lightError">#FF273D</color>
 
     <!-- Dark Theme (TODO Dark theme colors) -->
     <color name="darkPrimary">#D32F2F</color>

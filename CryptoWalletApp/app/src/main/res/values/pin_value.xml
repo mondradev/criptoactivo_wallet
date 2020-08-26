@@ -16,17 +16,10 @@
   ~ limitations under the License.
   -->
 
+
 <resources>
-    <declare-styleable name="CustomAttr">
-        <attr name="fullScreenDialogTheme" format="reference" />
-        <attr name="pinKeyboardTheme" format="reference" />
-        <attr name="iconButtonStyle" format="reference" />
-        <attr name="toggleIconStyle" format="reference" />
-        <attr name="txEmptyListDrawable" format="reference" />
-        <attr name="colorSentTx" format="color" />
-        <attr name="colorReceivedTx" format="color" />
-        <attr name="colorPendingTx" format="color" />
-        <attr name="colorBackground" format="color" />
-        <attr name="colorSuccess" format="color" />
-    </declare-styleable>
+
+    <string name="checkable_radiobutton_ring_outer_path" translatable="false">M 0,0 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0</string>
+    <string name="checkable_radiobutton_dot_path" translatable="false">M 0,0 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0</string>
+
 </resources>

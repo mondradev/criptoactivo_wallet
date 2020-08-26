@@ -89,6 +89,8 @@
 
     <style name="AppTheme.PinKeyboard" parent="@style/AppTheme.BottomSheetDialog">
         <item name="borderlessButtonStyle">@style/AppTheme.PinKeyboard.Button</item>
+        <item name="colorSuccess">@color/lightSuccess</item>
+        <item name="colorError">@color/lightError</item>
     </style>
 
     <style name="AppTheme.PinKeyboard.Button" parent="AppTheme.Button.OnlyIcon">
@@ -168,5 +170,4 @@
     <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
-
 </resources>
