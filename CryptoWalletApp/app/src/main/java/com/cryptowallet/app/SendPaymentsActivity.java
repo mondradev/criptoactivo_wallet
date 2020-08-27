@@ -64,6 +64,8 @@ import com.google.common.base.Strings;
 import org.checkerframework.common.value.qual.IntVal;
 
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Actividad que permite el envío de pagos, también ofrece leer códigos QR que almacenan un URI
@@ -103,88 +105,75 @@ public class SendPaymentsActivity extends LockableActivity {
      * Permiso de la cámara.
      */
     private static final String[] PERMISSION_CAMERA = {Manifest.permission.CAMERA};
-
+    /**
+     *
+     */
+    private final ExecutorService mSendExecutor;
     /**
      * Tipo de comisión seleccionada.
      */
     @IntVal({FEE_NORMAL, FEE_FAST, FEE_CUSTOM})
     private int mFeeType;
-
     /**
      * Indica si se está visualizando cantidades en dinero fiduciario.
      */
     private boolean mIsFiat;
-
     /**
      * Indica si hay un error de saldo.
      */
     private boolean mHasEnoughtBalanceError;
-
     /**
      * Indica si hay un error en la dirección.
      */
     private boolean mHasValidAddressError;
-
     /**
      * Billetera que realiza el envío.
      */
     private AbstractWallet mWallet;
-
     /**
      * Handler del proceso principal.
      */
     private Handler mHandler;
-
     /**
      * Cuadro de texto para cantidad.
      */
     private EditText mSendAmountText;
-
     /**
      * Cuadro de texto para dirección.
      */
     private EditText mSendAddressText;
-
     /**
      * Contenedor del cuadro de texto para la dirección.
      */
     private TextInputLayout mSendAmountLayout;
-
     /**
      * Contenedor del cuadro de texto para la cantidad.
      */
     private TextInputLayout mSendAddressLayout;
-
     /**
      * Total de comisión a pagar.
      */
     private TextView mSendTotalFeeText;
-
     /**
      * Saldo actual de la billetera.
      */
     private TextView mSendCurrentBalanceText;
-
     /**
      * Total a pagar.
      */
     private TextView mSendTotalPayText;
-
     /**
      * Cuadro de texto para la comisión personalizada.
      */
     private EditText mSendFeeCustomText;
-
     /**
      * Contenedor del cuadro de texto para la comisión personalizada.
      */
     private TextInputLayout mSendFeeCustomLayout;
-
     /**
      * Consumidor del evento de saldo ha cambiado.
      */
     private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
-
     /**
      * Receptor del evento {@link Constants#NEW_TRANSACTION}
      */
@@ -201,11 +190,17 @@ public class SendPaymentsActivity extends LockableActivity {
             mHandler.post(() -> mOnBalanceChangedConsumer.accept(mWallet));
         }
     };
-
     /**
      * Indica si existe una petición de permisos.
      */
     private boolean mOnRequestPermission;
+
+    /**
+     *
+     */
+    public SendPaymentsActivity() {
+        this.mSendExecutor = Executors.newCachedThreadPool();
+    }
 
     /**
      * Este método se ejecuta cuando se crea la actividad.
@@ -649,18 +644,38 @@ public class SendPaymentsActivity extends LockableActivity {
      * @param authenticationToken Token de autenticación de la billetera.
      */
     public void sendCoins(ITransaction tx, byte[] authenticationToken) {
-        ProgressDialog.show(SendPaymentsActivity.this);
+        findViewById(R.id.mSendProgress).setVisibility(View.VISIBLE);
+        setEnabledInput(false);
 
-        final boolean sent = mWallet.sendTx(tx, authenticationToken);
+        mSendExecutor.submit(() -> {
+            final boolean sent = mWallet.sendTx(tx, authenticationToken);
 
-        ProgressDialog.hide();
+            mHandler.post(() -> {
+                findViewById(R.id.mSendProgress).setVisibility(View.GONE);
 
-        if (sent)
-            SuccessfulPaymentFragment.show(this, tx,
-                    getWalletService().getLastPrice(mWallet.getCryptoAsset()));
-        else
-            FailMessageFragment.show(this,
-                    getString(R.string.fail_to_send_tx_error));
+                if (sent)
+                    SuccessfulPaymentFragment.show(this, tx,
+                            getWalletService().getLastPrice(mWallet.getCryptoAsset()));
+                else {
+                    FailMessageFragment.show(this,
+                            getString(R.string.fail_to_send_tx_error));
+                    setEnabledInput(true);
+                }
+            });
+
+        });
+    }
+
+    /**
+     * Establece si las vistas de entrada de datos están activas.
+     *
+     * @param enabled True para activar y false para desactivar.
+     */
+    private void setEnabledInput(boolean enabled) {
+        findViewById(R.id.mSendToAddress).setEnabled(enabled);
+        findViewById(R.id.mSendAmount).setEnabled(enabled);
+        findViewById(R.id.mSendFeeCustom).setEnabled(enabled);
+        findViewById(R.id.mSendPayButton).setEnabled(enabled);
     }
 
     /**

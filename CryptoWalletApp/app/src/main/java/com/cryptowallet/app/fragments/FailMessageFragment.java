@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,6 +31,8 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 /**
@@ -81,5 +84,21 @@ public class FailMessageFragment extends BottomSheetDialogFragment {
         root.<TextView>findViewById(R.id.mFailMessage).setText(arguments.getString(Constants.EXTRA_MESSAGE));
 
         return root;
+    }
+
+    /**
+     * Este método es llamado se crea una nueva instancia del diálogo.
+     */
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+
+        final BottomSheetDialog sheetDialog
+                = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+
+        sheetDialog.setOnShowListener(dialog -> ((BottomSheetDialog) dialog).getBehavior()
+                .setState(BottomSheetBehavior.STATE_EXPANDED));
+
+        return sheetDialog;
     }
 }

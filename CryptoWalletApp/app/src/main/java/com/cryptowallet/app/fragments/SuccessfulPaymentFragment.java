@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -41,6 +42,8 @@ import com.cryptowallet.app.Preferences;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.common.base.Joiner;
 
@@ -105,6 +108,22 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
         SuccessfulPaymentFragment fragment = new SuccessfulPaymentFragment();
         fragment.setArguments(parameters);
         fragment.show(activity.getSupportFragmentManager(), TAG_FRAGMENT);
+    }
+
+    /**
+     * Este método es llamado se crea una nueva instancia del diálogo.
+     */
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+
+        final BottomSheetDialog sheetDialog
+                = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+
+        sheetDialog.setOnShowListener(dialog -> ((BottomSheetDialog) dialog).getBehavior()
+                .setState(BottomSheetBehavior.STATE_EXPANDED));
+
+        return sheetDialog;
     }
 
     /**
