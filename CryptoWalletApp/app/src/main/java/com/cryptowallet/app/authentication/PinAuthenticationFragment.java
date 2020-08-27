@@ -277,7 +277,6 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
         if (mPosition == DIGITS)
             return;
 
-        setEnabledKeyboard(false);
         TextView caption = mRoot.findViewById(R.id.mAuthDescription);
 
         if (caption == null)
@@ -294,7 +293,9 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
 
         mPosition++;
 
-        if (mPosition == DIGITS)
+        if (mPosition == DIGITS) {
+            setEnabledKeyboard(false);
+
             if (mPinConfirmation == null)
                 handleCompletedPin();
             else {
@@ -303,8 +304,8 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                 else
                     mAuthenticatorExecutor.execute(this::handleFail);
             }
-        else
-            mHandler.postDelayed(() -> setEnabledKeyboard(true), 100);
+        } else
+            setEnabledKeyboard(true);
     }
 
     /**
