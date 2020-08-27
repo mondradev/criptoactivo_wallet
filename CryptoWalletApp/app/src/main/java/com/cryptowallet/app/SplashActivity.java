@@ -193,6 +193,7 @@ public final class SplashActivity extends AppCompatActivity {
              */
             @Override
             public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                finishAffinity();
                 finishAndRemoveTask();
             }
         };
