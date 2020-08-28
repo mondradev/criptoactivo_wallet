@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<resources>
+
+    <!-- Dark theme -->
+    <style name="AppTheme.Dark" parent="Theme.MaterialComponents">
+        <item name="colorPrimary">@color/darkPrimary</item>
+        <item name="colorPrimaryDark">@color/darkDarkPrimary</item>
+        <item name="colorAccent">@color/darkAccent</item>
+        <item name="colorBackground">@color/darkBackground</item>
+        <item name="colorSurface">@color/darkSurface</item>
+        <item name="colorPendingTx">@color/colorPendingTx</item>
+        <item name="colorReceivedTx">@color/colorReceiveTx</item>
+        <item name="colorSentTx">@color/colorSendTx</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
+
+        <item name="txEmptyListDrawable">@drawable/ic_txemptylist</item>
+
+        <item name="bottomSheetDialogTheme">@style/AppTheme.Dark.BottomSheetDialog</item>
+        <item name="pinKeyboardTheme">@style/AppTheme.Dark.PinKeyboard</item>
+        <item name="fullScreenDialogTheme">@style/AppTheme.Dark.FullScreenDialog</item>
+
+        <item name="borderlessButtonStyle">@style/Widget.MaterialComponents.Button.TextButton</item>
+        <item name="iconButtonStyle">@style/AppTheme.Dark.Button.OnlyIcon</item>
+        <item name="toggleIconStyle">@style/AppTheme.Dark.Button.ToggleIcon</item>
+    </style>
+
+    <style name="AppTheme.Dark.Button.OnlyIcon" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">48dp</item>
+        <item name="cornerRadius">48dp</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconTint">@color/sl_color_onsurface</item>
+        <item name="iconGravity">textEnd</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+    </style>
+
+    <style name="AppTheme.Dark.Button.ToggleIcon" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="iconPadding">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+        <item name="android:minWidth">48dp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="AppTheme.Dark.BottomSheetDialog" parent="@style/Theme.MaterialComponents.BottomSheetDialog">
+        <item name="colorAccent">@color/darkAccent</item>
+        <item name="colorPrimary">@color/darkPrimary</item>
+        <item name="colorPrimaryDark">@color/darkDarkPrimary</item>
+        <item name="bottomSheetStyle">@style/AppTheme.Dark.BottomSheet</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
+
+    <style name="AppTheme.Dark.BottomSheet" parent="@style/Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@drawable/bg_material_bottom_sheet</item>
+        <item name="android:backgroundTint">?attr/colorSurface</item>
+    </style>
+
+    <style name="AppTheme.Dark.PinKeyboard" parent="@style/AppTheme.Dark.BottomSheetDialog">
+        <item name="borderlessButtonStyle">@style/AppTheme.Dark.PinKeyboard.Button</item>
+        <item name="colorSuccess">@color/colorPinSuccess</item>
+    </style>
+
+    <style name="AppTheme.Dark.PinKeyboard.Button" parent="AppTheme.Dark.Button.OnlyIcon">
+        <item name="iconTint">?attr/colorPrimary</item>
+        <item name="cornerRadius">100dp</item>
+
+        <item name="android:textAppearance">?attr/textAppearanceHeadline4</item>
+    </style>
+
+    <style name="AppTheme.Dark.FullScreenDialog" parent="Theme.MaterialComponents.Dialog">
+        <item name="colorAccent">@color/darkAccent</item>
+        <item name="colorPrimary">@color/darkPrimary</item>
+        <item name="colorPrimaryDark">@color/darkDarkPrimary</item>
+        <item name="actionMenuTextColor">@color/darkAccent</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+
+    <!-- Dark colors -->
+    <color name="darkPrimary">#D32F2F</color>
+    <color name="darkDarkPrimary">#B71C1C</color>
+    <color name="darkAccent">#009688</color>
+    <color name="darkBackground">#121212</color>
+    <color name="darkSurface">#1E1E1E</color>
+
+</resources>
