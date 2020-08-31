@@ -81,6 +81,9 @@ public final class SplashActivity extends AppCompatActivity {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        if (savedInstanceState == null)
+            this.setupApp();
+
         WalletProvider.initialize(this);
 
         setContentView(R.layout.activity_splashscreen);
@@ -92,9 +95,6 @@ public final class SplashActivity extends AppCompatActivity {
 
         icon.setImageResource(R.drawable.ic_cryptowallet);
         caption.setText(R.string.copyright);
-
-        if (savedInstanceState == null)
-            this.setupApp();
 
         mAuthenticationCallback = createAuthenticationCallback();
 
@@ -136,6 +136,7 @@ public final class SplashActivity extends AppCompatActivity {
     private void setupApp() {
         LockableActivity.registerMainActivityClass(SplashActivity.class);
         Preferences.get(this).loadLanguage(this);
+        Preferences.get().loadTheme(this);
 
         Log.d(LOG_TAG, "App is ready");
     }

@@ -116,7 +116,7 @@ public class ProgressDialog extends DialogFragment {
      */
     @Override
     public int getTheme() {
-        return Utils.resolveStyle(requireContext(), R.attr.fullScreenDialogTheme);
+        return Utils.resolveStyle(requireActivity(), R.attr.fullScreenDialogTheme);
     }
 
     /**

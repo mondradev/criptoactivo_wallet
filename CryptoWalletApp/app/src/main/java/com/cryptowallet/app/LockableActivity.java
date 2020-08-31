@@ -90,8 +90,19 @@ public abstract class LockableActivity extends AppCompatActivity {
      */
     private static boolean mLocked;
 
+    /**
+     *
+     */
     private static Runnable mOnResume;
+
+    /**
+     *
+     */
     private static Runnable mOnPause;
+
+    /**
+     *
+     */
     private static LifecycleObserver mLifecycleObserver;
 
     /**

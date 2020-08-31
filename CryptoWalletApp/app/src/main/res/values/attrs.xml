@@ -28,5 +28,6 @@
         <attr name="colorPendingTx" format="color" />
         <attr name="colorBackground" format="color" />
         <attr name="colorSuccess" format="color" />
+        <attr name="colorSplashBackground" format="color" />
     </declare-styleable>
 </resources>
