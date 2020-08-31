@@ -159,9 +159,11 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         startActivityForResult(intent, CONFIGURE_2FA_REQUEST);
                     });
         else {
-            // TODO Show Dialog 2FA
-            TwoFactorAuthentication.get(requireContext()).reset();
-            return true;
+            TwoFactorAuthenticationFragment.show(requireActivity(),
+                    () -> {
+                        TwoFactorAuthentication.get(requireContext()).reset();
+                        ((SwitchPreference) preference).setChecked(false);
+                    });
         }
 
         return false;

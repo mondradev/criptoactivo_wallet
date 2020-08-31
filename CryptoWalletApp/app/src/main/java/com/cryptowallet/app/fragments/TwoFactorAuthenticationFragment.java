@@ -21,11 +21,13 @@ package com.cryptowallet.app.fragments;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.os.Bundle;
-import android.text.InputFilter;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -42,7 +44,9 @@ import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -63,12 +67,17 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
     private static final String TAG_FRAGMENT = "TwoFactorAuthenticationFragment";
 
     /**
+     *
+     */
+    private static final int MAX_LENGTH = 1;
+
+    /**
      * Identificadores de los digitos del código de autenticación.
      */
-    private final int[] mDigitsAuthCode = new int[]{
+    private final List<Integer> mDigitsAuthCode = Lists.newArrayList(
             R.id.m2FaCodeDigit1, R.id.m2FaCodeDigit2, R.id.m2FaCodeDigit3,
             R.id.m2FaCodeDigit4, R.id.m2FaCodeDigit5, R.id.m2FaCodeDigit6
-    };
+    );
 
     /**
      * Observador del ciclo de vida de la aplicación.
@@ -84,6 +93,16 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
      * Función para indicar que se autenticó.
      */
     private IAuthenticationSucceeded mSuccededCallback;
+
+    /**
+     *
+     */
+    private ViewTreeObserver.OnWindowFocusChangeListener mWindowFocusListener;
+
+    /**
+     *
+     */
+    private View mRoot;
 
     /**
      * Crea una instancia nueva del autenticador.
@@ -112,27 +131,42 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
     public View onCreateView(LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View root = inflater.inflate(R.layout.bsd_authenticator_2fa, container, false);
+        mRoot = inflater.inflate(R.layout.bsd_authenticator_2fa, container, false);
 
-        if (root == null)
+        if (mRoot == null)
             throw new UnsupportedOperationException();
 
-        root.findViewById(R.id.m2FaSubmitButton).setOnClickListener(this::onSubmit);
+        mRoot.findViewById(R.id.m2FaSubmitButton).setOnClickListener(this::onSubmit);
 
-        for (int id : mDigitsAuthCode) {
-            final EditText editor = requireEditTextById(root, id);
+        configureEditText();
 
-            editor.addTextChangedListener((IAfterTextChangedListener) s -> {
-                for (InputFilter filter : editor.getFilters())
-                    if (filter instanceof InputFilter.LengthFilter)
-                        if (s.length() == ((InputFilter.LengthFilter) filter).getMax()) {
-                            View view = editor.focusSearch(View.FOCUS_RIGHT);
+        mWindowFocusListener = focused -> {
+            if (!focused || !mOnPause) return;
 
-                            if (view != null)
-                                view.requestFocus();
-                        }
-            });
-        }
+            mOnPause = false;
+
+            ClipboardManager clipboard = (ClipboardManager) requireActivity()
+                    .getSystemService(CLIPBOARD_SERVICE);
+
+            if (clipboard == null) return;
+
+            ClipData clipData = clipboard.getPrimaryClip();
+
+            if (clipData == null) return;
+            if (clipData.getItemCount() == 0) return;
+
+            CharSequence text = clipData.getItemAt(0)
+                    .coerceToText(TwoFactorAuthenticationFragment.this.requireContext());
+
+            if (text.length() != 6)
+                return;
+
+            if (!Pattern.matches("[0-9]{6}", text)) return;
+
+            for (int i = 0; i < mDigitsAuthCode.size(); i++)
+                requireEditTextById(mRoot, mDigitsAuthCode.get(i))
+                        .setText(Character.toString(text.charAt(i)));
+        };
 
         mLifeCycleObserver = new LifecycleObserver() {
 
@@ -148,41 +182,63 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
                 }
             }
 
-            @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-            public void onResumen() {
-                if (!mOnPause) return;
-
-                mOnPause = false;
-
-                ClipboardManager clipboard = (ClipboardManager) requireActivity()
-                        .getSystemService(CLIPBOARD_SERVICE);
-
-                if (clipboard == null) return;
-
-                ClipData clipData = clipboard.getPrimaryClip();
-
-                if (clipData == null) return;
-                if (clipData.getItemCount() == 0) return;
-
-                CharSequence text = clipData.getItemAt(0)
-                        .coerceToText(requireContext());
-
-                if (text.length() != 6)
-                    return;
-
-                if (!Pattern.matches("[0-9]{6}", text)) return;
-
-                for (int i = 0; i < mDigitsAuthCode.length; i++)
-                    requireEditTextById(root, mDigitsAuthCode[i])
-                            .setText(Character.toString(text.charAt(i)));
-            }
-
         };
 
         ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifeCycleObserver);
+        mRoot.getViewTreeObserver().addOnWindowFocusChangeListener(mWindowFocusListener);
 
-        return root;
+        return mRoot;
     }
+
+    private void configureEditText() {
+        for (int id : mDigitsAuthCode) {
+            final EditText editor = requireEditTextById(mRoot, id);
+
+            editor.addTextChangedListener((IAfterTextChangedListener) s -> {
+                final int lenght = s.length();
+
+                if (lenght > MAX_LENGTH) {
+                    editor.setText(s.subSequence(0, MAX_LENGTH));
+
+                    EditText view = (EditText) editor.focusSearch(View.FOCUS_RIGHT);
+
+                    if (view == null) return;
+
+                    view.setText(s.subSequence(MAX_LENGTH, s.length()));
+                } else if (lenght == MAX_LENGTH && editor.hasFocus()) {
+                    editor.setSelection(editor.getText().length());
+
+                    EditText view = (EditText) editor.focusSearch(View.FOCUS_RIGHT);
+
+                    if (view != null) {
+                        view.requestFocus();
+                        view.setSelection(view.getText().length());
+                    }
+                }
+            });
+
+            editor.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_UP && keyCode == KeyEvent.KEYCODE_DEL) {
+                    CharSequence text = ((TextView) v).getText();
+                    if (!Objects.toString(text).isEmpty()) return false;
+
+                    final int currentIndex = mDigitsAuthCode.indexOf(v.getId());
+
+                    if (currentIndex <= 0) return false;
+
+                    final int idView = mDigitsAuthCode.get(currentIndex - 1);
+
+                    final EditText editText = mRoot.findViewById(idView);
+
+                    editText.requestFocus();
+                    editText.setSelection(editText.getText().length());
+                }
+
+                return false;
+            });
+        }
+    }
+
 
     /**
      * Este método es llamado cuando la actividad es destruída.
@@ -192,6 +248,7 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
         super.onDestroy();
 
         ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifeCycleObserver);
+        mRoot.getViewTreeObserver().removeOnWindowFocusChangeListener(mWindowFocusListener);
     }
 
     /**
@@ -222,9 +279,9 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
 
             requireEditTextById(requireView(), R.id.m2FaCodeDigit1).requestFocus();
 
-            Snackbar.make((View) requireView().findViewById(R.id.m2FaRegisterButton).getParent(),
-                    R.string.error_msg_auth_code,
-                    Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(requireView(), R.string.error_msg_auth_code, Snackbar.LENGTH_SHORT)
+                    .setAnchorView(requireView())
+                    .show();
         }
     }
 

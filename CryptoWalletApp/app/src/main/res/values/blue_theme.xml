@@ -67,8 +67,6 @@
 
     <style name="AppTheme.Blue.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
         <item name="android:background">@color/blueCardBackground</item>
-        <item name="colorSurface">#0000FF</item>
-        <item name="colorPrimary">#FF0000</item>
     </style>
 
     <!-- Blue colors -->

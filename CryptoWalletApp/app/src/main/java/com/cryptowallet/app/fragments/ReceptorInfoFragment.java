@@ -154,14 +154,12 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
                         requireArguments().getString(Constants.EXTRA_ADDRESS));
                 clipboard.setPrimaryClip(data);
 
-                Snackbar snackbar = Snackbar.make(
+                Snackbar.make(
                         requireView(),
                         R.string.address_copy_to_clipboard_text,
                         Snackbar.LENGTH_SHORT
-                );
-
-                snackbar.setAnchorView(requireView());
-                snackbar.show();
+                ).setAnchorView(requireView())
+                        .show();
 
                 break;
 
