@@ -26,6 +26,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -162,6 +163,8 @@ public final class TransactionHistoryAdapter
 
         if (getItemCount() > 0)
             hideEmptyView();
+        else
+            showEmptyView();
 
         notifyChanged();
     }
@@ -308,7 +311,7 @@ public final class TransactionHistoryAdapter
             final String yesterdayText = itemView.getContext().getString(R.string.yesterday_text);
 
             icon.setImageResource(mItem.getWallet().getIcon());
-            iconKindFore.setBackground(itemView.getContext().getDrawable(getKindIcon()));
+            iconKindFore.setBackground(ContextCompat.getDrawable(itemView.getContext(), getKindIcon()));
             iconKindBack.setBackgroundTintList(ColorStateList.valueOf(getKindColor()));
             operationKind.setText(getKindLabel());
             status.setVisibility(mItem.isConfirm() ? View.GONE : View.VISIBLE);
