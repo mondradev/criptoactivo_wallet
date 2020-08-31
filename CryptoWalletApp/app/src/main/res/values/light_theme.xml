@@ -80,6 +80,7 @@
     <style name="AppTheme.PinKeyboard" parent="@style/AppTheme.BottomSheetDialog">
         <item name="borderlessButtonStyle">@style/AppTheme.PinKeyboard.Button</item>
         <item name="colorSuccess">@color/colorPinSuccess</item>
+        <item name="colorError">@color/colorPinError</item>
     </style>
 
     <style name="AppTheme.PinKeyboard.Button" parent="AppTheme.Button.OnlyIcon">
