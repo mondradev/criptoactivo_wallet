@@ -75,7 +75,7 @@ public class TxBottomSheetDialogActivity extends LockableActivity {
 
         final SupportedAssets asset = SupportedAssets.valueOf(assetName);
 
-        TransactionFragment.show(this, asset, txid);
+        TransactionFragment.show(this, asset, txid, (dialog) -> finishAndRemoveTask());
     }
 
 }

@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -48,7 +49,7 @@ import java.text.NumberFormat;
  * transacción.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 1.0
+ * @version 1.1
  */
 public class TransactionFragment extends BottomSheetDialogFragment {
 
@@ -63,13 +64,27 @@ public class TransactionFragment extends BottomSheetDialogFragment {
     private static final String ALMOST_EQUAL_TO = "≈";
 
     /**
+     * Escucha que será invocado cuando se oculta el fragmento.
+     */
+    private final DialogInterface.OnDismissListener mListener;
+
+    /**
+     * Crea una nueva instancia del fragmento.
+     *
+     * @param listener Escucha que se invocará cuando el fragmento es ocultado.
+     */
+    private TransactionFragment(DialogInterface.OnDismissListener listener) {
+        mListener = listener;
+    }
+
+    /**
      * Muestra un cuadro de diálogo inferior con los datos de recepción de la billetera.
      *
      * @param activity Actividad que invoca.
      * @param asset    Activo de la billetera.
      */
     public static void show(@NonNull FragmentActivity activity, @NonNull SupportedAssets asset,
-                            @NonNull String txid) {
+                            @NonNull String txid, DialogInterface.OnDismissListener listener) {
         if (Strings.isNullOrEmpty(txid))
             throw new IllegalArgumentException("TxId must be not null or empty");
 
@@ -77,9 +92,21 @@ public class TransactionFragment extends BottomSheetDialogFragment {
         parameters.putCharSequence(Constants.EXTRA_CRYPTO_ASSET, asset.name());
         parameters.putCharSequence(Constants.EXTRA_TXID, txid);
 
-        TransactionFragment fragment = new TransactionFragment();
+        TransactionFragment fragment = new TransactionFragment(listener);
         fragment.setArguments(parameters);
         fragment.show(activity.getSupportFragmentManager(), TAG_FRAGMENT);
+    }
+
+
+    /**
+     * Muestra un cuadro de diálogo inferior con los datos de recepción de la billetera.
+     *
+     * @param activity Actividad que invoca.
+     * @param asset    Activo de la billetera.
+     */
+    public static void show(@NonNull FragmentActivity activity, @NonNull SupportedAssets asset,
+                            @NonNull String txid) {
+        show(activity, asset, txid, null);
     }
 
     /**
@@ -166,4 +193,11 @@ public class TransactionFragment extends BottomSheetDialogFragment {
         return root;
     }
 
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+
+        if (mListener != null)
+            mListener.onDismiss(dialog);
+    }
 }

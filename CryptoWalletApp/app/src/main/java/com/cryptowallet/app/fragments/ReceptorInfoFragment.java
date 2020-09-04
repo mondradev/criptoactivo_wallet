@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -41,6 +42,8 @@ import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.AbstractWallet;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -185,6 +188,19 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
 
                 break;
         }
+    }
+
+    /**
+     * Este método es llamado se crea una nueva instancia del diálogo.
+     */
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+        final BottomSheetDialog sheetDialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+        sheetDialog.setOnShowListener(dialog -> ((BottomSheetDialog) dialog).getBehavior()
+                .setState(BottomSheetBehavior.STATE_EXPANDED));
+
+        return sheetDialog;
     }
 
     /**
