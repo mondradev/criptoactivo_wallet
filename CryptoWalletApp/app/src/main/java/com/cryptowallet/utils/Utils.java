@@ -370,7 +370,7 @@ public final class Utils {
      */
     public static long cryptoToFiat(long amount, SupportedAssets cryptoAsset,
                                     long price, SupportedAssets fiatAsset) {
-        return (amount * price) / (cryptoAsset.getUnit() * fiatAsset.getUnit());
+        return (amount * price) / cryptoAsset.getUnit();
     }
 
     /**

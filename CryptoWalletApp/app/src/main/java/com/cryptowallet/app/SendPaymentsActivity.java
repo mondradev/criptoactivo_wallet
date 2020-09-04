@@ -357,14 +357,18 @@ public class SendPaymentsActivity extends LockableActivity {
      * @return Valor en criptoactivo.
      */
     private long parseToCrypto(String value) {
-        final long amount = (long) (Utils.parseDouble(value) * mWallet.getCryptoAsset().getUnit());
+        double amount = Utils.parseDouble(value);
+
+        if (!mIsFiat)
+            return (long) (amount * mWallet.getCryptoAsset().getUnit());
 
         long lastPrice = getWalletService().getLastPrice(mWallet.getCryptoAsset());
 
-        if (mIsFiat && lastPrice == 0) return 0;
+        if (lastPrice == 0) return 0;
 
-        return mIsFiat
-                ? amount / lastPrice : amount;
+        double fiat = amount * Preferences.get().getFiat().getUnit() / lastPrice;
+
+        return Math.round(fiat * mWallet.getCryptoAsset().getUnit());
     }
 
     /**
@@ -393,10 +397,12 @@ public class SendPaymentsActivity extends LockableActivity {
             final long lastPrice = getWalletService().getLastPrice(mWallet.getCryptoAsset());
 
             mSendTotalFeeText.setText(asset.toStringFriendly(
-                    mIsFiat ? fee * lastPrice : fee, false));
+                    mIsFiat ? Math.round((double) fee / mWallet.getCryptoAsset().getUnit() * lastPrice)
+                            : fee, false));
 
             mSendTotalPayText.setText(asset.toStringFriendly(
-                    mIsFiat ? total * lastPrice : total, false));
+                    mIsFiat ? Math.round((double) total / mWallet.getCryptoAsset().getUnit() * lastPrice)
+                            : total, false));
 
         } catch (InvalidFeeException ex) {
             mSendFeeCustomLayout.setError(ex.getMessageRes(getResources()));
