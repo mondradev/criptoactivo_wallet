@@ -281,24 +281,23 @@ public final class Preferences {
     /**
      * Habilita el lenguaje especificado.
      *
-     * @param activity    Actividad que habilita el idioma.
+     * @param context     Actividad que habilita el idioma.
      * @param languageTag Etiqueta del lenguaje a utilizar.
      */
-    private void enableLanguage(FragmentActivity activity, String languageTag) {
+    private Context enableLanguage(Context context, String languageTag) {
         if (!mLanguageMap.containsKey(languageTag))
             throw new IllegalArgumentException(languageTag + " don't supported");
 
         Log.d(TAG, "Loading language " + languageTag);
 
-        Locale locale = Locale.forLanguageTag(languageTag);
+        final Locale locale = Locale.forLanguageTag(languageTag);
         Locale.setDefault(locale);
 
-        Configuration config = new Configuration();
-        config.setLocale(locale);
-        config.setLayoutDirection(locale);
+        Configuration configuration = context.getResources().getConfiguration();
+        configuration.setLocale(locale);
+        configuration.setLayoutDirection(locale);
 
-        activity.getResources()
-                .updateConfiguration(config, activity.getResources().getDisplayMetrics());
+        return context.createConfigurationContext(configuration);
     }
 
     /**
@@ -313,10 +312,10 @@ public final class Preferences {
     /**
      * Carga el lenguaje guardado en la configuración.
      *
-     * @param activity Actividad que cargará el idioma.
+     * @param context Contexto de la aplicación.
      */
-    void loadLanguage(FragmentActivity activity) {
-        enableLanguage(activity, getLanguage().getTag());
+    Context loadLanguage(Context context) {
+        return enableLanguage(context, getLanguage().getTag());
     }
 
     /**

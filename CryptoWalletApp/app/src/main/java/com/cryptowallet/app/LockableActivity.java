@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -60,7 +61,7 @@ import java.util.Objects;
  * enviando a la actividad principal cada vez que se suspenda la aplicación.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.1
+ * @version 2.2
  */
 // TODO Fix lifecycle, don't recovery state
 public abstract class LockableActivity extends AppCompatActivity {
@@ -182,6 +183,17 @@ public abstract class LockableActivity extends AppCompatActivity {
      */
     public WalletProvider getWalletService() {
         return WalletProvider.getInstance();
+    }
+
+    /**
+     * Este método es llamado cuando el contexto es adjuntado a la actividad. Se carga el idioma
+     * elegido por el usuario que se usará en la aplicación.
+     *
+     * @param newBase Contexto base.
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(Preferences.get(this).loadLanguage(newBase));
     }
 
     /**

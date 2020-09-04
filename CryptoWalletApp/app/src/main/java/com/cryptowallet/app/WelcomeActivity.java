@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -39,7 +40,7 @@ import java.util.Objects;
  * palabras.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.0
+ * @version 2.1
  */
 public class WelcomeActivity extends AppCompatActivity implements DialogInterface.OnClickListener {
 
@@ -56,11 +57,23 @@ public class WelcomeActivity extends AppCompatActivity implements DialogInterfac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Preferences.get().loadTheme(this);
 
         Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_welcome);
 
         mWalletProvider = WalletProvider.getInstance();
+    }
+
+    /**
+     * Este método es llamado cuando el contexto es adjuntado a la actividad. Se carga el idioma
+     * elegido por el usuario que se usará en la aplicación.
+     *
+     * @param newBase Contexto base.
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(Preferences.get(this).loadLanguage(newBase));
     }
 
     /**

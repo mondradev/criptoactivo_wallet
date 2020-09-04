@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,7 +49,7 @@ import javax.annotation.Nullable;
  * la aplicación y las configuraciones del usuario.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.0
+ * @version 2.1
  */
 public final class SplashActivity extends AppCompatActivity {
 
@@ -135,10 +136,20 @@ public final class SplashActivity extends AppCompatActivity {
      */
     private void setupApp() {
         LockableActivity.registerMainActivityClass(SplashActivity.class);
-        Preferences.get(this).loadLanguage(this);
         Preferences.get().loadTheme(this);
 
         Log.d(LOG_TAG, "App is ready");
+    }
+
+    /**
+     * Este método es llamado cuando el contexto es adjuntado a la actividad. Se carga el idioma
+     * elegido por el usuario que se usará en la aplicación.
+     *
+     * @param newBase Contexto base.
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(Preferences.get(newBase).loadLanguage(newBase));
     }
 
     /**

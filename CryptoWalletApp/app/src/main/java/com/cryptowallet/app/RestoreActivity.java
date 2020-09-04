@@ -80,6 +80,7 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Preferences.get().loadTheme(this);
 
         setContentView(R.layout.activity_restore);
         setTitle(R.string.restore_caption_button);

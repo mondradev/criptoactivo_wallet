@@ -408,7 +408,6 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * @return Un valor true si es cambiado el lenguaje.
      */
     private boolean onSelectedLanguage(Preference preference, Object selectedLanguage) {
-        // TODO: Bug - Don't load new language in spanish to english
         if (selectedLanguage.toString().equals(Preferences.get().getLanguage().getTag()))
             return false;
 
