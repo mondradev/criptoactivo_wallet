@@ -34,6 +34,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -48,8 +49,6 @@ import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ITransaction;
 import com.cryptowallet.wallet.SupportedAssets;
-
-import java.util.Objects;
 
 /**
  * Este fragmento representa una tarjeta (Material Design) donde se muestra la información de un
@@ -193,7 +192,7 @@ public class CryptoAssetFragment extends Fragment {
         mRoot.findViewById(R.id.mCryptoAssetSend).setOnClickListener(this::callSendFragment);
 
         ((ImageView) mRoot.findViewById(R.id.mCryptoAssetIcon))
-                .setImageDrawable(requireActivity().getDrawable(mWallet.getIcon()));
+                .setImageDrawable(ContextCompat.getDrawable(requireContext(), mWallet.getIcon()));
         ((TextView) mRoot.findViewById(R.id.mCryptoAssetName))
                 .setText(mWallet.getCryptoAsset().getName());
 
@@ -326,9 +325,6 @@ public class CryptoAssetFragment extends Fragment {
      * Actualiza los datos (precio, saldo y valor) visualizados en la vista.
      */
     private void updateViews() {
-        Objects.requireNonNull(mLastBalance);
-        Objects.requireNonNull(mLastPrice);
-
         long total = WalletProvider.getInstance()
                 .getFiatBalance(mWallet.getCryptoAsset());
 

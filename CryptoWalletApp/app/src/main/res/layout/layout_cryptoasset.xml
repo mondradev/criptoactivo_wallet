@@ -139,64 +139,71 @@
                 app:icon="@drawable/ic_send" />
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/mCryptoAssetRecentsLayout"
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginBottom="8dp"
-                android:alpha="0.12"
-                android:background="?attr/colorOnSurface" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingStart="16dp"
-                android:paddingEnd="0dp"
-                android:text="@string/recents_text"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+            android:animateLayoutChanges="true">
 
             <LinearLayout
-                android:id="@+id/mCryptoAssetEmptyRecentsLayout"
+                android:id="@+id/mCryptoAssetRecentsLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                tools:ignore="UseCompoundDrawables">
+                android:visibility="gone">
 
-                <ImageView
-                    android:layout_width="200dp"
-                    android:layout_height="120dp"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="32dp"
-                    android:alpha="0.7"
-                    android:contentDescription="@string/empty_recents_text"
-                    android:src="?attr/txEmptyListDrawable" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="8dp"
+                    android:alpha="0.12"
+                    android:background="?attr/colorOnSurface" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="24dp"
-                    android:text="@string/empty_recents_text"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+                    android:paddingStart="16dp"
+                    android:paddingEnd="0dp"
+                    android:text="@string/recents_text"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+
+                <LinearLayout
+                    android:id="@+id/mCryptoAssetEmptyRecentsLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    tools:ignore="UseCompoundDrawables">
+
+                    <ImageView
+                        android:layout_width="200dp"
+                        android:layout_height="120dp"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="32dp"
+                        android:alpha="0.7"
+                        android:contentDescription="@string/empty_recents_text"
+                        android:src="?attr/txEmptyListDrawable" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="24dp"
+                        android:text="@string/empty_recents_text"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
+
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/mCryptoAssetRecents"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbarAlwaysDrawHorizontalTrack="false"
+                    tools:itemCount="5"
+                    tools:listitem="@layout/vh_recent_transaction" />
 
             </LinearLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/mCryptoAssetRecents"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbarAlwaysDrawHorizontalTrack="false"
-                tools:itemCount="5"
-                tools:listitem="@layout/vh_recent_transaction" />
-
-        </LinearLayout>
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     </LinearLayout>
 
