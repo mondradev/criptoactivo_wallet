@@ -36,6 +36,7 @@ import com.cryptowallet.R;
 import com.cryptowallet.app.BackupActitivy;
 import com.cryptowallet.app.Configure2FaActivity;
 import com.cryptowallet.app.Preferences;
+import com.cryptowallet.app.ProgressDialog;
 import com.cryptowallet.app.SplashActivity;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
@@ -392,9 +393,12 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 
         Authenticator.updatePin(requireActivity(), Executors.newSingleThreadExecutor(),
                 (IAuthenticationUpdatedCallback) (byte[] oldToken, byte[] newToken) -> {
+                    ProgressDialog.show(requireActivity());
                     WalletProvider.getInstance()
-                            .forEachWallet((wallet) -> wallet.updatePassword(oldToken, newToken));
-                    // TODO Show progress
+                            .forEachWallet((wallet) -> {
+                                wallet.updatePassword(oldToken, newToken);
+                                ProgressDialog.hide();
+                            });
                 });
 
         return true;

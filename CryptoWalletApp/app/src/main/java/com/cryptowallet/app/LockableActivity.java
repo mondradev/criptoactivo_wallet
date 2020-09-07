@@ -107,11 +107,6 @@ public abstract class LockableActivity extends AppCompatActivity {
     private static LifecycleObserver mLifecycleObserver;
 
     /**
-     * Tema actual de la aplicación.
-     */
-    private String mCurrentTheme;
-
-    /**
      * Registra la clase de la actividad prinpal de la aplicación.
      *
      * @param clazz Clase de la actividad.
@@ -208,8 +203,6 @@ public abstract class LockableActivity extends AppCompatActivity {
 
         Preferences.get(this).loadTheme(this);
 
-        mCurrentTheme = Preferences.get().getTheme().getName();
-
         mOnResume = this::onResumeApp;
         mOnPause = this::onLeaveApp;
 
@@ -238,18 +231,6 @@ public abstract class LockableActivity extends AppCompatActivity {
 
             ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifecycleObserver);
         }
-    }
-
-    /**
-     * Este método es llamado cuando se recupera la aplicación al haber cambiado a otra.
-     */
-    @CallSuper
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (!mCurrentTheme.contentEquals(Preferences.get().getTheme().getName()))
-            recreate();
     }
 
     /**

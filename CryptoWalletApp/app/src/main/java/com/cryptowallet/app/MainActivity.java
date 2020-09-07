@@ -39,7 +39,6 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.0
  */
-// TODO Bug animation change between fragments
 public class MainActivity extends LockableActivity {
 
     /**
