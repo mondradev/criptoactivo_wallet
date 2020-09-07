@@ -323,14 +323,14 @@ public class BitcoinTransaction implements ITransaction {
             Address address = output.getScriptPubKey()
                     .getToAddress(mWalletParent.getNetwork(), true);
 
+            if (mWalletParent.isFeeWallet(address))
+                continue;
+
             if (!requireDependencies() &&
                     mWallet != null && isPay() == mWallet.isAddressMine(address))
                 continue;
 
-            if (address instanceof LegacyAddress)
-                addresses.add(((LegacyAddress) address).toBase58());
-            else if (address instanceof SegwitAddress)
-                addresses.add(((SegwitAddress) address).toBech32());
+            addresses.add(address.toString());
         }
 
         return new ArrayList<>(addresses);

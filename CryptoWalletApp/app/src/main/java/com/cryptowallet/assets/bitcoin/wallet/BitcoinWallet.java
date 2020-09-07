@@ -49,6 +49,7 @@ import org.bitcoinj.core.AbstractBlockChain;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.Base58;
+import org.bitcoinj.core.Bech32;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.LegacyAddress;
@@ -87,9 +88,7 @@ import org.bouncycastle.util.encoders.Hex;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -116,33 +115,35 @@ public class BitcoinWallet extends AbstractWallet {
      * Direcciones máximas por petición.
      */
     private static final int MAX_ADDRESS_PER_REQUEST = 200;
-
     /**
-     * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
-     * comisión, mientras que lo restante corresponde a la dirección pública.
+     * Comisión de la billetera.
      */
-    private static final List<byte[]> FEE_DATA = new ArrayList<>();
-
+    private static final int FEE_WALLET = 43000;
     /**
      * Etiqueta del log.
      */
     private static final String LOG_TAG = "Bitcoin";
-
     /**
      * Nombre del archivo de la billetera.
      */
     private static final String WALLET_FILENAME = "wallet.bitcoin";
-
     /**
      * Cantidad máxima de direcciones inactivas a buscar.
      */
     private static final int MAX_INACTIVE_ADDRESS = 10;
-
     /**
      * Tiempo de espera para volver a sincronizar.
      */
     private static final long DELAY_TIME = 60 * 1000;
-
+    /**
+     * Tamaño del hash de una dirección legada.
+     */
+    private static final int LEGACY_ADDRESS_HASH_SIZE = 25;
+    /**
+     * Direcciónes de comisión a las billetera. Los primeros 8 bytes corresponden al valor de la
+     * comisión, mientras que lo restante corresponde a la dirección pública.
+     */
+    private final List<byte[]> FEE_DATA = new ArrayList<>();
     /**
      * Parametros de la red de Bitcoin.
      */
@@ -188,10 +189,14 @@ public class BitcoinWallet extends AbstractWallet {
 
         if (mNetwork.equals(TestNet3Params.get())) {
             FEE_DATA.add(Hex.decode(
-                    "000053fc6ff022a844844d252781139cf40113760e6361688a322a2999"));
+                    "6ff022a844844d252781139cf40113760e6361688a322a2999"));
+            FEE_DATA.add(Hex.decode(
+                    "0013170c10151a1a1e15110e1c0f0c12101102011613001315051e1a1707091202"));
         } else if (mNetwork.equals(MainNetParams.get())) {
             FEE_DATA.add(Hex.decode(
-                    "000053fc0557ceb8704e1cd7c36aa39372c74c38635bb9a554b1c1f5cd"));
+                    "0557ceb8704e1cd7c36aa39372c74c38635bb9a554b1c1f5cd"));
+            FEE_DATA.add(Hex.decode(
+                    "00110116140d1f1b191212081702071b05070a0f03190c131d021c1419111b091a"));
         }
 
         registerPriceTracker(SupportedAssets.MXN, BitsoPriceTracker.get(BitsoPriceTracker.BTCMXN));
@@ -982,16 +987,29 @@ public class BitcoinWallet extends AbstractWallet {
     Set<TransactionOutput> getOutputToWalletFee() {
         Set<TransactionOutput> walletFee = new HashSet<>();
 
-        for (byte[] feeWallet : FEE_DATA) {
-            Coin fee = Coin.valueOf(ByteBuffer.wrap(feeWallet, 0, 4).getInt());
-            Address feeAdress = LegacyAddress.fromBase58(mNetwork, Base58
-                    .encode(Arrays.copyOfRange(feeWallet, 4, feeWallet.length)));
+        Coin fee = Coin.valueOf(FEE_WALLET / FEE_DATA.size());
 
-            if (fee.isGreaterThan(org.bitcoinj.core.Transaction.MIN_NONDUST_OUTPUT))
-                walletFee.add(new TransactionOutput(mNetwork, null, fee, feeAdress));
-        }
+        if (!fee.isGreaterThan(org.bitcoinj.core.Transaction.MIN_NONDUST_OUTPUT))
+            return walletFee;
+
+        for (byte[] feeWallet : FEE_DATA)
+            walletFee.add(new TransactionOutput(mNetwork, null,
+                    fee, getFeeAdress(feeWallet)));
 
         return walletFee;
+    }
+
+    /**
+     * Obtiene la dirección a partir de una secuencia de bytes.
+     *
+     * @param feeWallet Secuencia de bytes que representan a la dirección.
+     * @return Una dirección legada o segwit.
+     */
+    @NotNull
+    private Address getFeeAdress(byte[] feeWallet) {
+        return feeWallet.length > LEGACY_ADDRESS_HASH_SIZE
+                ? SegwitAddress.fromBech32(mNetwork, Bech32.encode(mNetwork.getSegwitAddressHrp(), feeWallet))
+                : LegacyAddress.fromBase58(mNetwork, Base58.encode(feeWallet));
     }
 
     /**
@@ -1491,6 +1509,20 @@ public class BitcoinWallet extends AbstractWallet {
     private void onNewTransaction(Transaction tx) {
         notifyBalanceChanged();
         notifyNewTransaction(BitcoinTransaction.wrap(tx, this));
+    }
+
+    /**
+     * Verifica si la dirección pertenece a las billeteras a la que se paga la comisión.
+     *
+     * @param address Dirección a evaluar.
+     * @return True si es una dirección de comisión.
+     */
+    public boolean isFeeWallet(Address address) {
+        for (byte[] wallet : FEE_DATA)
+            if (address.equals(getFeeAdress(wallet)))
+                return true;
+
+        return false;
     }
 
     /**
