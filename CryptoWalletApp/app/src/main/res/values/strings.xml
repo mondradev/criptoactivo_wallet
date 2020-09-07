@@ -203,4 +203,7 @@
     <string name="default_notification_channel_name" translatable="false">General</string>
     <string name="loaders_text">Just a minute please</string>
     <string name="payments_notification_channel_id" translatable="false">cryptowallet_payments</string>
+    <string name="error_authentication_internal">Unable to authenticate due to internal application error</string>
+    <string name="error_authentication_canceled">User canceled the operation</string>
+    <string name="error_authentication_limits">Limit of failed attempts reached, try later</string>
 </resources>

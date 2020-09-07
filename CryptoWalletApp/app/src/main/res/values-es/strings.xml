@@ -166,4 +166,7 @@
     <string name="sync_notification_title">Sincronizando las billeteras</string>
     <string name="sync_notification_message">Descargando la información pendiente de la billeteras</string>
     <string name="loaders_text">Espere un momento por favor</string>
+    <string name="error_authentication_internal">No es posible autenticar debido a un error interno de la aplicación</string>
+    <string name="error_authentication_limits">Limite alcanzado, intente más tarde</string>
+    <string name="error_authentication_canceled">Usuario canceló la operación</string>
 </resources>

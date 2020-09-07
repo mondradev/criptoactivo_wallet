@@ -425,8 +425,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
                 handleSuccess(token);
         } catch (AuthenticationException ex) {
             Log.w(LOG_TAG, Objects.requireNonNull(ex.getMessage()));
-            handleError(0,
-                    "Unable to authenticate due to internal application error");
+            handleError(0, getString(R.string.error_authentication_internal));
         }
     }
 
@@ -435,7 +434,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
      */
     @Override
     public void onCancel(@NonNull DialogInterface ignored) {
-        handleError(4, "User canceled the operation");
+        handleError(4, getString(R.string.error_authentication_canceled));
     }
 
     /**
@@ -455,7 +454,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
             // TODO: Implement time wait for next authentication.
             if (mAttemp >= ATTEMPS && mMode != PinAuthenticationMode.REGISTER
                     && mAuthenticationToken == null) {
-                handleError(3, "Limit of failed attempts reached, try later");
+                handleError(3, getString(R.string.error_authentication_limits));
 
                 return;
             }
