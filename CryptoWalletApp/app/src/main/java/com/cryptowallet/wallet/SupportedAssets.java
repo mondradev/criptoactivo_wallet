@@ -61,26 +61,30 @@ public enum SupportedAssets {
     MXN(100, R.string.mxn_text, 0, true);
 
     /**
+     * Indica que la cantidad está expresando miles.
+     */
+    private static final String KILO_SYMBOL = "K";
+    /**
+     * Indica que la cantidad está expresando millones.
+     */
+    private static final String MEGA_SYMBOL = "M";
+    /**
      * Tamaño de la unidad en su porción más pequeña.
      */
     private long mUnit;
-
     /**
      * Bandera que indica si es un activo FIAT.
      */
     private boolean mFiat;
-
     /**
      * Nombre utilizado en la IU.
      */
     @StringRes
     private int mName;
-
     /**
      * Signo de la divisa fiat.
      */
     private char mSign;
-
     /**
      * Icono del activo.
      */
@@ -204,12 +208,12 @@ public enum SupportedAssets {
         if (reduce) {
 
             if (newValue >= 10000) {
-                unit = "K";
+                unit = KILO_SYMBOL;
                 newValue /= 1000;
             }
 
-            if (newValue >= 1000) {
-                unit = "M";
+            if (newValue >= 1000 && unit.equals(KILO_SYMBOL)) {
+                unit = MEGA_SYMBOL;
                 newValue /= 1000;
             }
         }
@@ -272,12 +276,12 @@ public enum SupportedAssets {
 
         if (reduce) {
             if (newValue >= 10000) {
-                unit = "K";
+                unit = KILO_SYMBOL;
                 newValue /= 1000;
             }
 
-            if (newValue >= 1000) {
-                unit = "M";
+            if (newValue >= 1000 && unit.equals(KILO_SYMBOL)) {
+                unit = MEGA_SYMBOL;
                 newValue /= 1000;
             }
         }
