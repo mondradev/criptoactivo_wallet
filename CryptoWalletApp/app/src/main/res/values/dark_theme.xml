@@ -70,7 +70,7 @@
         <item name="colorPrimaryDark">@color/darkDarkPrimary</item>
         <item name="bottomSheetStyle">@style/AppTheme.Dark.BottomSheet</item>
 
-        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
         <item name="android:windowIsFloating">false</item>
     </style>
