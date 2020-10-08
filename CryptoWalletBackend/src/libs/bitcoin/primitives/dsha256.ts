@@ -1,4 +1,4 @@
-import '../../utils/bufferhelper'
+import '../../../utils/bufferhelper'
 
 import crypto from 'crypto'
 import UInt256 from './uint256'
@@ -42,7 +42,7 @@ export default class DSha256 {
      */
     public get(): UInt256 {
         if (this._data.length == 0)
-            return UInt256.zero();
+            return UInt256.null();
 
         let sha256 = crypto.createHash(DSha256.ALGORITHM_HASH)
         sha256.update(this._data)
