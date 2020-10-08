@@ -1,6 +1,7 @@
 import DSha256 from "../dsha256"
 import BlockHeader from "./blockheader"
 import Block from "./block"
+import { Stream } from "../serializable"
 
 /**
  * Define una estructura para almacenar en memoria un bloque. Esto permite consumir
@@ -36,7 +37,7 @@ export default class MemBlock {
      * Obtiene el hash del bloque.
      */
     public getHash(): Buffer {
-        return new DSha256(this._raw.slice(0, 80)).get().value
+        return new DSha256(this._raw.slice(0, BlockHeader.BLOCK_HEADER_SIZE)).get().value
     }
 
     /**
@@ -46,7 +47,7 @@ export default class MemBlock {
      * @returns {boolean} True en caso de tener las transacciones.
      */
     public hasTransactions(): boolean {
-        return this._raw.length > 80
+        return this._raw.readVarintNum(BlockHeader.BLOCK_HEADER_SIZE) > 0
     }
 
     /**
@@ -56,7 +57,7 @@ export default class MemBlock {
      */
     public static deserialize(data: Buffer): MemBlock {
         if (!data) throw new TypeError("data is null")
-        if (data.length < 80) throw new TypeError("data is corrupted")
+        if (data.length < BlockHeader.BLOCK_HEADER_SIZE) throw new TypeError("data is corrupted")
 
         return new MemBlock(data)
     }
@@ -65,14 +66,17 @@ export default class MemBlock {
      * Obtiene el encabezado del bloque.
      */
     public getHeader(): BlockHeader {
-        return BlockHeader.deserialize(this._raw)
+        const stream = Stream.fromBuffer(this._raw.slice(0, BlockHeader.BLOCK_HEADER_SIZE))
+
+        return BlockHeader.deserialize(stream)
     }
 
     /**
      * Obtiene el bloque.
      */
     public getBlock(): Block {
-        return Block.deserialize(this._raw)
+        const stream = Stream.fromBuffer(this._raw)
+        return Block.deserialize(stream)
     }
 
     /**
