@@ -76,8 +76,7 @@ Array.prototype.removeAt = function (index: number) {
     const self = this as Array<any>
 
     if (index > 0 && index < self.length) {
-        let prev = new Array()
-        prev = self.slice(0, index).concat(self.slice(index + 1))
+        let prev = self.slice(0, index).concat(self.slice(index + 1))
 
         self.clear()
         self.push(...prev)
@@ -96,7 +95,7 @@ interface Number {
 
 Number.prototype.toHex = function (size?: number): string {
     let self = this as number
-    let hex = self.toString(16) as string
+    let hex = self.toString(16)
 
     size = (size || 1) * 2
 

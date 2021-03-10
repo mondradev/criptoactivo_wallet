@@ -1,14 +1,17 @@
-import { Transaction } from "bitcore-lib";
-import level, { LevelUp, AbstractLevelDOWN, CodecOptions } from "level";
-import { TxindexEntry } from "./txindexentry";
-import { Enconding } from "./enconding";
-import { getDirectory } from "../../../../utils";
+import { Transaction } from "bitcore-lib"
+import { TxindexEntry } from "./txindexentry"
+import { Enconding } from "./enconding"
+import { getDirectory } from "../../../../utils"
 import { getKey } from './dbutils'
+
+import level, { LevelUp, AbstractLevelDOWN, CodecOptions } from "level"
+import LoggerFactory, { Logger } from 'log4js'
+import { Blockchain } from "../../chain/blockchain"
 
 /**
  * Ruta del indice de transacciones
  */
-const TXINDEX_PATH: string = "db/bitcoin/txindex"
+const TXINDEX_PATH: string = "db/bitcoin/:network/txindex"
 
 /**
  * Tipo de codificado para los campos del indice.
@@ -31,14 +34,26 @@ export class TxIndex {
     private _db: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
 
     /**
+     * Instancia de la bitacora de la clase.
+     */
+    private _logger: Logger
+
+    /**
+     * Cadena de bloques de Bitcoin.
+     */
+    private _chain : Blockchain
+
+    /**
      * Crea una nueva instancia del indice.
      */
-    public constructor() {
+    public constructor(chain: Blockchain) {
         this._db = level(getDirectory(TXINDEX_PATH), TXINDEX_DB_TYPE)
+        this._chain = chain
     }
 
     /**
      * Obtiene el indice de la transacción especificada.
+     * 
      * @param txid Hash de la transacciones.
      * @returns Una promesa de un indice de transacción.
      */
@@ -48,6 +63,7 @@ export class TxIndex {
 
     /**
      * Indexa todas las transacciones.
+     * 
      * @param transactions Conjunto de transacciones a indexar.
      * @param blockHash Hash del bloque al que pertenecen.
      * @returns Una promesa vacía.
@@ -63,5 +79,7 @@ export class TxIndex {
         }
 
         await dbTransaction.write()
+
+        this._logger.debug("Indexed %d txs from %s", transactions.length, blockHash.toReverseHex())
     }
 }

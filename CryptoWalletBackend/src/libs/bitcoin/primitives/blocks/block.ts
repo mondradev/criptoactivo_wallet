@@ -1,7 +1,5 @@
-import DSha256 from "../dsha256"
 import { Stream } from "../serializable"
 import Transaction from "../tx/transaction"
-import UInt256 from "../uint256"
 import BlockHeader from "./blockheader"
 
 /**

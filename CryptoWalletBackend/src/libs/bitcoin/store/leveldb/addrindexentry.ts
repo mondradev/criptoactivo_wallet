@@ -10,14 +10,13 @@ export class AddrindexEntry {
     public get index() { return this._index; }
     
     public toBuffer(): Buffer {
-        return BufferHelper.zero()
-            .append(this.addr)
+        return Buffer.from(this.addr)
             .append(this._txid)
             .appendUInt32LE(this._index)
             .append(this._blockHash);
     }
 
     public static fromBuffer(data: Buffer): AddrindexEntry {
-        return new AddrindexEntry(data.read(21), data.read(32, 21), data.read(57), data.readUInt32LE(53));
+        return new AddrindexEntry(data.read(21), data.read(32, 21), data.read(32, 57), data.readUInt32LE(53));
     }
 }

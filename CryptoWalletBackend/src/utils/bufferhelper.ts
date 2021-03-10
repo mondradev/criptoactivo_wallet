@@ -1,7 +1,7 @@
 declare global {
 
     interface Buffer {
-        getSubBuffers(offset: number, size: number): Buffer[]
+        splits(offset: number, size: number): Buffer[]
         toReverseHex(): string
         toHex(): string
         append(buffer: Buffer): Buffer
@@ -13,16 +13,16 @@ declare global {
         appendUInt16BE(uint16: number): Buffer
         appendUInt32BE(uint32: number): Buffer
         appendUInt64LE(uint64: number): Buffer
-        appendVarintNum(num: number): Buffer
+        appendVarInt(num: number): Buffer
         read(lenght: number, offset?: number): Buffer
         readHex(lenght: number, offset?: number): string
         readUInt64LE(offset: number): number
-        readVarintNum(offset: number): number
+        readVarintNum(offset: number, sizeRef?: { size: number }): number
 
     }
 }
 
-Buffer.prototype.getSubBuffers = function (offset: number, size: number): Buffer[] {
+Buffer.prototype.splits = function (offset: number, size: number): Buffer[] {
     let src = this
     let buffer = src.slice(offset)
     let buffers = new Array<Buffer>()
@@ -94,7 +94,7 @@ Buffer.prototype.appendHex = function (value: string) {
     return newBuf
 }
 
-Buffer.prototype.appendVarintNum = function (value: number) {
+Buffer.prototype.appendVarInt = function (value: number) {
     const src = this as Buffer
     let varn: Buffer = null
 
@@ -179,6 +179,7 @@ Buffer.prototype.appendUInt64LE = function (value: number) {
     const src = this as Buffer
     const newBuf = Buffer.alloc(src.length + 8)
 
+    _copyInternal(src, newBuf)
     _writeUInt64LEInternal(newBuf, value, src.length)
 
     return newBuf

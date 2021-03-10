@@ -1,4 +1,7 @@
 {
     "typescript.preferences.importModuleSpecifier": "relative",
-    "files.eol": "\n"
+    "files.eol": "\n",
+    "files.associations": {
+        "xutility": "cpp"
+    }
 }

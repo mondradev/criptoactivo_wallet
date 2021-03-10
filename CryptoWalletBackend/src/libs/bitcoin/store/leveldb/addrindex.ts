@@ -1,5 +1,5 @@
 import { Transaction, Script, Address, PublicKey, Networks } from "bitcore-lib";
-import level, { LevelUp, AbstractLevelDOWN } from "level";
+import level, { LevelUp, AbstractLevelDOWN, CodecOptions } from "level";
 import { AddrindexEntry } from "./addrindexentry";
 import { Enconding } from "./enconding";
 import LoggerFactory from 'log4js'
@@ -7,10 +7,17 @@ import BufferHelper from "../../../../utils/bufferhelper";
 import Config from "../../../../../config";
 import TimeCounter from "../../../../utils/timecounter";
 import { getDirectory } from "../../../../utils";
+import { utils } from "mocha";
+import { getKey } from "./dbutils";
 
 const Logger = LoggerFactory.getLogger('Bitcoin (AddrIndex)')
 const MAX_SIZE_CACHE = 200000
 const ADDRINDEX_PATH = 'db/bitcoin/addrindex'
+
+/**
+ * Tipo de codificado para los campos del indice.
+ */
+const ADDRINDEX_DB_TYPE: CodecOptions = { keyEncoding: 'binary', valueEncoding: 'binary' }
 
 
 export class AddrIndex {
@@ -40,7 +47,7 @@ export class AddrIndex {
     }
 
     public constructor() {
-        this._db = level(getDirectory(ADDRINDEX_PATH), { keyEncoding: 'binary', valueEncoding: 'binary' })
+        this._db = level(getDirectory(ADDRINDEX_PATH), ADDRINDEX_DB_TYPE)
         this._cacheAddrs = new Map()
 
         Logger.level = Config.logLevel
@@ -83,7 +90,7 @@ export class AddrIndex {
             this._cacheAddrs.delete(key.toHex())
         }
         else
-            coin = await this.get(key)
+            coin = await getKey(this._db, outpoint, Enconding.TxAddrIndex)
 
         return coin
     }
@@ -93,7 +100,7 @@ export class AddrIndex {
             return
 
         const timer = TimeCounter.begin()
-        const batchDb = this._db.batch()
+        const transaction = this._db.batch()
 
         let countInputs = 0
 
@@ -126,13 +133,13 @@ export class AddrIndex {
 
             countInputs++
 
-            batchDb
+            transaction
                 .del(Enconding.TxAddrIndex.key(input.outpoint))
                 .put(Enconding.Addrindex.key(addr.append(input.txid)),
                     Enconding.Addrindex.encode(new AddrindexEntry(addr, input.txid, blockHash, input.txindex)))
         }
 
-        await batchDb.write()
+        await transaction.write()
 
         timer.stop()
 

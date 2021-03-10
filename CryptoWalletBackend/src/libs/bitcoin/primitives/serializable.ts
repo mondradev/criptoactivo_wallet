@@ -83,6 +83,18 @@ export class Stream {
         return new Stream(Buffer.from(buffer))
     }
 
+
+    /**
+     * Agrega al flujo de datos un valor númerico de tamaño variable.
+     * 
+     * @param {number} value Valor numérico que se agregará.
+     * @returns {Stream} Flujo de datos actual.
+     */
+    public appendVarInt(value: number): Stream {
+        this._buffer = this._buffer.appendVarInt(value)
+        return this
+    }
+
     /**
      * Agrega al flujo de datos un valor numérico de 8 bits sin signo.
      * 
@@ -160,7 +172,7 @@ export class Stream {
     * @returns {Stream} Flujo de datos actual.
     */
     public appendVector<T>(data: Array<T | ISerializable>, serializeFunc?: SerializeFunc<T>): Stream {
-        this._buffer = this._buffer.appendVarintNum(data.length)
+        this._buffer = this._buffer.appendVarInt(data.length)
 
         for (let i = 0; i < data.length; i++)
             if (typeof data[i]['serialize'] == "function")
@@ -178,7 +190,7 @@ export class Stream {
      * @returns {Stream} Flujo de datos actual.
      */
     public appendBuffer(buffer: Buffer): Stream {
-        this._buffer = this._buffer.appendVarintNum(buffer.length)
+        this._buffer = this._buffer.appendVarInt(buffer.length)
             .append(buffer)
 
         return this
@@ -262,6 +274,22 @@ export class Stream {
         this._buffer = this._buffer.slice(lenght)
 
         return buffer
+    }
+
+
+
+    /**
+     * Extra un número de tamaño variable.
+     * 
+     * @returns {number} Número de tamaño variable.
+     */
+    public deappendVarInt(): number {
+        const ref = { size: 0 }
+        const value = this._buffer.readVarintNum(0, ref)
+
+        this._buffer = this._buffer.slice(ref.size)
+
+        return value
     }
 
     /**

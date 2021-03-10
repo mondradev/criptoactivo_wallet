@@ -34,7 +34,7 @@ type BulkWriteUpdate<T> = {
 
 Logger.level = Config.logLevel
 
-Networks.defaultNetwork = Networks.get(BitcoinConfig.network)
+Networks.defaultNetwork = Networks.get(BitcoinConfig.isTest)
 
 type TxDataMongo = { txid: string, time: number, blockHeight: number, blockHash: string, network: string, outputs: TxoDataMongo[], inputs: TxiDataMongo[] }
 type TxoDataMongo = { address: string, index: number, value: number, scriptPubKey: string }
@@ -45,7 +45,7 @@ export class MongoBlockStore implements IBlockStore {
     _txindex: Collection<TxSchema>
 
     public async getTxByAddress(address: string): Promise<any[]> {
-        const network = BitcoinConfig.network
+        const network = BitcoinConfig.isTest
 
         const received = (await this._txos.aggregate([
             {
@@ -247,7 +247,7 @@ export class MongoBlockStore implements IBlockStore {
 
 
     private async _saveTxos(transactions: Transaction[], blockMeta: BlockHeaderSchema): Promise<boolean> {
-        const network = BitcoinConfig.network
+        const network = BitcoinConfig.isTest
         const timer = TimeCounter.begin()
 
         try {
@@ -385,7 +385,7 @@ export class MongoBlockStore implements IBlockStore {
         this._cacheHeaderchainTip = null
         this._cacheBlockchainTip = null
     }
-    getUnspentCoins(txid: Buffer): Promise<{ index: number; utxo: import("bitcore-lib").Output }[]> {
+    getUnspentCoins(txid: Buffer): Promise<{ index: number; utxo: Transaction.Output }[]> {
         throw new Error("Method not implemented.")
     }
     AddrIndex: import("../leveldb/addrindex").AddrIndex
@@ -408,7 +408,7 @@ export class MongoBlockStore implements IBlockStore {
 
     public async connect() {
         const timer = TimeCounter.begin()
-        const network = BitcoinConfig.network
+        const network = BitcoinConfig.isTest
 
         try {
             const connectionString = `mongodb://${MongoDbConfig.host}:${MongoDbConfig.port}/${MongoDbConfig.dbName}`
@@ -482,7 +482,7 @@ export class MongoBlockStore implements IBlockStore {
 
         const timer = TimeCounter.begin()
         try {
-            const network = BitcoinConfig.network
+            const network = BitcoinConfig.isTest
 
             if (this._cacheBlockchainTip != null)
                 return this._cacheBlockchainTip
@@ -542,7 +542,7 @@ export class MongoBlockStore implements IBlockStore {
 
         const timer = TimeCounter.begin()
         try {
-            const network = BitcoinConfig.network
+            const network = BitcoinConfig.isTest
 
             if (this._cacheHeaderchainTip != null)
                 return this._cacheHeaderchainTip
@@ -600,7 +600,7 @@ export class MongoBlockStore implements IBlockStore {
         const timer = TimeCounter.begin()
 
         try {
-            const network = BitcoinConfig.network
+            const network = BitcoinConfig.isTest
 
             return await this._blocks.find({ network }).sort({ height: -1 })
                 .limit(30).map(blk => blk.hash).toArray()
@@ -611,7 +611,7 @@ export class MongoBlockStore implements IBlockStore {
     }
 
     public async getPendingHeaders(): Promise<string[]> {
-        const network = BitcoinConfig.network
+        const network = BitcoinConfig.isTest
         return this._blocks.find({ network, txn: { $exists: false } }).limit(Constants.DOWNLOAD_SIZE).map(block => block.hash).toArray()
     }
 
@@ -621,7 +621,7 @@ export class MongoBlockStore implements IBlockStore {
         const timer = TimeCounter.begin()
 
         // Import txs, if completed then save block
-        const network = BitcoinConfig.network
+        const network = BitcoinConfig.isTest
         const hash = block._getHash()
 
         const prevHashBlock = block.header.prevHash.toReverseHex()
@@ -692,7 +692,7 @@ export class MongoBlockStore implements IBlockStore {
     public async saveHeader(header: BlockHeader): Promise<boolean> {
         this._validateConnection()
 
-        const network = BitcoinConfig.network
+        const network = BitcoinConfig.isTest
         const prevHash = header.prevHash.toReverseHex()
         const prev = await this._blocks.findOne({ hash: prevHash, network })
 

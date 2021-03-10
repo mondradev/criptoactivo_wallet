@@ -24,7 +24,7 @@ const net = new Network(chain)
 const wallet = new WalletProvider(chain, net)
 
 async function start() {
-    await chain.connect()
+    await chain.connect().catch(reason => console.log(reason))
     await net.connect()
     net.start()
 }
@@ -86,7 +86,19 @@ process.on('SIGBREAK', exitHandler)
 process.on('beforeExit', exitHandler)
 
 const router = Router()
-    .get(URL_BASE + ":network/history/:addresses", async (req: Request, res: Response, next: NextFunction)=> {
+    .get(URL_BASE + ":network/((?!chaininfo).)*", async (req: Request, res: Response, next: NextFunction) => {
+        const network: string = req.params.network
+        const networkValid = validateNetwork(network)
+
+        if (networkValid.error)
+            res.status(networkValid.code).json({ message: networkValid.message })
+        else if ((await net.getStatus()) < NetworkStatus.SYNCHRONIZED)
+            res.status(423).json({ message: 'Bitcoin Synchronizing' })
+        else
+            next()
+
+    })
+    .get(URL_BASE + ":network/history/:addresses", async (req: Request, res: Response, next: NextFunction) => {
         const addresses: string = req.params.addresses
         const network: string = req.params.network
         const networkValid = validateNetwork(network)

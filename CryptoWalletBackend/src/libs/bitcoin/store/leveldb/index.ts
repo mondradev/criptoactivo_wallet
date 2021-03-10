@@ -1,8 +1,8 @@
 import { IBlockStore, ChainTip } from "../istore";
-import { Block, Transaction, Output, Networks } from "bitcore-lib";
-import level, { LevelUpChain, LevelUp, AbstractLevelDOWN } from "level";
+import { Block, Transaction, Networks } from "bitcore-lib";
+import level, { LevelUpChain, LevelUp, AbstractLevelDOWN, CodecOptions } from "level";
 import { getDirectory } from "../../../../utils";
-import LoggerFactory from 'log4js'
+import LoggerFactory, { Logger } from 'log4js'
 import Config from "../../../../../config";
 import BufferHelper from "../../../../utils/bufferhelper";
 import TimeCounter from "../../../../utils/timecounter";
@@ -11,26 +11,72 @@ import { OutputEntry } from "./outputentry";
 import { Enconding } from "./enconding";
 import { TxIndex } from "./txindex";
 import { AddrIndex } from "./addrindex";
-import {  getKey } from './dbutils'
-import { BlockGenesis } from "../../consensus";
+import { getKey } from './dbutils'
+import { ChainParams } from "../../params";
+import { requireNotNull } from "../../../../utils/preconditions";
 
-const Logger = LoggerFactory.getLogger('Bitcoin (LevelStore)')
+/**
+ * Tipo de codificado para los campos del indice de bloques.
+ */
+const BLOCK_DB_TYPE: CodecOptions = { keyEncoding: 'binary', valueEncoding: 'binary' }
 
-const BLOCK_PATH = "db/bitcoin/blocks"
-const UNDO_PATH = "db/bitcoin/blocks/undo"
-const HEIGHT_FROM_NULL_HASH = -1
-const MB = 1048576;
+/**
+ * Tipo de codificado para los campos del indice de salidas gastadas.
+ */
+const UNDO_DB_TYPE: CodecOptions = { keyEncoding: 'binary', valueEncoding: 'binary' }
+
+/**
+ * Rutas de las bases de datos de los distintos tipos de red.
+ */
+const DB_PATHS: {
+    [net: string]: { block: string, undo: string }
+} = {
+    'mainnet': {
+        'block': "db/bitcoin/blocks",
+        'undo': "db/bitcoin/blocks/undo"
+    },
+    'testnet': {
+        'block': "db/bitcoin/testnet/blocks",
+        'undo': "db/bitcoin/testnet/blocks/undo"
+    }
+}
 
 export class LevelStore implements IBlockStore {
 
+    /**
+     * Instancia de la bitacora de la clase.
+     */
+    private _logger: Logger
+
+    /**
+     * Configuración de la red de Bitcoin.
+     */
+    private _params: ChainParams
+
+    /**
+     * Cache de la punta de la cadena.
+     */
     private _cacheTip: ChainTip
+
+    /**
+     * Cache del indice de altura por hash.
+     */
     private _cacheHeightByHash: Map<string, Buffer>
+
+    /**
+     * Cache del indice de hash por altura.
+     */
     private _cacheHashByHeight: Map<number, Buffer>
 
+    /**
+     * Instancia de la base de datos de bloques.
+     */
     private _db: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
+
+    /**
+     * Instancia de la base de datos de las transacciones gastadas.
+     */
     private _undoDb: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>
-    private _txIndex: TxIndex
-    private _addrIndex: AddrIndex
 
     private async _getTxn(height: number, prevHeight: number) {
         let tip = this._cacheTip && this._cacheTip.height == prevHeight ? this._cacheTip : null
@@ -47,8 +93,10 @@ export class LevelStore implements IBlockStore {
     private async _getCoinAndUndo(transactions: Transaction[], hash: Buffer,
         trDb: LevelUpChain<Buffer, Buffer>, undoCoins: OutputEntry[]) {
         for (const tx of transactions) {
+            const txid = tx._getHash()
+
             for (const [index] of tx.outputs.entries()) {
-                const output = new OutputEntry(tx._getHash(), index, hash)
+                const output = new OutputEntry(txid, index, hash)
 
                 trDb.put(Enconding.CoinTxo.key(output.outpoint), Enconding.CoinTxo.encode(output))
             }
@@ -65,11 +113,11 @@ export class LevelStore implements IBlockStore {
     }
 
     private _showStatus(timer: TimeCounter) {
-        Logger.info(`Update chain [Block=%s, Height=%d, Txn=%d, MemUsage=%s MB in %s`,
+        this._logger.info(`Update chain [Block=%s, Height=%d, Txn=%d, MemUsage=%s MB in %s`,
             this._cacheTip.hash,
             this._cacheTip.height,
             this._cacheTip.txn,
-            (process.memoryUsage().rss / MB).toFixed(2),
+            (process.memoryUsage().rss / Constants.DataSizes.MB).toFixed(2),
             timer.toLocalTimeString()
         )
     }
@@ -83,7 +131,7 @@ export class LevelStore implements IBlockStore {
         if (newHeight == tip.height && hash.toReverseHex() === tip.hash)
             return
 
-        Logger.warn("Blockchain requires be reorganization { newHeight: %d }", newHeight)
+        this._logger.warn("Blockchain requires be reorganization { newHeight: %d }", newHeight)
 
         while (newHeight <= tip.height) {
 
@@ -118,31 +166,37 @@ export class LevelStore implements IBlockStore {
 
             await this._undoDb.del(Enconding.UndoTxo.key(hash))
 
-            Logger.info("Reorg blockchain { Hash: %s, Height: %d, Txn: %d, Target: %d }",
+            this._logger.info("Reorg blockchain { Hash: %s, Height: %d, Txn: %d, Target: %d }",
                 newTip.hash,
                 newTip.height,
                 newTip.txn,
                 target
             )
         } catch (ex) {
-            Logger.warn("Can't reorg, undo not found { hash: %s }", hash.toReverseHex())
+            this._logger.warn("Can't reorg, undo not found { hash: %s }", hash.toReverseHex())
         }
 
     }
 
-    public constructor() {
-        Logger.level = Config.logLevel
+    /**
+     * Crea una nueva instancia del almacenamiento.
+     * 
+     * @param params Configuración de la red.
+     */
+    public constructor(params: ChainParams) {
+        requireNotNull(params)
 
-        this._txIndex = new TxIndex()
-        this._addrIndex = new AddrIndex()
+        this._params = params
         this._cacheHeightByHash = new Map()
         this._cacheHashByHeight = new Map()
-        this._db = level(getDirectory(BLOCK_PATH), { keyEncoding: 'binary', valueEncoding: 'binary' })
-        this._undoDb = level(getDirectory(UNDO_PATH), { keyEncoding: 'binary', valueEncoding: 'binary' })
+
+        this._db = level(getDirectory(DB_PATHS[this._params.name].block), BLOCK_DB_TYPE)
+        this._undoDb = level(getDirectory(DB_PATHS[this._params.name].undo), UNDO_DB_TYPE)
+        this._logger = LoggerFactory.getLogger('Bitcoin[' + this._params.name + '] (LevelStore)')
     }
 
-    public async getUnspentCoins(txid: Buffer): Promise<{ index: number, utxo: Output }[]> {
-        return new Promise<{ index: number, utxo: Output }[]>(resolve => {
+    public async getUnspentCoins(txid: Buffer): Promise<{ index: number, utxo: Transaction.Output }[]> {
+        return new Promise<{ index: number, utxo: Transaction.Output }[]>(resolve => {
             const coins = new Array<{ index: number, block: Buffer }>()
 
             this._db.createReadStream({
@@ -175,17 +229,9 @@ export class LevelStore implements IBlockStore {
         })
     }
 
-    public get TxIndex() {
-        return this._txIndex
-    }
-
-    public get AddrIndex() {
-        return this._addrIndex
-    }
-
     public disconnect(): Promise<void> {
         return new Promise<void>(async resolve => {
-            Logger.info("Closing blockstore")
+            this._logger.info("Closing blockstore")
 
             if (!this._db.isClosed())
                 await this._db.close()
@@ -207,7 +253,7 @@ export class LevelStore implements IBlockStore {
 
     public async getHeight(hash: Buffer): Promise<number> {
         if (BufferHelper.isNull(hash))
-            return HEIGHT_FROM_NULL_HASH
+            return Constants.HEIGHT_FROM_NULL_HASH
 
         if (this._cacheHeightByHash && this._cacheHeightByHash.has(hash.toHex()))
             return Enconding.BlockHeightByHashIdx.decode(this._cacheHeightByHash.get(hash.toHex()))
@@ -216,17 +262,14 @@ export class LevelStore implements IBlockStore {
     }
 
     public async connect(): Promise<void> {
-        Logger.info("Initializing blockstore (LevelStore)")
+        this._logger.info("Initializing blockstore")
 
         if (this._db.isOpen())
             return await this._db.open()
-
-        await this.resync()
     }
 
     private async resync() {
         const bestHeight = 1747136
-        const initialHeight = 65690
 
         /*
         this._cacheTip = { hash: Constants.NULL_HASH, height: 0, txn: 0, time: 0 }
@@ -235,20 +278,22 @@ export class LevelStore implements IBlockStore {
 
         this._cacheTip = await getKey(this._db, null, Enconding.Tip)
 
-        Logger.info("Current chain: %d - %s", this._cacheTip.height, this._cacheTip.hash)
+        this._logger.info("Current chain: %d - %s", this._cacheTip.height, this._cacheTip.hash)
 
-        for (let i = initialHeight; i <= bestHeight; i++) {
+        for (let i = this._cacheTip.height + 1; i <= bestHeight; i++) {
             const hash = await this.getHash(i)
 
             if (hash == null) {
-                Logger.warn("Block no found: %d", i)
+                this._logger.warn("Block no found: %d", i)
                 break
             }
 
             const block = await this.getBlock(hash)
 
-            Logger.info("Saving block: %s", block.hash)
-            await this.saveBlock(block)
+            this._logger.info("Saving block: %s", block.hash)
+
+            if (!(await this.saveBlock(block)))
+                this._logger.error("Fail to save block: %s", block.hash)
         }
     }
 
@@ -293,7 +338,7 @@ export class LevelStore implements IBlockStore {
             const prevHeight = await this.getHeight(prevHashBlock)
 
             if (prevHeight == null && !BufferHelper.isNull(prevHashBlock)) {
-                Logger.warn(`Found orphan block ${hash.toReverseHex()}`)
+                this._logger.warn(`Found orphan block ${hash.toReverseHex()}`)
                 timer.stop()
 
                 return false
@@ -313,10 +358,6 @@ export class LevelStore implements IBlockStore {
                 txn: await this._getTxn(height, prevHeight) + block.transactions.length
             }
 
-            await this._txIndex.indexing(block.transactions, hash)
-            await this._addrIndex.indexing(block.transactions, hash)
-            await this._addrIndex.resolveInput(block.transactions, hash)
-
             const dbBatch = this._db.batch()
 
             dbBatch.put(Enconding.BlockByHashIdx.key(hash), Enconding.BlockByHashIdx.encode(block))
@@ -329,13 +370,13 @@ export class LevelStore implements IBlockStore {
 
             await this._getCoinAndUndo(block.transactions, hash, dbBatch, undoCoins)
 
-            Logger.trace("Writting %d operations", dbBatch.length)
+            this._logger.trace("Writting %d operations", dbBatch.length)
 
             await dbBatch.write()
             await this._undoDb.put(Enconding.UndoTxo.key(hash), Enconding.UndoTxo.encode(undoCoins))
 
             if (undoCoins.length > 0)
-                Logger.debug("Wrote %d txo in undo index", undoCoins.length)
+                this._logger.debug("Wrote %d txo in undo index", undoCoins.length)
 
             this._cacheTip = tip
             this._cacheHeightByHash.set(hash.toHex(), Enconding.BlockHeightByHashIdx.encode(height))
@@ -347,12 +388,12 @@ export class LevelStore implements IBlockStore {
 
             return true
         } catch (error) {
-            Logger.error("Fail in saveBlock: " + JSON.stringify(error))
+            this._logger.error("Fail in saveBlock: " + JSON.stringify(error))
             return false
         }
     }
 
-    public async  deleteBlockInfo(height: number) {
+    public async  deleteBlock(height: number) {
         const hash = await this.getHash(height);
         const binHeight = BufferHelper.numberToBuffer(height, 4, 'be');
         const binNewHeight = BufferHelper.numberToBuffer(height - 1, 4, 'be');
@@ -370,10 +411,10 @@ export class LevelStore implements IBlockStore {
                 .put(Enconding.Tip.key(), Enconding.Tip.encode(tip));
         }
 
-        Logger.info("Height: %d, Hash: %s", height, hash ? hash.toString('hex') : 'n/a')
+        this._logger.info("Height: %d, Hash: %s", height, hash ? hash.toString('hex') : 'n/a')
 
         if (!hash) {
-            Logger.warn("Height %d no found", height);
+            this._logger.warn("Height %d no found", height);
 
             if (dbBatch.length > 0)
                 await dbBatch.write();

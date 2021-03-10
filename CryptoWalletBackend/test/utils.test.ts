@@ -1,15 +1,14 @@
 import 'mocha'
+import '../src/utils/extensions'
+
 import { expect } from 'chai'
+import { wait, coalesce, partition } from '../src/utils';
 
-import '../src/utils/ArrayExtension'
-import '../src/utils/Preconditions'
+import * as Preconditions from '../src/utils/preconditions'
 
-import TimeCounter from '../src/utils/TimeCounter'
-import BufferEx from '../src/utils/BufferEx'
-import TimeSpan from '../src/utils/TimeSpan'
+import TimeCounter from '../src/utils/timecounter'
+import TimeSpan from '../src/utils/timespan'
 
-import { wait, coalesce, partition } from '../src/utils/Extras';
-import { isString, isNumeric, isDate, isStringArray, isNull, isBuffer, isArray, isNotNull, checkArguments, requireNotNull, requireString } from '../src/utils/Preconditions'
 
 const array = [1, 3, 5, 2, 4, 6, 1, 5, 3]
 
@@ -54,58 +53,58 @@ describe('Utils Module', () => {
 
     describe('Preconditions Methods', () => {
         it('Is a string', () => {
-            expect(isString("Hello world")).to.be.true
-            expect(isString(52)).to.be.false
+            expect(Preconditions.isString("Hello world")).to.be.true
+            expect(Preconditions.isString(52)).to.be.false
         })
 
         it('Is a number', () => {
-            expect(isNumeric(1)).to.be.true
-            expect(isNumeric("253")).to.be.false
+            expect(Preconditions.isNumeric(1)).to.be.true
+            expect(Preconditions.isNumeric("253")).to.be.false
         })
 
         it('Is a Date', () => {
-            expect(isDate(new Date())).to.be.true
-            expect(isDate(226663)).to.be.false
+            expect(Preconditions.isDate(new Date())).to.be.true
+            expect(Preconditions.isDate(226663)).to.be.false
         })
 
         it('Is a Buffer', () => {
-            expect(isBuffer(Buffer.alloc(10))).to.be.true
-            expect(isBuffer(null)).to.be.false
+            expect(Preconditions.isBuffer(Buffer.alloc(10))).to.be.true
+            expect(Preconditions.isBuffer(null)).to.be.false
         })
 
         it('Is a Array', () => {
-            expect(isArray([1, 2, 5, 6, 3])).to.be.true
-            expect(isArray(2189)).to.be.false
+            expect(Preconditions.isArray([1, 2, 5, 6, 3])).to.be.true
+            expect(Preconditions.isArray(2189)).to.be.false
         })
 
         it('Is a string Array', () => {
-            expect(isStringArray(['Hola', 'World'])).to.be.true
-            expect(isStringArray([2, 5, 8, 3])).to.be.false
+            expect(Preconditions.isStringArray(['Hola', 'World'])).to.be.true
+            expect(Preconditions.isStringArray([2, 5, 8, 3])).to.be.false
         })
 
         it('Is null value', () => {
-            expect(isNull(null)).to.be.true
-            expect(isNull(new Object())).to.be.false
+            expect(Preconditions.isNull(null)).to.be.true
+            expect(Preconditions.isNull(new Object())).to.be.false
         })
 
         it('Is not null value', () => {
-            expect(isNotNull(null)).to.be.false
-            expect(isNotNull(new Object())).to.be.true
+            expect(Preconditions.isNotNull(null)).to.be.false
+            expect(Preconditions.isNotNull(new Object())).to.be.true
         })
 
         it('Throw if predicate is false', () => {
-            expect(() => checkArguments(false)).to.throw()
-            expect(() => checkArguments(true)).to.not.throw()
+            expect(() => Preconditions.checkArguments(false)).to.throw()
+            expect(() => Preconditions.checkArguments(true)).to.not.throw()
         })
 
         it('Require a value be not null', () => {
-            expect(() => requireNotNull(null)).to.throw()
-            expect(() => requireNotNull(new Object())).to.not.throw()
+            expect(() => Preconditions.requireNotNull(null)).to.throw()
+            expect(() => Preconditions.requireNotNull(new Object())).to.not.throw()
         })
 
         it('Require a value be a string', () => {
-            expect(() => requireString("Hello world")).to.not.throw()
-            expect(() => requireString(892132)).to.throw()
+            expect(() => Preconditions.requireString("Hello world")).to.not.throw()
+            expect(() => Preconditions.requireString(892132)).to.throw()
         })
     })
 
@@ -138,28 +137,25 @@ describe('Utils Module', () => {
         })
     })
 
-    describe('BufferEx instance', () => {
+    describe('BufferHelper instance', () => {
         it('Append 0x0F1C from Buffer', () => {
-            const buffer = BufferEx.alloc(10)
-            buffer.append(Buffer.from('0F1C', 'hex'))
+            let buffer = Buffer.alloc(10)
+            buffer = buffer.append(Buffer.from('0F1C', 'hex'))
 
-            expect(buffer.toBuffer().toString('hex'))
-                .to.equal('000000000000000000000f1c')
+            expect(buffer.toHex()).to.equal('000000000000000000000f1c')
         })
 
         it('Append Int32', () => {
-            const buffer = BufferEx.alloc(10)
-            buffer.appendInt32LE(10)
+            let buffer = Buffer.alloc(10)
+            buffer = buffer.appendInt32LE(10)
 
-            expect(buffer.toBuffer().toString('hex'))
-                .to.equal('000000000000000000000a000000')
+            expect(buffer.toHex()).to.equal('000000000000000000000a000000')
         })
 
 
         it('Append and read UInt64', () => {
-            const buffer = BufferEx.alloc(10)
-
-            buffer.appendUInt64LE(2031001)
+            let buffer = Buffer.alloc(10)
+            buffer = buffer.appendUInt64LE(2031001)
 
             const value = buffer.readUInt64LE(10)
 
@@ -167,9 +163,8 @@ describe('Utils Module', () => {
         })
 
         it('Append and read variant number', () => {
-            const buffer = BufferEx.alloc(10)
-
-            buffer.appendVarintNum(3000)
+            let buffer = Buffer.alloc(10)
+            buffer = buffer.appendVarintNum(3000)
 
             const value = buffer.readVarintNum(10)
 

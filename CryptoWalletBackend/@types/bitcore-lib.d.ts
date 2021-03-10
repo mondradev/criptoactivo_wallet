@@ -14,22 +14,29 @@ declare module "bitcore-lib" {
         public dnsSeeds: Array<string>
     }
 
-    export class Input {
-        public prevTxId: Buffer;
-        public outputIndex: number;
-        public sequenceNumber: number;
-        public script: Script;
-        public output: Output;
+    module Transaction {
+        export class Input {
+            public setScript(data: Script | Buffer | string): void
+            public prevTxId: Buffer
+            public outputIndex: number
+            public sequenceNumber: number
+            public script: Script
+            public output: Output
 
-        /**
-         * @returns true if this is a coinbase input (represents no input)
-         */
-        public isNull(): boolean;
-    }
+            public constructor(params?: any)
 
-    export class Output {
-        public script: Script;
-        public satoshis: number;
+            /**
+             * @returns true if this is a coinbase input (represents no input)
+             */
+            public isNull(): boolean
+        }
+
+        export class Output {
+            public script: Script
+            public satoshis: number
+
+            public constructor(param: any)
+        }
     }
 
     export class Networks {
@@ -42,7 +49,7 @@ declare module "bitcore-lib" {
          * @param {string|Array} keys - if set, only check if the magic number associated with this name matches
          * @return Network
          */
-        static get(arg: string | number | Network, keys?: string | Array<any>): Network;
+        static get(arg: string | number | Network, keys?: string | Array<any>): Network
 
         /**
          * @function
@@ -72,7 +79,7 @@ declare module "bitcore-lib" {
             networkMagic: number,
             port: number,
             dnsSeeds: Array<string>
-        }): Network;
+        }): Network
 
         /**
          * @function
@@ -80,41 +87,41 @@ declare module "bitcore-lib" {
          * Will remove a custom network
          * @param {Network} network
          */
-        static remove(network: Network): void;
+        static remove(network: Network): void
 
         /**
          * @instance
          * @member Networks#livenet
          */
-        public static livenet: Network;
+        public static livenet: Network
 
         /**
          * @instance
          * @member Networks#mainnet
          */
-        public static mainnet: Network;
+        public static mainnet: Network
 
         /**
          * @instance
          * @member Networks#testnet
          */
-        public static testnet: Network;
+        public static testnet: Network
 
         /**
          * @function
          * @member Networks#enableRegtest
          * Will enable regtest features for testnet
          */
-        static enableRegtest(): void;
+        static enableRegtest(): void
 
         /**
          * @function
          * @member Networks#disableRegtest
          * Will disable regtest features for testnet
          */
-        static disableRegtest(): void;
+        static disableRegtest(): void
 
-        public static defaultNetwork: Network;
+        public static defaultNetwork: Network
     }
 
     /**
@@ -125,7 +132,7 @@ declare module "bitcore-lib" {
     */
     export class HDPublicKey {
 
-        public publicKey: PublicKey;
+        public publicKey: PublicKey
 
         /**
          * The representation of an hierarchically derived public key.
@@ -135,7 +142,7 @@ declare module "bitcore-lib" {
          * @constructor
          * @param {Object|string|Buffer} arg
          */
-        constructor(arg: (Object | string | Buffer));
+        constructor(arg: (Object | string | Buffer))
 
         /**
          * WARNING: This method will not be officially supported until v1.0.0.
@@ -154,15 +161,15 @@ declare module "bitcore-lib" {
          *
          * @example
          * ```javascript
-         * var parent = new HDPublicKey('xpub...');
-         * var child_0_1_2 = parent.deriveChild(0).deriveChild(1).deriveChild(2);
-         * var copy_of_child_0_1_2 = parent.deriveChild("m/0/1/2");
-         * assert(child_0_1_2.xprivkey === copy_of_child_0_1_2);
+         * var parent = new HDPublicKey('xpub...')
+         * var child_0_1_2 = parent.deriveChild(0).deriveChild(1).deriveChild(2)
+         * var copy_of_child_0_1_2 = parent.deriveChild("m/0/1/2")
+         * assert(child_0_1_2.xprivkey === copy_of_child_0_1_2)
          * ```
          *
          * @param {string|number} arg
          */
-        deriveChild(arg: (string | number)): HDPublicKey;
+        deriveChild(arg: (string | number)): HDPublicKey
 
         /**
          * Verifies that a given serialized public key in base58 with checksum format
@@ -173,7 +180,7 @@ declare module "bitcore-lib" {
          *     network provided matches the network serialized.
          * @return {boolean}
          */
-        static isValidSerialized(data: (string | Buffer), network: (string | Network)): boolean;
+        static isValidSerialized(data: (string | Buffer), network: (string | Network)): boolean
     }
 
     export class PublicKey {
@@ -187,13 +194,13 @@ declare module "bitcore-lib" {
          * @example
          * ```javascript
          * // instantiate from a private key
-         * var key = PublicKey(privateKey, true);
+         * var key = PublicKey(privateKey, true)
          *
          * // export to as a DER hex encoded string
-         * var exported = key.toString();
+         * var exported = key.toString()
          *
          * // import the public key
-         * var imported = PublicKey.fromString(exported);
+         * var imported = PublicKey.fromString(exported)
          * ```
          *
          * @param {string} data - The encoded data in various formats
@@ -203,7 +210,7 @@ declare module "bitcore-lib" {
          * @returns {PublicKey} A new valid instance of an PublicKey
          * @constructor
          */
-        constructor(data: string | Buffer, extra?: { network: Network, compressed: string });
+        constructor(data: string | Buffer, extra?: { network: Network, compressed: string })
 
         /**
          * Check if there would be any errors when initializing a PublicKey
@@ -211,25 +218,30 @@ declare module "bitcore-lib" {
          * @param {string} data - The encoded data in various formats
          * @returns {null|Error} An error if exists
          */
-        static getValidationError(data: string): null | Error;
+        static getValidationError(data: string): null | Error
     }
 
     export class Script {
 
-        public toBuffer(): Buffer;
+        public static fromHex(data: string): Script
+
+        public toBuffer(): Buffer
 
         /**
          * @param {Network=} network
          * @return {Address|boolean} the associated address for this script if possible, or false
          */
-        toAddress(network: Network): Address;
+        toAddress(network: Network): Address
 
-        public chunks: Array<{ opcodenum?: number, buf?: Buffer }>;
+
+        public static fromBuffer(buffer: Buffer): Script
+
+        public chunks: Array<{ opcodenum?: number, buf?: Buffer }>
 
         /**
          * @returns {Script} a new pay to script hash script that pays to this script
          */
-        toScriptHashOut(): Script;
+        toScriptHashOut(): Script
 
         /**
          * Adds a script element to the end of the script.
@@ -238,19 +250,19 @@ declare module "bitcore-lib" {
          * @returns {Script} this script instance
          *
          */
-        public add(obj: any): Script;
+        public add(obj: any): Script
 
         /**
          * Comes from bitcoind's script interpreter CheckMinimalPush function
          * 
          * @returns {boolean} if the chunk {i} is the smallest way to push that particular data.
          */
-        public checkMinimalPush(i: number): boolean;
+        public checkMinimalPush(i: number): boolean
 
         /**
          * Compares a script with another script
          */
-        public equals(script: Script): boolean;
+        public equals(script: Script): boolean
 
         /**
          * Analogous to bitcoind's FindAndDelete. Find and delete equivalent chunks,
@@ -260,13 +272,13 @@ declare module "bitcore-lib" {
          * pushdata op, then when you try to remove the data it is pushing, it will not
          * be removed, because they do not use the same pushdata op.
          */
-        public findAndDelete(script: Script): Script;
+        public findAndDelete(script: Script): Script
 
         /**
          * Will return the associated address information object
          * @return {Address|boolean}
          */
-        public getAddressInfo(): Address | boolean;
+        public getAddressInfo(): Address | boolean
 
         /**
          * Retrieve the associated data for this script.
@@ -274,78 +286,78 @@ declare module "bitcore-lib" {
          * In the case of a standard OP_RETURN, return the data
          * @returns {Buffer}
          */
-        public getData(): Buffer;
+        public getData(): Buffer
 
-        public getPublicKey(): Buffer;
-        public getPublicKeyHash(): Buffer;
+        public getPublicKey(): Buffer
+        public getPublicKeyHash(): Buffer
 
         /**
          * Comes from bitcoind's script GetSigOpCount(boolean) function
          * @param {boolean} use current (true) or pre-version-0.6 (false) logic
          * @returns {number} number of signature operations required by this script
          */
-        public getSignatureOperationsCount(accurate: boolean): number;
+        public getSignatureOperationsCount(accurate: boolean): number
 
-        public hasCodeseparators(): boolean;
+        public hasCodeseparators(): boolean
 
         /**
          * @returns {boolean} true if this is a valid standard OP_RETURN output
          */
-        public isDataOut(): boolean;
+        public isDataOut(): boolean
 
         /**
          * @returns {boolean} if this is a multisig input script
          */
-        public isMultisigIn(): boolean;
+        public isMultisigIn(): boolean
 
         /**
          * @returns {boolean} if this is a mutlsig output script
          */
-        public isMultisigOut(): boolean;
+        public isMultisigOut(): boolean
 
         /**
          * @returns {boolean} if this is a pay to public key hash input script
          */
-        public isPublicKeyHashIn(): boolean;
+        public isPublicKeyHashIn(): boolean
 
         /**
          * @returns {boolean} if this is a pay to pubkey hash output script
          */
-        public isPublicKeyHashOut(): boolean;
+        public isPublicKeyHashOut(): boolean
 
         /**
          * @returns {boolean} if this is a pay to public key input script
          */
-        public isPublicKeyIn(): boolean;
+        public isPublicKeyIn(): boolean
 
         /**
          * @returns {boolean} if this is a public key output script
          */
-        public isPublicKeyOut(): boolean;
+        public isPublicKeyOut(): boolean
 
         /**
          * @returns {boolean} if the script is only composed of data pushing
          * opcodes or small int opcodes (OP_0, OP_1, ..., OP_16)
          */
-        public isPushOnly(): boolean;
+        public isPushOnly(): boolean
 
         /**
          * @returns {boolean} if this is a p2sh input script
          * Note that these are frequently indistinguishable from pubkeyhashin
          */
-        public isScriptHashIn(): boolean;
+        public isScriptHashIn(): boolean
 
         /**
          * @returns {boolean} if this is a p2sh output script
          */
-        public isScriptHashOut(): boolean;
+        public isScriptHashOut(): boolean
 
-        public toHex(): string;
+        public toHex(): string
 
         /**
          * @returns {boolean} if script is one of the known types
          */
-        public isStandard(): boolean;
+        public isStandard(): boolean
 
         /**
          * @param {Object=} values - The return values
@@ -353,60 +365,60 @@ declare module "bitcore-lib" {
          * @param {Buffer} values.program - Set with the witness program
          * @returns {boolean} if this is a p2wpkh output script
          */
-        public isWitnessProgram(values: { version: number, program: Buffer }): boolean;
+        public isWitnessProgram(values: { version: number, program: Buffer }): boolean
 
         /**
          * @returns {boolean} if this is a p2wpkh output script
          */
-        public isWitnessPublicKeyHashOut(): boolean;
+        public isWitnessPublicKeyHashOut(): boolean
 
         /**
          * @returns {boolean} if this is a p2wsh output script
          */
-        public isWitnessScriptHashOut(): boolean;
+        public isWitnessScriptHashOut(): boolean
 
         /**
          * Adds a script element at the start of the script.
          * @param {*} obj a string, number, Opcode, Buffer, or object to add
          * @returns {Script} this script instance
          */
-        public prepend(obj: any): Script;
+        public prepend(obj: any): Script
 
 
         /**
          * @returns {object} The Script type if it is a known form,
          * or Script.UNKNOWN if it isn't
          */
-        public classify(): object;
+        public classify(): object
     }
 
     export class BlockHeader {
 
-        public toObject(): any;
+        public toObject(): any
 
         /**  The big endian hash buffer */
-        public id: string;
+        public id: string
 
         /**  The big endian hash buffer */
-        public hash: string;
+        public hash: string
 
         /** Block version number */
-        public version: number;
+        public version: number
 
         /** 256-bit hash of the previous block header */
-        public prevHash: Buffer;
+        public prevHash: Buffer
 
         /** 256-bit hash based on all of the transactions in the block */
-        public merkleRoot: Buffer;
+        public merkleRoot: Buffer
 
         /** Current timestamp as seconds since 1970-01-01T00:00 UTC */
-        public time: number;
+        public time: number
 
         /** Current target in compact format */
-        public bits: number;
+        public bits: number
 
         /** 32-bit number (starts at 0) */
-        public nonce: number;
+        public nonce: number
 
         /**
          * Instantiate a BlockHeader from a Buffer, JSON object, or Object with
@@ -415,31 +427,31 @@ declare module "bitcore-lib" {
          * @param {*} - A Buffer, JSON string, or Object
          * @constructor
          */
-        constructor(arg: Buffer | string | object);
+        constructor(arg: Buffer | string | object)
 
         /**
          * @param {Object} - A plain JavaScript object
          * @returns {BlockHeader} - An instance of block header
          */
-        public static fromObject(obj: object): BlockHeader;
+        public static fromObject(obj: object): BlockHeader
 
         /**
          * @param {Binary} - Raw block binary data or buffer
          * @returns {BlockHeader} - An instance of block header
          */
-        public static fromRawBlock(data: string | Buffer): BlockHeader;
+        public static fromRawBlock(data: string | Buffer): BlockHeader
 
         /**
          * @param {Buffer} - A buffer of the block header
          * @returns {BlockHeader} - An instance of block header
          */
-        public static fromBuffer(buf: Buffer): BlockHeader;
+        public static fromBuffer(buf: Buffer): BlockHeader
 
         /**
          * @param {string} - A hex encoded buffer of the block header
          * @returns {BlockHeader} - An instance of block header
          */
-        public static fromString(str: string): BlockHeader;
+        public static fromString(str: string): BlockHeader
 
         /**
          * 
@@ -454,11 +466,11 @@ declare module "bitcore-lib" {
      */
     export class Transaction {
 
-        public inputs: Input[];
+        public inputs: Transaction.Input[]
 
-        public outputs: Output[];
+        public outputs: Transaction.Output[]
 
-        public outputAmount: number;
+        public outputAmount: number
 
         /**
          * Represents a transaction, a set of inputs and outputs to change ownership of tokens
@@ -466,15 +478,15 @@ declare module "bitcore-lib" {
          * @param {*} serialized
          * @constructor
          */
-        constructor(serialize?: any);
+        constructor(serialize?: any)
 
         /** Retrieve the little endian hash of the transaction including witness data */
-        public witnessHash: Buffer;
+        public witnessHash: Buffer
 
         /** Retrieve the little endian hash of the transaction (used for serialization) */
-        public hash: string;
+        public hash: string
 
-        public nLockTime: number;
+        public nLockTime: number
 
         /**
          * Sets nLockTime so that transaction is not valid until the desired date(a
@@ -483,7 +495,7 @@ declare module "bitcore-lib" {
          * @param {Date | Number} time
          * @return {Transaction} this
          */
-        public lockUntilDate(time: Date | number): Transaction;
+        public lockUntilDate(time: Date | number): Transaction
 
         /**
          * Sets nLockTime so that transaction is not valid until the desired block
@@ -492,7 +504,7 @@ declare module "bitcore-lib" {
          * @param {Number} height
          * @return {Transaction} this
          */
-        public lockUntilBlockHeight(height: number): Transaction;
+        public lockUntilBlockHeight(height: number): Transaction
 
         /**
          * Manually set the fee for this transaction. Beware that this resets all the signatures
@@ -502,7 +514,7 @@ declare module "bitcore-lib" {
          * @param {number} amount satoshis to be sent
          * @return {Transaction} this, for chaining
          */
-        public fee(amount: number): Transaction;
+        public fee(amount: number): Transaction
 
         /**
          * Manually set the fee per KB for this transaction. Beware that this resets all the signatures
@@ -512,7 +524,7 @@ declare module "bitcore-lib" {
          * @param {number} amount satoshis per KB to be sent
          * @return {Transaction} this, for chaining
          */
-        public feePerKb(amount: number): Transaction;
+        public feePerKb(amount: number): Transaction
 
         /**
          * Set the change address for this transaction
@@ -523,21 +535,21 @@ declare module "bitcore-lib" {
          * @param {Address} address An address for change to be sent to.
          * @return {Transaction} this, for chaining
          */
-        public change(address: Address): Transaction;
+        public change(address: Address): Transaction
 
-        public toString(): string;
+        public toString(): string
 
-        public hasWitnesses(): boolean;
+        public hasWitnesses(): boolean
 
-        public fromBuffer(buffer: Buffer): Transaction;
+        public fromBuffer(buffer: Buffer): Transaction
 
-        public fromString(str: string): Transaction;
+        public fromString(str: string): Transaction
 
-        public toObject(): object;
+        public toObject(): object
 
-        public toJSON(): string;
+        public toJSON(): string
 
-        public fromObject(arg: object | Transaction): any;
+        public fromObject(arg: object | Transaction): any
 
         /**
          * Calculates the fee of the transaction.
@@ -549,14 +561,14 @@ declare module "bitcore-lib" {
          * "MissingPreviousOutput" error when called on a serialized transaction.
          * If there's no fee set and no change address, estimate the fee based on size.
          */
-        public getFee(): number;
+        public getFee(): number
 
         /**
          * Analogous to bitcoind's IsCoinBase function in transaction.h
          */
-        public isCoinbase(): boolean;
+        public isCoinbase(): boolean
 
-        public toBuffer(): Buffer;
+        public toBuffer(): Buffer
 
         _getHash(): Buffer
     }
@@ -572,20 +584,20 @@ declare module "bitcore-lib" {
      */
     export class Block {
         /**  The big endian hash buffer of the header */
-        public id: string;
+        public id: string
 
         /**  The big endian hash buffer of the header */
-        public hash: string;
+        public hash: string
 
         /** Instance of block header */
-        public header: BlockHeader;
+        public header: BlockHeader
 
         /** The set of transactions in a block  */
-        public transactions: Array<Transaction>;
+        public transactions: Array<Transaction>
 
-        public toObject(): object;
+        public toObject(): object
 
-        public toJSON(): object;
+        public toJSON(): object
 
         /**
          * Instantiate a Block from a Buffer, JSON object, or Object with
@@ -595,39 +607,39 @@ declare module "bitcore-lib" {
          * @returns {Block}
          * @constructor
          */
-        constructor(arg: Buffer | string | object);
+        constructor(arg: Buffer | string | object)
 
         /**
          * @param {Object} - A plain JavaScript object
          * @returns {Block} - An instance of block
          */
-        public static fromObject(obj: object): Block;
+        public static fromObject(obj: object): Block
 
         /**
          * @param {BufferReader} - A buffer reader of the block
          * @returns {Block} - An instance of block
          */
-        public static fromBufferReader(br: any): Block;
+        public static fromBufferReader(br: any): Block
 
         /**
          * @param {Buffer} - A buffer of the block
          * @returns {Block} - An instance of block
          */
-        public static fromBuffer(buf: Buffer): Block;
+        public static fromBuffer(buf: Buffer): Block
 
         /**
          * @param {string} - str - A hex encoded string of the block
          * @returns {Block} - A hex encoded string of the block
          */
-        public static fromString(str: string): Block;
+        public static fromString(str: string): Block
 
         /**
          * @param {Binary} - Raw block binary data or buffer
          * @returns {Block} - An instance of block
          */
-        public static fromRawBlock(data: Buffer | string): Block;
+        public static fromRawBlock(data: Buffer | string): Block
 
-        public toBuffer(): Buffer;
+        public toBuffer(): Buffer
 
         public _getHash(): Buffer
     }
@@ -639,7 +651,7 @@ declare module "bitcore-lib" {
          *
          * @returns {Buffer} Bitcoin address buffer
          */
-        public toBuffer(): Buffer;
+        public toBuffer(): Buffer
 
         /**
          * Instantiate an address from an address string
@@ -649,7 +661,7 @@ declare module "bitcore-lib" {
          * @param {string=} type - The type of address: 'script' or 'pubkey'
          * @returns {Address} A new valid and frozen instance of an Address
          */
-        public static fromString(str: string, network: string | Network, type: string): Buffer;
+        public static fromString(str: string, network: string | Network, type: string): Buffer
 
         /**
          * Instantiate an address from an address String or Buffer, a public key or script hash Buffer,
@@ -667,16 +679,16 @@ declare module "bitcore-lib" {
          * @example
          * ```javascript
          * // validate that an input field is valid
-         * var error = Address.getValidationError(input, 'testnet');
+         * var error = Address.getValidationError(input, 'testnet')
          * if (!error) {
-         *   var address = Address(input, 'testnet');
+         *   var address = Address(input, 'testnet')
          * } else {
          *   // invalid network or checksum (typo?)
-         *   var message = error.messsage;
+         *   var message = error.messsage
          * }
          *
          * // get an address from a public key
-         * var address = Address(publicKey, 'testnet').toString();
+         * var address = Address(publicKey, 'testnet').toString()
          * ```
          *
          * @param {*} data - The encoded data in various formats
@@ -684,14 +696,14 @@ declare module "bitcore-lib" {
          * @param {string=} type - The type of address: 'script' or 'pubkey'
          * @constructor
          */
-        constructor(data: any, network?: (Network | string | number), type?: ('scripthash' | 'pubkeyhash'));
+        constructor(data: any, network?: (Network | string | number), type?: ('scripthash' | 'pubkeyhash'))
 
         /**
          * Will return a boolean if an address is valid
          *
          * @example
          * ```javascript
-         * assert(Address.isValid('15vkcKf7gB23wLAnZLmbVuMiiVDc1Nm4a2', 'livenet'));
+         * assert(Address.isValid('15vkcKf7gB23wLAnZLmbVuMiiVDc1Nm4a2', 'livenet'))
          * ```
          *
          * @param {string} data - The encoded data
@@ -699,7 +711,7 @@ declare module "bitcore-lib" {
          * @param {string} type - The type of address: 'script' or 'pubkey'
          * @returns {boolean} The corresponding error message
          */
-        static isValid(data: string, network: (string | Network), type?: ('scripthash' | 'pubkeyhash')): boolean;
+        static isValid(data: string, network: (string | Network), type?: ('scripthash' | 'pubkeyhash')): boolean
 
 
         /**
@@ -712,7 +724,7 @@ declare module "bitcore-lib" {
          * @param {String|Network} network - either a Network instance, 'livenet', or 'testnet'
          * @returns {Address} A new valid and frozen instance of an Address
          */
-        static payingTo(script: Script, network: string | Network): Address;
+        static payingTo(script: Script, network: string | Network): Address
     }
 
     export class Opcode {
@@ -856,7 +868,7 @@ declare module "bitcore-lib" {
             OP_PUBKEYHASH: 253,
             OP_PUBKEY: 254,
             OP_INVALIDOPCODE: 255
-        };
+        }
 
     }
 

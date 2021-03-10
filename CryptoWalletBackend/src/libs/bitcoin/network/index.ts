@@ -11,6 +11,7 @@ import Config from "../../../../config"
 import DNS from 'dns'
 import Ping from 'ping'
 import checkLocalHost from 'check-localhost'
+import { ChainParams } from '../params'
 
 import { Messages, Peer } from "bitcore-p2p"
 import { ChainTip } from "../store/istore"
@@ -23,9 +24,9 @@ import { BitcoinConfig } from "../consensus"
 import { BlockMessage } from "bitcore-p2p"
 import { InvMessage } from "bitcore-p2p"
 import { HeadersMessage } from "bitcore-p2p"
-import { GetdataMessage } from "bitcore-p2p"
 import { Inventory } from "bitcore-p2p"
 import BufferHelper from "../../../utils/bufferhelper"
+import MemBlock from "../primitives/blocks/memblock"
 
 type IPAddress = { v4: string, v6: string }
 type Addr = { ip: IPAddress, port: number, time: Date }
@@ -43,15 +44,13 @@ const Lock = new AsyncLock({ maxPending: Constants.DOWNLOAD_SIZE })
 
 const LockKeys = {
     Peer: 'peers',
-    ConnectingPeer: 'connectingPeer',
-    BlockRequest: 'blockRequest',
+    ConnectingPeer: 'connecting-peer',
+    BlockRequest: 'block-request',
     Status: 'status',
-    AddressesReceived: 'addressesReceived',
-    Download: 'downloadBlock',
-    InvHandle: 'invhandle'
+    AddressesReceived: 'addresses-received',
+    Download: 'download-block',
+    InvHandle: 'inv-handle'
 }
-
-Networks.defaultNetwork = Networks.get(BitcoinConfig.network || 'mainnet')
 
 export class Network {
 
@@ -65,16 +64,20 @@ export class Network {
     private _downloadingBlocks: Map<string, boolean>
     private _pendingBlocks: Array<string>
     private _txMempool: Map<string, Buffer> // TODO: Create Mempool class
+    private _params: ChainParams
 
     private async _continueDownload(tip: ChainTip) {
         let locator = await this._chain.getLocators(tip)
 
         if (tip.height >= this._bestHeight) {
-            // TODO Validar descarga completa
-            await this._setStatus(NetworkStatus.SYNCHRONIZED)
-            Logger.info('Finalized syncronization [Height=%d]', tip.height)
+            this._updateBestheight()
 
-            return
+            if (tip.height >= this._bestHeight) {
+                await this._setStatus(NetworkStatus.SYNCHRONIZED)
+                Logger.info('Finalized syncronization [Height=%d]', tip.height)
+
+                return
+            }
         }
 
         this.requestHeaders(locator.starts, locator.stop)
@@ -102,7 +105,7 @@ export class Network {
     private async _discoveringPeers() {
         Logger.info('Discovering peers from DNS')
 
-        for (const seed of BitcoinConfig.seeds) {
+        for (const seed of this._params.seeds) {
             const resolvedAddresses = await this._resolveDns(seed)
 
             for (const address of resolvedAddresses)
@@ -150,9 +153,9 @@ export class Network {
 
         let peer = new Peer({
             host: address,
-            port: BitcoinConfig.port,
+            port: this._params.defaultPort,
             message: this._availableMessages,
-            network: BitcoinConfig.network
+            network: Networks.get(this._params.name)
         })
 
         peer.setMaxListeners(2000)
@@ -193,9 +196,6 @@ export class Network {
         peer.on(NetworkEvents.ERROR, (reason: Error) => Logger.warn('Peer got an error [Message=%s, Host=%s]', reason.message, peer.host))
         peer.on(NetworkEvents.BLOCK, (message: BlockMessage) => this._blockHandler.apply(this, [peer, message]))
         peer.on(NetworkEvents.INV, (message: InvMessage) => this._invHandler.apply(this, [message]))
-        peer.on(NetworkEvents.GETDATA, (message: GetdataMessage) => {
-            Logger.info("Received GetData request: %d inventories", message.inventory.length)
-        })
 
         peer.on(NetworkEvents.ADDR, (message: { addresses: Array<Addr> }) => Lock.acquire(LockKeys.AddressesReceived, async () => {
             let nAddresses = 0
@@ -596,7 +596,10 @@ export class Network {
         this._downloadingBlocks = new Map()
         this._peerAddresses = new Array()
         this._txMempool = new Map()
-        this._availableMessages = new Messages()
+        this._availableMessages = new Messages({
+            Block: MemBlock,
+            BlockHeader: MemBlock
+        })
 
         this._notifier.setMaxListeners(2000);
 

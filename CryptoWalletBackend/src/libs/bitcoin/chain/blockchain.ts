@@ -1,6 +1,6 @@
 import { IBlockStore, ChainTip, ChainLocators } from '../store/istore'
 import { Block, Networks, BlockHeader } from 'bitcore-lib'
-import { BitcoinConfig, BlockGenesis, Checkpoints } from '../consensus'
+import { BitcoinConfig } from '../consensus'
 import { EventEmitter } from 'events'
 
 import LoggerFactory from 'log4js'
@@ -13,7 +13,8 @@ const Lock = new AsyncLock()
 const KeyLocks = { AddingBlock: "adding-block" }
 
 export class Blockchain {
-    private _blockNotifier: EventEmitter
+
+    private _notifier: EventEmitter
     private _store: IBlockStore
 
     private async _validateHeader(header: BlockHeader): Promise<boolean> {
@@ -26,12 +27,12 @@ export class Blockchain {
      */
     public constructor(store: IBlockStore) {
         this._store = store
-        this._blockNotifier = new EventEmitter()
+        this._notifier = new EventEmitter()
 
-        this._blockNotifier.setMaxListeners(1000)
+        this._notifier.setMaxListeners(1000)
 
         Logger.level = Config.logLevel
-        Networks.defaultNetwork = Networks.get(BitcoinConfig.network)
+        Networks.defaultNetwork = Networks.get(BitcoinConfig.isTest)
     }
 
     public get TxIndex() {
@@ -66,7 +67,7 @@ export class Blockchain {
                 () => this._store.saveBlock(block))
                 .then((added) => {
                     if (added)
-                        this._blockNotifier.emit(block.hash)
+                        this._notifier.emit(block.hash)
                 })
     }
 
@@ -104,18 +105,18 @@ export class Blockchain {
 
 
     public onBlock(blockHash: string, listener: () => void) {
-        this._blockNotifier.on(blockHash, listener)
+        this._notifier.on(blockHash, listener)
     }
 
     public onceBlock(blockHash: string, listener: () => void) {
-        this._blockNotifier.once(blockHash, listener)
+        this._notifier.once(blockHash, listener)
     }
 
     public removeBlockListener(blockHash: string, listener: () => void) {
-        this._blockNotifier.removeListener(blockHash, listener)
+        this._notifier.removeListener(blockHash, listener)
     }
 
     public removeAllBlockListeners(blockHash: string) {
-        this._blockNotifier.removeAllListeners(blockHash)
+        this._notifier.removeAllListeners(blockHash)
     }
 }

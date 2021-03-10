@@ -1,7 +1,7 @@
 import { TxData, IWalletProvider, ChainInfo } from "../../resources/iwalletprovider"
 import { Blockchain } from "./chain/blockchain"
 import BufferHelper from "./../../utils/bufferhelper"
-import { Networks, Transaction, Output } from "bitcore-lib"
+import { Networks, Transaction } from "bitcore-lib"
 import { Network } from "./network"
 import NetworkStatus from "./network/networkstatus"
 import LoggerFactory from 'log4js'
@@ -124,7 +124,7 @@ export default class WalletProvider implements IWalletProvider {
         return txHistorial
     }
 
-    private _getTxState(address: string, unspent: { index: number; utxo: Output }[]): "unspent" | "spent" | "pending" {
+    private _getTxState(address: string, unspent: { index: number; utxo: Transaction.Output }[]): "unspent" | "spent" | "pending" {
         const utxos = unspent.filter(unspent => this.chain.AddrIndex.toAddress(unspent.utxo.script).toHex() == address)
 
         return utxos.length > 0 ? "unspent" : "spent"

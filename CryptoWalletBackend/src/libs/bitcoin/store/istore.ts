@@ -1,6 +1,4 @@
-import { Block, Output } from "bitcore-lib"
-import { AddrIndex } from "./leveldb/addrindex"
-import { TxIndex } from "./leveldb/txindex"
+import { Block, Transaction } from "bitcore-lib"
 
 export type ChainLocators = {
     starts: Array<string>,
@@ -15,15 +13,12 @@ export type ChainTip = {
 }
 
 
-export interface IBlockStore {
-    AddrIndex: AddrIndex
-    TxIndex: TxIndex
-
+export interface IBlockStore {    
     connect(): Promise<void>
     disconnect(): Promise<void>
 
     getBlock(hash: Buffer): Promise<Block>
-    getUnspentCoins(txid: Buffer): Promise<{ index: number, utxo: Output }[]>
+    getUnspentCoins(txid: Buffer): Promise<{ index: number, utxo: Transaction.Output }[]>
 
     getHash(height: number): Promise<Buffer>
     getHeight(hash: Buffer): Promise<number>

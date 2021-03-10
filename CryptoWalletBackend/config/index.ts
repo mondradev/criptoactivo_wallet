@@ -5,22 +5,16 @@ import Path from 'path'
 import Fs from 'fs'
 
 export class AssetConfig {
-    private _network: string
-    private _port: number
+    private _isTest: boolean
     private _maxConnections: number
-    private _seeds: Array<string>
 
     constructor(config: any) {
-        this._network = argv[config.name + 'Network'] || config.network || 'mainnet'
-        this._port = argv[config.name + 'Port'] || config.port
+        this._isTest = argv[config.name + 'IsTest'] || config.isTest || false
         this._maxConnections = argv[config.name + 'MaxConnections'] || config.maxConnections || 16
-        this._seeds = config.seeds || []
     }
 
-    public get network() { return this._network }
-    public get port() { return this._port }
+    public get isTest() { return this._isTest }
     public get maxConnections() { return this._maxConnections }
-    public get seeds() { return this._seeds }
 }
 
 class ConfigManager {
