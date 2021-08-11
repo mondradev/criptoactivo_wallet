@@ -91,7 +91,7 @@ export class Stream {
      * @returns {Stream} Flujo de datos actual.
      */
     public appendVarInt(value: number): Stream {
-        this._buffer = this._buffer.appendVarInt(value)
+        this._buffer = this._buffer.appendVarNum(value)
         return this
     }
 
@@ -172,7 +172,7 @@ export class Stream {
     * @returns {Stream} Flujo de datos actual.
     */
     public appendVector<T>(data: Array<T | ISerializable>, serializeFunc?: SerializeFunc<T>): Stream {
-        this._buffer = this._buffer.appendVarInt(data.length)
+        this._buffer = this._buffer.appendVarNum(data.length)
 
         for (let i = 0; i < data.length; i++)
             if (typeof data[i]['serialize'] == "function")
@@ -190,7 +190,7 @@ export class Stream {
      * @returns {Stream} Flujo de datos actual.
      */
     public appendBuffer(buffer: Buffer): Stream {
-        this._buffer = this._buffer.appendVarInt(buffer.length)
+        this._buffer = this._buffer.appendVarNum(buffer.length)
             .append(buffer)
 
         return this
@@ -247,7 +247,7 @@ export class Stream {
      */
     public deappendVector<T>(deserializeFunc: DeserializeFunc<T>): Array<T> {
         const ref = { size: 0 }
-        const lenght = this._buffer.readVarintNum(0, ref)
+        const lenght = this._buffer.readVarNum(0, ref)
         const vector = new Array<T>()
 
         this._buffer = this._buffer.slice(ref.size)
@@ -265,7 +265,7 @@ export class Stream {
     */
     public deappendBuffer(): Buffer {
         const ref = { size: 0 }
-        const lenght = this._buffer.readVarintNum(0, ref)
+        const lenght = this._buffer.readVarNum(0, ref)
 
         this._buffer = this._buffer.slice(ref.size)
 
@@ -285,7 +285,7 @@ export class Stream {
      */
     public deappendVarInt(): number {
         const ref = { size: 0 }
-        const value = this._buffer.readVarintNum(0, ref)
+        const value = this._buffer.readVarNum(0, ref)
 
         this._buffer = this._buffer.slice(ref.size)
 

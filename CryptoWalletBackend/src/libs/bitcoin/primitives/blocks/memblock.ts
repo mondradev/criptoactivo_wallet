@@ -47,7 +47,7 @@ export default class MemBlock {
      * @returns {boolean} True en caso de tener las transacciones.
      */
     public hasTransactions(): boolean {
-        return this._raw.readVarintNum(BlockHeader.BLOCK_HEADER_SIZE) > 0
+        return this._raw.readVarNum(BlockHeader.BLOCK_HEADER_SIZE) > 0
     }
 
     /**

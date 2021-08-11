@@ -1,5 +1,6 @@
 import 'mocha'
 import '../src/utils/extensions'
+import '../src/utils/bufferhelper'
 
 import { expect } from 'chai'
 import { wait, coalesce, partition } from '../src/utils';
@@ -164,9 +165,9 @@ describe('Utils Module', () => {
 
         it('Append and read variant number', () => {
             let buffer = Buffer.alloc(10)
-            buffer = buffer.appendVarintNum(3000)
+            buffer = buffer.appendVarNum(3000)
 
-            const value = buffer.readVarintNum(10)
+            const value = buffer.readVarNum(10)
 
             expect(value).to.equal(3000)
         })

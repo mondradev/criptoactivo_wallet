@@ -13,11 +13,11 @@ declare global {
         appendUInt16BE(uint16: number): Buffer
         appendUInt32BE(uint32: number): Buffer
         appendUInt64LE(uint64: number): Buffer
-        appendVarInt(num: number): Buffer
+        appendVarNum(num: number): Buffer
         read(lenght: number, offset?: number): Buffer
         readHex(lenght: number, offset?: number): string
         readUInt64LE(offset: number): number
-        readVarintNum(offset: number, sizeRef?: { size: number }): number
+        readVarNum(offset: number, sizeRef?: { size: number }): number
 
     }
 }
@@ -94,7 +94,7 @@ Buffer.prototype.appendHex = function (value: string) {
     return newBuf
 }
 
-Buffer.prototype.appendVarInt = function (value: number) {
+Buffer.prototype.appendVarNum = function (value: number) {
     const src = this as Buffer
     let varn: Buffer = null
 
@@ -209,7 +209,7 @@ Buffer.prototype.readUInt64LE = function (offset: number = 0) {
     return parseInt(data.reverse().toString('hex'), 16)
 }
 
-Buffer.prototype.readVarintNum = function (offset: number = 0, sizeRef?: { size: number }) {
+Buffer.prototype.readVarNum = function (offset: number = 0, sizeRef?: { size: number }) {
     const src = this as Buffer
     const value = src.readUInt8(offset)
 
