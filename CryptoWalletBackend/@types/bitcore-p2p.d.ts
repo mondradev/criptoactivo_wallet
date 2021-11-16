@@ -1,6 +1,6 @@
 declare module "bitcore-p2p" {
 
-    import { Network, Block, encoding, BlockHeader, Transaction } from "bitcore-lib"
+    import { Network, Block, encoding, BlockHeader, Transaction, BN } from "bitcore-lib"
 
     export class Inventory {
 
@@ -38,6 +38,8 @@ declare module "bitcore-p2p" {
         public constructor(options: { command: string, network: Network })
     }
 
+    export class MempoolMessage extends Message { }
+
     class InventoryMessage<T> extends Message {
         public forTransaction(hash: Buffer): T
         public forBlock(hash: Buffer): T
@@ -48,6 +50,22 @@ declare module "bitcore-p2p" {
         public get block(): Block
 
         public constructor(arg: Block, options: { network: Network, Block: Function })
+    }
+
+    export class VersionMessage extends Message {
+        public get version(): number
+        public get nonce(): Buffer
+        public get services(): BN
+        public get timestamp(): Date
+        public get subversion(): string
+        public get startHeight(): number
+        public get relay(): boolean
+    }
+
+    export class TxMessage extends Message {
+        public get transaction(): Transaction
+
+        public constructor(arg: Transaction, options: { network: Network, Transaction: Function })
     }
 
     export class InvMessage extends Message {
@@ -100,12 +118,13 @@ declare module "bitcore-p2p" {
 
         Ping: (arg?: Buffer, options?: { network: Network }) => PingMessage
         Pong: (arg?: Buffer, options?: { network: Network }) => PongMessage
-        Transaction: (arg: Transaction, options: { network: Network, Transaction: Function }) => TransactionMessage
-        Block: (arg: Block, options: { network: Network, Block: Function }) => BlockMessage
+        Transaction: (arg: Transaction, options?: { network: Network, Transaction: Function }) => TransactionMessage
+        Block: (arg: Block, options?: { network: Network, Block: Function }) => BlockMessage
         GetData: InventoryMessage<GetdataMessage>
         Inventory: InventoryMessage<InvMessage>
         Headers: (arg: BlockHeader[], options: { network: Network, BlockHeader: Function }) => HeaderMessage
         GetHeaders: (arg: { starts: string[], stop?: string }, options?: { network: Network, protocolVersion: number }) => GetheadersMessage
+        MemPool: () => MempoolMessage
     }
 
     export class Peer {

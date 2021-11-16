@@ -1,17 +1,19 @@
 {
     "logLevel": "Trace",
-
     "walletApi": {
         "host": "",
         "port": 5000
     },
-
     "dbConfig": {
         "host": "localhost",
         "port": 27017,
-        "dbName": "criptoactivo"
+        "dbName": "criptoactivo",
+        "user": "criptoserver",
+        "pwd": "criptoserver2020btc",
+        "sslCA": "config/ca-innsytech-cert.pem",
+        "sslCert": "config/criptoserver-cert.pem",
+        "sslKey": "config/criptoserver-key.pem"
     },
-
     "assets": [
         "bitcoin"
     ]

@@ -8,7 +8,6 @@ function requireCommand() {
     fi
 }
 
-# requireCommand sshpass
 requireCommand ssh
 
 PROJECT_NAME="CriptoActivoServer"
@@ -27,6 +26,11 @@ case $BUILD_TYPE in
     ;;
     build)
         build="$(echo $VERSION | grep -o -E '\w+$')"
+
+        if [[ "$build" == "" ]]; then
+            build="$(echo $VERSION | grep -o -E '\w+' | tail -n 1)"
+        fi
+
         VERSION="$(echo $VERSION | grep -o -E '^\w+\.\w+').$((build+1))"
     ;;
     *) 
@@ -113,12 +117,11 @@ hasError $? "Fail to install on remote"
 
 echo 'Executing...'
 
-ssh -i $CURRENT_PATH/$KEYFILE -p $PORT $USERNAME@$HOSTNAME "cd $PROJECT_NAME; ./killServer ; node src/server.js --log-level=trace &> server.log &"
+ssh -i $CURRENT_PATH/$KEYFILE -p $PORT $USERNAME@$HOSTNAME "cd $PROJECT_NAME; ./killServer"
+ssh -i $CURRENT_PATH/$KEYFILE -p $PORT $USERNAME@$HOSTNAME "cd $PROJECT_NAME; node src/server.js --log-level=trace &> server.log &"
 
 hasError $? "Fail to execute on remote"
 
 rm -rf *.tar.gz
 
 echo $VERSION > cwb_version
-
-echo "Completed at $(date +"%y-%m-%d %H:%M:%S")"

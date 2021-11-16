@@ -31,6 +31,14 @@ export class TxIndex {
         }
     }
 
+    public async deleteIndexes(txids: Buffer[]) {
+        const batchDb = this._db.batch()
+
+        txids.forEach((txid) => batchDb.del(Enconding.Txindex.key(txid)))
+
+        return batchDb.write()
+    }
+
     public async indexing(transactions: Transaction[], blockHash: Buffer) {
         const batchDb = this._db.batch()
 
@@ -41,6 +49,6 @@ export class TxIndex {
                 Enconding.Txindex.encode(new TxindexEntry(blockHash, index)))
         }
 
-        await batchDb.write()
+        return batchDb.write()
     }
 }

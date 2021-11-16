@@ -12,20 +12,23 @@ import DNS from 'dns'
 import Ping from 'ping'
 import checkLocalHost from 'check-localhost'
 
-import { Messages, Peer } from "bitcore-p2p"
+import crypto from 'crypto'
+
+
+import { Messages, Peer, BlockMessage, InvMessage, HeadersMessage, GetdataMessage, Inventory, TxMessage } from "bitcore-p2p"
 import { ChainTip } from "../store/istore"
 import { wait as sleep } from "../../../utils"
 
 import '../../../utils/extensions'
 import '../fixes/bitcore-p2p.peer.lib'
-import { PendingBlocksError } from "../fixes/bitcore-p2p.peer.lib"
+
+import { PendingBlocksError, PendingTxsError } from "../fixes/bitcore-p2p.peer.lib"
 import { BitcoinConfig } from "../consensus"
-import { BlockMessage } from "bitcore-p2p"
-import { InvMessage } from "bitcore-p2p"
-import { HeadersMessage } from "bitcore-p2p"
-import { GetdataMessage } from "bitcore-p2p"
-import { Inventory } from "bitcore-p2p"
+import { Mempool } from "../store/leveldb/mempool"
+import { VersionMessage } from "bitcore-p2p"
 import BufferHelper from "../../../utils/bufferhelper"
+import { time } from "console"
+import { GridFSBucketReadStream } from "mongodb"
 
 type IPAddress = { v4: string, v6: string }
 type Addr = { ip: IPAddress, port: number, time: Date }
@@ -39,7 +42,7 @@ export type ErrorListener = (error: Error) => void
 export type SyncListener = (tip: { height: number, block: Block }) => void
 
 const Logger = LoggerFactory.getLogger('(Bitcoin) Network')
-const Lock = new AsyncLock({ maxPending: Constants.DOWNLOAD_SIZE })
+const Lock = new AsyncLock({ maxPending: Constants.DOWNLOAD_SIZE * 10 })
 
 const LockKeys = {
     Peer: 'peers',
@@ -47,8 +50,10 @@ const LockKeys = {
     BlockRequest: 'blockRequest',
     Status: 'status',
     AddressesReceived: 'addressesReceived',
-    Download: 'downloadBlock',
-    InvHandle: 'invhandle'
+    DownloadBlocks: 'downloadBlocks',
+    DownloadTxs: 'downloadTx',
+    InvHandle: 'invhandle',
+    TxRequest: 'txRequest'
 }
 
 Networks.defaultNetwork = Networks.get(BitcoinConfig.network || 'mainnet')
@@ -63,8 +68,9 @@ export class Network {
     private _availableMessages: Messages
     private _peerAddresses: Array<string>
     private _downloadingBlocks: Map<string, boolean>
+    private _downloadingTxs: Map<string, boolean>
     private _pendingBlocks: Array<string>
-    private _txMempool: Map<string, Buffer> // TODO: Create Mempool class
+    private _txMempool: Mempool
 
     private async _continueDownload(tip: ChainTip) {
         let locator = await this._chain.getLocators(tip)
@@ -72,7 +78,11 @@ export class Network {
         if (tip.height >= this._bestHeight) {
             // TODO Validar descarga completa
             await this._setStatus(NetworkStatus.SYNCHRONIZED)
+
             Logger.info('Finalized syncronization [Height=%d]', tip.height)
+
+            for (const peer of this._outboundPeers)
+                this._requestMempool(peer)
 
             return
         }
@@ -103,10 +113,11 @@ export class Network {
         Logger.info('Discovering peers from DNS')
 
         for (const seed of BitcoinConfig.seeds) {
-            const addresses = await this._resolveDns(seed)
+            const resolvedAddresses = await this._resolveDns(seed)
 
-            for (const address of addresses.filter(a => a !== 'localhost'))
-                this._peerAddresses.push(address)
+            for (const address of resolvedAddresses)
+                if (!(await checkLocalHost(address)))
+                    this._peerAddresses.push(address)
         }
     }
 
@@ -186,15 +197,14 @@ export class Network {
         peer.removeAllListeners(NetworkEvents.PONG)
         peer.removeAllListeners(NetworkEvents.DISCONNECT)
         peer.removeAllListeners(NetworkEvents.BLOCK)
+        peer.removeAllListeners(NetworkEvents.TX)
         peer.removeAllListeners(NetworkEvents.INV)
         peer.removeAllListeners(NetworkEvents.GETDATA)
 
         peer.on(NetworkEvents.ERROR, (reason: Error) => Logger.warn('Peer got an error [Message=%s, Host=%s]', reason.message, peer.host))
         peer.on(NetworkEvents.BLOCK, (message: BlockMessage) => this._blockHandler.apply(this, [peer, message]))
+        peer.on(NetworkEvents.TX, (message: TxMessage) => this._txHandler.apply(this, [peer, message]))
         peer.on(NetworkEvents.INV, (message: InvMessage) => this._invHandler.apply(this, [message]))
-        peer.on(NetworkEvents.GETDATA, (message: GetdataMessage) => {
-            Logger.info("Received GetData request: %d inventories", message.inventory.length)
-        })
 
         peer.on(NetworkEvents.ADDR, (message: { addresses: Array<Addr> }) => Lock.acquire(LockKeys.AddressesReceived, async () => {
             let nAddresses = 0
@@ -233,6 +243,7 @@ export class Network {
             peer.removeAllListeners(NetworkEvents.PONG)
             peer.removeAllListeners(NetworkEvents.DISCONNECT)
             peer.removeAllListeners(NetworkEvents.BLOCK)
+            peer.removeAllListeners(NetworkEvents.TX)
 
             Logger.info("Peer disconnected (%d/%d) [Host=%s]", connectedPeers,
                 BitcoinConfig.maxConnections, peer.host)
@@ -240,7 +251,11 @@ export class Network {
     }
 
     private _readyHandler(peer: Peer, timeout: NodeJS.Timeout, done: () => void) {
-        peer.on(NetworkEvents.READY, async () => {
+        peer.once(NetworkEvents.VERSION, (message: VersionMessage) => {
+            peer.service = message.services.toNumber()
+            peer.relay = message.relay
+        })
+        peer.once(NetworkEvents.READY, async () => {
             clearTimeout(timeout)
 
             if (peer.bestHeight < this._bestHeight) {
@@ -262,19 +277,22 @@ export class Network {
                 return this._outboundPeers.length
             })
 
-            Logger.info("Peer connected (%d/%d) [Version=%s, Agent=%s, BestHeight=%d, Host=%s]",
+            Logger.info("Peer connected (%d/%d) [Version=%s, Agent=%s, BestHeight=%d, Host=%s, Relay=%s, Service=%d]",
                 connectedPeers,
                 BitcoinConfig.maxConnections,
                 peer.version,
                 peer.subversion,
                 peer.bestHeight,
-                peer.host
+                peer.host,
+                peer.relay,
+                peer.service
             )
 
             if (peer.bestHeight > this._bestHeight) {
+                const diff = peer.bestHeight - this._bestHeight
                 this._bestHeight = Math.max(peer.bestHeight, this._bestHeight)
 
-                if ((await this.getStatus()) == NetworkStatus.SYNCHRONIZED)
+                if ((await this.getStatus()) == NetworkStatus.SYNCHRONIZED && diff > 1)
                     this._continueDownload(await this._chain.getLocalTip())
             }
 
@@ -282,7 +300,10 @@ export class Network {
             if ((await this.getStatus()) == NetworkStatus.CONNECTING)
                 this._notifier.emit(NetworkEvents.READY)
 
-            peer.removeAllListeners(NetworkEvents.READY)
+            this._updateBestheight()
+
+            if ((await this.getStatus()) == NetworkStatus.SYNCHRONIZED)
+                this._requestMempool(peer)
 
             done()
         })
@@ -307,9 +328,22 @@ export class Network {
         await Lock.acquire(LockKeys.Status, () => this._status = status)
     }
 
+    private _requestMempool(peer: Peer) {
+        if (peer.service & 1 << 2) {
+            Logger.info("Requesting tx from mempool (%s)", peer.host)
+            peer.sendMessage(this._availableMessages.MemPool())
+        }
+    }
+
     private async _requestHeaders(starts: string[], stop: string) {
         return new Promise<void>(async done => {
             const peer = await this._getAvailablePeer()
+
+            if (!peer) {
+                done()
+
+                return
+            }
 
             const createTimeout = () => setTimeout(() => {
                 Logger.warn('Timeout on request headers to peer (%s)', peer.host)
@@ -368,7 +402,7 @@ export class Network {
     }
 
     private async _getAvailablePeer(): Promise<Peer> {
-        while (true) {
+        while ((await this.getStatus()) >= NetworkStatus.CONNECTING) {
             const peer = await Lock.acquire(LockKeys.Peer, () => {
                 const peer = this._outboundPeers.find(p => !p.busy)
 
@@ -398,18 +432,17 @@ export class Network {
                 return
 
             let newBlocks = new Array<string>()
+            let newTxs = new Array<string>()
 
             for (const inventory of message.inventory) {
                 if (inventory.type == Inventory.TYPE.TX) {
-                    // TODO: Download Tx from Peer
-                    if (this._txMempool.has(inventory.hash.toReverseHex()))
+                    if (await this._txMempool.has(inventory.hash))
                         continue
 
-                    this._txMempool.set(inventory.hash.toReverseHex(), BufferHelper.zero())
+                    if (this._downloadingTxs.has(inventory.hash.toReverseHex()))
+                        continue
 
-                    Logger.debug("Received new tx { hash: %s }, Mempool (%d txs)",
-                        inventory.hash.toReverseHex(),
-                        this._txMempool.size)
+                    newTxs.push(inventory.hash.toReverseHex())
                 } else if (inventory.type == Inventory.TYPE.BLOCK) {
                     const height = await this._chain.getHeight(inventory.hash)
 
@@ -418,7 +451,7 @@ export class Network {
                         this._downloadingBlocks.has(inventory.hash.toReverseHex()))
                         continue
 
-                    Logger.debug("Received new block { hash: %s }", inventory.hash.toReverseHex())
+                    Logger.debug("A new block was announced { hash: %s }", inventory.hash.toReverseHex())
 
                     newBlocks.push(inventory.hash.toReverseHex())
                 }
@@ -426,6 +459,9 @@ export class Network {
 
             if (newBlocks.length > 0)
                 await this._downloadBlocks(newBlocks)
+
+            if (newTxs.length > 0)
+                await this._downloadTxs(newTxs)
         })
     }
 
@@ -442,20 +478,26 @@ export class Network {
 
             this._downloadWindow.set(hash, message.block.toBuffer())
 
-            Logger.debug("Received block [Hash=%s, Size=%d, Txn=%d]", message.block.hash, message.block.toBuffer().length, message.block.transactions.length)
+            if (await this._isValidBlock(hash, message.block.header.prevHash, tip, peer)) {
 
-            let time = Date.now() - this._lastReport.time
+                Logger.debug("Received block [Hash=%s, Size=%d, Txn=%d]", message.block.hash, message.block.toBuffer().length, message.block.transactions.length)
 
-            if (time >= 1000) {
+                if ((await this.getStatus()) != NetworkStatus.SYNCHRONIZED) {
 
-                time /= 1000
-                let rate = (this._downloadWindow.size - this._lastReport.count) / time
+                    let time = Date.now() - this._lastReport.time
 
-                this._lastReport.time = Date.now()
-                this._lastReport.count = this._downloadWindow.size
+                    if (time >= 1000) {
 
-                Logger.debug("Downloading %d blk/s (%d/%d) Usage %s MB", rate.toFixed(2), this._downloadWindow.size, this._downloadWindow.size + this._downloadingBlocks.size,
-                    ((process.memoryUsage().rss) / (1024 * 1024)).toFixed(2))
+                        time /= 1000
+                        let rate = (this._downloadWindow.size - this._lastReport.count) / time
+
+                        this._lastReport.time = Date.now()
+                        this._lastReport.count = this._downloadWindow.size
+
+                        Logger.debug("Downloading %d blk/s (%d/%d) Usage %s MB", rate.toFixed(2), this._downloadWindow.size, this._downloadWindow.size + this._downloadingBlocks.size,
+                            ((process.memoryUsage().rss) / (1024 * 1024)).toFixed(2))
+                    }
+                }
             }
 
             if (this._downloadingBlocks.size == 0) {
@@ -466,18 +508,22 @@ export class Network {
 
                 for (const raw of blocks) {
                     const block = Block.fromBuffer(raw)
-                    if (this._txMempool.size > 0)
-                        for (const tx of block.transactions)
-                            this._txMempool.delete(tx.hash)
+                    if (await this._chain.addBlock(block))
+                        await this._txMempool.remove(block)
+                    else {
+                        this._pendingBlocks.clear()
 
-                    await this._chain.addBlock(block)
+                        break
+                    }
                 }
 
                 this._downloadWindow.clear()
 
                 const blockTip = await this._chain.getLocalTip()
 
-                if ((await this.getStatus()) == NetworkStatus.SYNCHRONIZED)
+                this._bestHeight = Math.max(this._bestHeight, blockTip.height)
+
+                if (await this.getStatus() == NetworkStatus.SYNCHRONIZED)
                     return
 
                 if (this._pendingBlocks.length > 0)
@@ -489,6 +535,69 @@ export class Network {
         })
     }
 
+    private async _isValidBlock(hash: string, prevHash: Buffer, tip: ChainTip, peer: Peer): Promise<boolean> {
+        if (await this.getStatus() == NetworkStatus.SYNCHRONIZED) {
+            const height = await this._chain.getHeight(prevHash)
+
+            if (height < tip.height) {
+                this._updateBestheight()
+
+                if (height < this._bestHeight) {
+                    peer.disconnect()
+                    this._downloadWindow.delete(hash)
+
+                    return false
+                }
+            }
+        }
+
+        return true
+    }
+
+
+
+    private async _txHandler(peer: Peer, message: TxMessage) {
+        return Lock.acquire(LockKeys.TxRequest, async () => {
+            const hash = message.transaction.hash
+
+            if (!this._downloadingTxs.has(hash)) return
+
+            Logger.debug("A new transaction was announced: %s", message.transaction.hash)
+
+            this._downloadingTxs.delete(hash)
+
+            if (!(await this._txMempool.has(message.transaction._getHash())))
+                await this._txMempool.add(message.transaction)
+        })
+    }
+
+    private _updateBestheight(): void {
+        const heights = this._outboundPeers.map(peer => peer.bestHeight)
+        const heightVotes: { [index: number]: number } = {}
+
+        for (const height of heights)
+            heightVotes[height] = (heightVotes[height] || 0) + 1
+
+        const bestHeight = Object.entries(heightVotes).reduce((prev, current) => {
+            const currentKey = Number.parseInt(current[0])
+
+            if (current[1] > prev[1])
+                return current
+            else if (prev[1] > current[1])
+                return prev
+            else if (prev[0] > currentKey)
+                return prev
+            else
+                return current
+        }, [0, 0])
+
+        const prevHeight = this._bestHeight
+        this._bestHeight = bestHeight[0] as number
+
+        if (prevHeight != this._bestHeight)
+            Logger.debug("Best height detected: " + this._bestHeight)
+    }
+
     private async _downloadPendingBlocks() {
         const blockHashes = this._pendingBlocks.slice(0, Constants.DOWNLOAD_SIZE)
         this._pendingBlocks = this._pendingBlocks.slice(Constants.DOWNLOAD_SIZE)
@@ -497,7 +606,7 @@ export class Network {
     }
 
     private async _downloadBlocks(blockHashes: string[]) {
-        return Lock.acquire(LockKeys.Download, async () => {
+        return Lock.acquire(LockKeys.DownloadBlocks, async () => {
             const self = this
 
             if (blockHashes.length == 0)
@@ -505,9 +614,11 @@ export class Network {
 
             blockHashes.forEach(hash => this._downloadingBlocks.set(hash, false))
 
-            while (true) {
+            while (blockHashes.length > 0) {
                 try {
                     let peer = await self._getAvailablePeer()
+
+                    if (!peer) return
 
                     if (peer.status !== Peer.STATUS.DISCONNECTED) {
                         if (blockHashes.length > 1)
@@ -520,7 +631,8 @@ export class Network {
 
                         peer.busy = false
 
-                        break
+                        if (this._downloadingBlocks.size == 0)
+                            break
                     }
                 } catch (_e) {
                     let err: PendingBlocksError = _e
@@ -534,7 +646,51 @@ export class Network {
         })
     }
 
-    public constructor(chain: Blockchain) {
+    public _downloadTxs(txids: string[]) {
+        return Lock.acquire(LockKeys.DownloadTxs, async () => {
+            const self = this
+
+            if (txids.length == 0)
+                return
+
+            txids.forEach(hash => this._downloadingTxs.set(hash, false))
+
+            while (txids.length > 0) {
+                try {
+                    let peer = await self._getAvailablePeer()
+
+                    if (!peer) return
+
+                    if (peer.status !== Peer.STATUS.DISCONNECTED) {
+                        if (txids.length > 1)
+                            Logger.debug("Downloanding %s txs", txids.length)
+
+                        await peer.getTxs(txids)
+
+                        peer.busy = false
+
+                        break
+                    }
+                } catch (_e) {
+                    txids.clear()
+
+                    let err: PendingTxsError = _e
+
+                    Logger.warn(err.message)
+
+                    for (const tx of err.pendingTxs) {
+                        if (await this._txMempool.has(BufferHelper.fromHex(tx).reverse())) continue
+
+                        Logger.trace("Fail to download tx: %s", tx)
+                        txids.push(tx)
+
+                    }
+                }
+            }
+        })
+    }
+
+    public constructor(chain: Blockchain, mempool: Mempool) {
         this._notifier = new EventEmitter()
         this._chain = chain
         this._status = NetworkStatus.DISCONNECTED
@@ -542,9 +698,10 @@ export class Network {
 
         this._pendingBlocks = new Array()
         this._outboundPeers = new Array()
+        this._downloadingTxs = new Map()
         this._downloadingBlocks = new Map()
         this._peerAddresses = new Array()
-        this._txMempool = new Map()
+        this._txMempool = mempool
         this._availableMessages = new Messages()
 
         this._notifier.setMaxListeners(2000);
@@ -623,7 +780,6 @@ export class Network {
                 done()
             }, Constants.Timeouts.WAIT_FOR_CONNECT_NET)
 
-
             await this._setStatus(NetworkStatus.CONNECTING)
 
             Logger.info("Trying to connect to Bitcoin network")
@@ -671,14 +827,17 @@ export class Network {
 
             Logger.debug('Disconnecting the peers')
 
-            for (const peer of this._outboundPeers)
-                peer.disconnect()
+            while (await Lock.acquire<number>(LockKeys.Peer, () => this._outboundPeers.length) > 0) {
+                for (const peer of this._outboundPeers)
+                    peer.disconnect()
 
-            while (await Lock.acquire<number>(LockKeys.Peer, () => this._outboundPeers.length) > 0)
-                await sleep(100)
+                await sleep(1000)
+            }
 
             await this._setStatus(NetworkStatus.DISCONNECTED)
             this._notifier.emit(NetworkEvents.DISCONNECT)
+
+            Logger.info("The network is disconnected")
 
             done()
         })
@@ -691,8 +850,7 @@ export class Network {
 
         await this._requestHeaders(startHashes, stopHash)
 
-        if (stopHash === Constants.NULL_HASH)
-            this._downloadPendingBlocks()
+        this._downloadPendingBlocks()
     }
 
     public async broadcastTx(rawData: Buffer): Promise<boolean> {
@@ -700,23 +858,58 @@ export class Network {
             throw new TypeError("The tx's data can't be null")
 
         const transaction = new Transaction().fromBuffer(rawData)
-        let sent = false
 
-        for (const peer of this._outboundPeers) {
-            if (peer.status !== Peer.STATUS.READY)
-                continue
+        if (await this._txMempool.has(transaction._getHash()))
+            return true
 
-            peer.sendMessage(this._availableMessages.Inventory.forTransaction(transaction._getHash()))
+        await this._txMempool.add(transaction)
 
-            sent = true
-        }
+        let respond = false
 
-        return sent
+        return new Promise<boolean>(async sent => {
+
+            for (let peer of this._outboundPeers) {
+                if (peer.status !== Peer.STATUS.READY)
+                    continue
+
+                if (await this._sendTx(peer, transaction) && !respond) {
+                    Logger.info("Sent tx: %s", transaction._getHash().toReverseHex())
+                    respond = true
+                    sent(true)
+                }
+            }
+
+            if (!respond) sent(false)
+        })
 
     }
 
-    public requestTx(txid: string) {
-        // TODO Implementar distribución de nueva transacción
+    private async _sendTx(peer: Peer, tx: Transaction) {
+        const hash = tx._getHash()
+
+        return new Promise<boolean>(sent => {
+            const listener = (message: GetdataMessage) => {
+                if (message.inventory.filter(i => i.hash.equals(hash))) {
+                    peer.sendMessage(this._availableMessages.Transaction(tx))
+
+                    destroyTimeout()
+                    sent(true)
+                }
+            }
+
+            const timeout = setTimeout(() => {
+                destroyTimeout()
+                sent(false)
+            }, Constants.Timeouts.WAIT_FOR_SEND_TX)
+
+            const destroyTimeout = function () {
+                clearTimeout(timeout)
+                peer.removeListener(NetworkEvents.GETDATA, listener)
+            }
+
+            peer.addListener(NetworkEvents.GETDATA, listener)
+            peer.sendMessage(this._availableMessages.Inventory.forTransaction(hash))
+        })
     }
 
     public on(event: NetworkEvents, listener: (BlockListener | HeadersListener
@@ -738,8 +931,4 @@ export class Network {
         this._notifier.removeAllListeners(event)
     }
 
-}
-
-function typeToString(type: number) {
-    return type === 1 ? "Tx" : type === 2 ? "Block" : ""
 }

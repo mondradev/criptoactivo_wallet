@@ -37,7 +37,7 @@ export class AddrIndex {
      * 
      * @param script Script de la salida.
      */
-    private _getAddresses(script: Script): Buffer {
+    public toAddress(script: Script): Buffer {
         if (!script)
             return Buffer.alloc(32, 0)
 
@@ -57,8 +57,8 @@ export class AddrIndex {
     public connect() {
         return new Promise<void>(resolve => {
             this._db.createReadStream({
-                gte: Enconding.TxAddrIndex.key(BufferHelper.fromHex(Array(36).fill(0).join(''))),
-                lte: Enconding.TxAddrIndex.key(BufferHelper.fromHex(Array(36).fill(0xff).join(''))),
+                gte: Enconding.TxAddrIndex.key(Buffer.alloc(36, 0)),
+                lte: Enconding.TxAddrIndex.key(Buffer.alloc(36, 0xFF)),
                 limit: MAX_SIZE_CACHE / 2
             })
                 .on('data', (data: { key: Buffer, value: Buffer }) =>
@@ -109,7 +109,7 @@ export class AddrIndex {
             = transactions.reduce((collection, tx, txindex) => {
                 const hash = tx._getHash()
                 collection.push(...tx.inputs.map(input => {
-                    const prevTxid = BufferHelper.zero().append(input.prevTxId).reverse()
+                    const prevTxid = Buffer.from(input.prevTxId).reverse()
                     return {
                         txid: hash,
                         txindex,
@@ -154,7 +154,7 @@ export class AddrIndex {
             const hash = transaction._getHash()
 
             for (const [idx, txo] of transaction.outputs.entries()) {
-                const addr = this._getAddresses(txo.script)
+                const addr = this.toAddress(txo.script)
                 const addrTx = Enconding.Addrindex.key(addr.append(hash))
                 const outpoint = Enconding.TxAddrIndex.key(hash.appendUInt32BE(idx))
 
@@ -176,12 +176,49 @@ export class AddrIndex {
 
         return new Promise<AddrindexEntry[]>(resolve => {
             this._db.createReadStream({
-                gte: Enconding.Addrindex.key(BufferHelper.zero().append(address).appendHex(Array(32).fill(0).join(''))),
-                lte: Enconding.Addrindex.key(BufferHelper.zero().append(address).appendHex(Array(32).fill(0xff).join('')))
+                gte: Enconding.Addrindex.key(Buffer.from(address).append(Buffer.alloc(32, 0))),
+                lte: Enconding.Addrindex.key(Buffer.from(address).append(Buffer.alloc(32, 0xff)))
             })
                 .on('data', (data: { key: Buffer, value: Buffer }) =>
                     txdata.push(Enconding.Addrindex.decode(data.value)))
                 .on('end', () => resolve(txdata))
         })
+    }
+
+    public async deleteTxoIndexes(transactions: Transaction[]) {
+        const batchDb = this._db.batch()
+
+        for (const transaction of transactions) {
+            const hash = transaction._getHash()
+
+            for (const txi of transaction.inputs) {
+                if (txi.isNull())
+                    continue
+
+                if (txi.output == null) {
+                    Logger.warn("Output not found: " + hash.toReverseHex())
+                    continue
+                }
+
+                const address = this.toAddress(txi.output.script)
+
+                batchDb.del(Enconding.Addrindex.key(address.append(hash)))
+                    .put(Enconding.TxAddrIndex.key(hash.appendUInt32BE(txi.outputIndex)), address)
+            }
+
+            for (const [idx, txo] of transaction.outputs.entries()) {
+                const addr = this.toAddress(txo.script)
+                const outpoint = Enconding.TxAddrIndex.key(hash.appendUInt32BE(idx))
+
+                batchDb
+                    .del(outpoint)
+                    .del(Enconding.Addrindex.key(addr.append(hash)))
+
+                if (this._cacheAddrs.has(outpoint.toHex()))
+                    this._cacheAddrs.delete(outpoint.toHex())
+            }
+        }
+
+        return batchDb.write()
     }
 }

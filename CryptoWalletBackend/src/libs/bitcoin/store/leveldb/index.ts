@@ -11,12 +11,14 @@ import { OutputEntry } from "./outputentry";
 import { Enconding } from "./enconding";
 import { TxIndex } from "./txindex";
 import { AddrIndex } from "./addrindex";
+import { Encoder } from "./encoder";
 
 const Logger = LoggerFactory.getLogger('Bitcoin (LevelStore)')
 
 const BLOCK_PATH = "db/bitcoin/blocks"
 const UNDO_PATH = "db/bitcoin/blocks/undo"
 const HEIGHT_FROM_NULL_HASH = -1
+const MB = 1048576;
 
 export class LevelStore implements IBlockStore {
 
@@ -29,16 +31,23 @@ export class LevelStore implements IBlockStore {
     private _txIndex: TxIndex
     private _addrIndex: AddrIndex
 
+    private async _getKey<TValue>(db: LevelUp<AbstractLevelDOWN<Buffer, Buffer>>, key: Buffer, encoder: Encoder<TValue>) {
+        try {
+            const value = await db.get(encoder.key(key))
+            return encoder.decode(value ? value : BufferHelper.zero())
+        }
+        catch (ex) {
+            return null;
+        }
+    }
+
     private async _getTxn(height: number, prevHeight: number) {
-        let tip: any = this._cacheTip && this._cacheTip.height == prevHeight ? this._cacheTip : null
+        let tip = this._cacheTip && this._cacheTip.height == prevHeight ? this._cacheTip : null
 
         if (height > 0) {
 
-            if (!tip) tip = await this.get(Enconding.Tip.key(BufferHelper.numberToBuffer(prevHeight, 4, 'be')))
-            if (!tip) tip = await this.get(Enconding.Tip.key())
-
-            if (tip instanceof Buffer)
-                tip = Enconding.Tip.decode(tip)
+            if (!tip) tip = await this._getKey(this._db, BufferHelper.numberToBuffer(prevHeight, 4, 'be'), Enconding.Tip)
+            if (!tip) tip = await this._getKey(this._db, null, Enconding.Tip)
         }
 
         return tip ? tip.txn : 0
@@ -69,7 +78,7 @@ export class LevelStore implements IBlockStore {
             this._cacheTip.hash,
             this._cacheTip.height,
             this._cacheTip.txn,
-            (process.memoryUsage().rss / 1048576).toFixed(2),
+            (process.memoryUsage().rss / MB).toFixed(2),
             timer.toLocalTimeString()
         )
     }
@@ -89,40 +98,40 @@ export class LevelStore implements IBlockStore {
 
             const hash = await this.getHash(tip.height)
 
-            await this._undoTxo(hash)
+            await this._undoBlock(hash, newHeight)
 
             tip = await this.getLocalTip()
         }
     }
 
-    private async _undoTxo(hash: Buffer) {
+    private async _undoBlock(hash: Buffer, target: number) {
         try {
-            const undo = await this._undoDb.get(Enconding.UndoTxo.key(hash))
-            const outputs = Enconding.UndoTxo.decode(undo)
-            const trDb = this._db.batch()
+            const undo = await this._getKey(this._undoDb, hash, Enconding.UndoTxo)
+            const dbBatch = this._db.batch()
             const height = await this.getHeight(hash)
-            const bHeight = BufferHelper.numberToBuffer(height, 4, "be")
-            const bNewHeight = BufferHelper.numberToBuffer(height - 1, 4, "be")
-            const tip = Enconding.Tip.decode(await this.get(Enconding.Tip.key(bNewHeight)))
+            const binHeight = BufferHelper.numberToBuffer(height, 4, "be")
+            const binNewHeight = BufferHelper.numberToBuffer(height - 1, 4, "be")
+            const newTip = await this._getKey(this._db, binNewHeight, Enconding.Tip)
 
-            for (const output of outputs)
-                trDb.put(Enconding.CoinTxo.key(output.outpoint), Enconding.CoinTxo.encode(output))
+            for (const output of undo)
+                dbBatch.put(Enconding.CoinTxo.key(output.outpoint), Enconding.CoinTxo.encode(output))
 
-            await trDb.del(Enconding.BlockByHashIdx.key(hash))
+            await dbBatch.del(Enconding.BlockByHashIdx.key(hash))
                 .del(Enconding.BlockHeightByHashIdx.key(hash))
-                .del(Enconding.BlockHashByHeightIdx.key(bHeight))
-                .del(Enconding.Tip.key(bHeight))
-                .put(Enconding.Tip.key(), Enconding.Tip.encode(tip))
+                .del(Enconding.BlockHashByHeightIdx.key(binHeight))
+                .del(Enconding.Tip.key(binHeight))
+                .put(Enconding.Tip.key(), Enconding.Tip.encode(newTip))
                 .write()
 
-            this._cacheTip = tip
+            this._cacheTip = newTip
 
             await this._undoDb.del(Enconding.UndoTxo.key(hash))
 
-            Logger.info("Reorg blockchain { Hash: %s, Height: %d, Txn: %d }",
-                tip.hash,
-                tip.height,
-                tip.txn
+            Logger.info("Reorg blockchain { Hash: %s, Height: %d, Txn: %d, Target: %d }",
+                newTip.hash,
+                newTip.height,
+                newTip.txn,
+                target
             )
         } catch (ex) {
             Logger.warn("Can't reorg, undo not found { hash: %s }", hash.toReverseHex())
@@ -143,7 +152,6 @@ export class LevelStore implements IBlockStore {
 
     public async getUnspentCoins(txid: Buffer): Promise<{ index: number, utxo: Output }[]> {
         return new Promise<{ index: number, utxo: Output }[]>(resolve => {
-
             const coins = new Array<{ index: number, block: Buffer }>()
 
             this._db.createReadStream({
@@ -196,24 +204,14 @@ export class LevelStore implements IBlockStore {
     }
 
     public async getBlock(hash: Buffer): Promise<Block> {
-        const blockEntry = await this.get(Enconding.BlockByHashIdx.key(hash))
-
-        if (!blockEntry)
-            return null
-
-        return Enconding.BlockByHashIdx.decode(blockEntry);
+        return await this._getKey(this._db, hash, Enconding.BlockByHashIdx)
     }
 
     public async getHash(height: number): Promise<Buffer> {
         if (this._cacheHashByHeight && this._cacheHashByHeight.has(height))
             return this._cacheHashByHeight.get(height)
 
-        const hashEntry = await this.get(Enconding.BlockHashByHeightIdx.key(BufferHelper.numberToBuffer(height, 4, "be")))
-
-        if (!hashEntry)
-            return null
-
-        return Enconding.BlockHashByHeightIdx.decode(hashEntry)
+        return await this._getKey(this._db, BufferHelper.numberToBuffer(height, 4, "be"), Enconding.BlockHashByHeightIdx)
     }
 
     public async getHeight(hash: Buffer): Promise<number> {
@@ -223,19 +221,14 @@ export class LevelStore implements IBlockStore {
         if (this._cacheHeightByHash && this._cacheHeightByHash.has(hash.toHex()))
             return Enconding.BlockHeightByHashIdx.decode(this._cacheHeightByHash.get(hash.toHex()))
 
-        const heightEntry = await this.get(Enconding.BlockHeightByHashIdx.key(hash))
-
-        if (!heightEntry)
-            return null
-
-        return Enconding.BlockHeightByHashIdx.decode(heightEntry)
+        return await this._getKey(this._db, hash, Enconding.BlockHeightByHashIdx)
     }
 
     public async connect(): Promise<void> {
         Logger.info("Initializing blockstore (LevelStore)")
 
-        if (this._db.isOpen())
-            return await this._db.open()
+        if (!this._db.isOpen())
+            await this._db.open()
     }
 
     public async getLocators(height: number): Promise<string[]> {
@@ -257,91 +250,159 @@ export class LevelStore implements IBlockStore {
     }
 
     public async getLocalTip(): Promise<ChainTip> {
-        try {
-            if (this._cacheTip)
-                return this._cacheTip
-
-            const raw = await this._db.get(Enconding.Tip.key())
-
-            this._cacheTip = Enconding.Tip.decode(raw)
-
+        if (this._cacheTip)
             return this._cacheTip
-        } catch (ignore) {
-            return { hash: Constants.NULL_HASH, height: 0, txn: 0, time: 0 }
-        }
-    }
 
-    public async get(key: Buffer): Promise<Buffer> {
-        try {
-            return await this._db.get(key)
-        } catch (ignored) {
-            return null
-        }
+        this._cacheTip = await this._getKey(this._db, null, Enconding.Tip)
+        this._cacheTip = this._cacheTip || { hash: Constants.NULL_HASH, height: 0, txn: 0, time: 0 }
+
+        return this._cacheTip
     }
 
     public async saveBlock(block: Block): Promise<boolean> {
-        const timer = TimeCounter.begin()
+        try {
+            const timer = TimeCounter.begin()
 
-        const hash = block._getHash()
+            const hash = block._getHash()
 
-        const prevHashBlock = Buffer.from(block.header.prevHash)
-        const prevHeight = await this.getHeight(prevHashBlock)
+            const prevHashBlock = Buffer.from(block.header.prevHash)
+            const prevHeight = await this.getHeight(prevHashBlock)
 
-        if (prevHeight == null && !BufferHelper.isNull(prevHashBlock)) {
-            Logger.warn(`Found orphan block ${hash.toReverseHex()}`)
+            if (prevHeight == null && !BufferHelper.isNull(prevHashBlock)) {
+                Logger.warn(`Found orphan block ${hash.toReverseHex()}`)
+                timer.stop()
+
+                return false
+            }
+
+            const height = prevHeight + 1
+
+            // TODO: Crear función para verificar al agregar bloque
+            await this._reorg(height, hash)
+
+            const binHeight = BufferHelper.numberToBuffer(height, 4, 'be')
+
+            const tip = {
+                hash: block.hash,
+                height,
+                time: block.header.time,
+                txn: await this._getTxn(height, prevHeight) + block.transactions.length
+            }
+
+            await this._txIndex.indexing(block.transactions, hash)
+            await this._addrIndex.indexing(block.transactions, hash)
+            await this._addrIndex.resolveInput(block.transactions, hash)
+
+            const dbBatch = this._db.batch()
+
+            dbBatch.put(Enconding.BlockByHashIdx.key(hash), Enconding.BlockByHashIdx.encode(block))
+                .put(Enconding.BlockHeightByHashIdx.key(hash), Enconding.BlockHeightByHashIdx.encode(height))
+                .put(Enconding.BlockHashByHeightIdx.key(binHeight), Enconding.BlockHashByHeightIdx.encode(hash))
+                .put(Enconding.Tip.key(binHeight), Enconding.Tip.encode(tip))
+                .put(Enconding.Tip.key(), Enconding.Tip.encode(tip))
+
+            const undoCoins = new Array<OutputEntry>()
+
+            await this._getCoinAndUndo(block.transactions, hash, dbBatch, undoCoins)
+
+            Logger.trace("Writting %d operations", dbBatch.length)
+
+            await dbBatch.write()
+            await this._undoDb.put(Enconding.UndoTxo.key(hash), Enconding.UndoTxo.encode(undoCoins))
+
+            if (undoCoins.length > 0)
+                Logger.debug("Wrote %d txo in undo index", undoCoins.length)
+
+            this._cacheTip = tip
+            this._cacheHeightByHash.set(hash.toHex(), Enconding.BlockHeightByHashIdx.encode(height))
+            this._cacheHashByHeight.set(height, hash)
+
             timer.stop()
 
+            this._showStatus(timer)
+
+            return true
+        } catch (error) {
+            Logger.error("Fail in saveBlock: " + JSON.stringify(error))
             return false
         }
-
-        const height = prevHeight + 1
-
-        // TODO: Crear función para verificar al agregar bloque
-        await this._reorg(height, hash)
-
-        const bHeight = BufferHelper.numberToBuffer(height, 4, 'be')
-
-        const tip = {
-            hash: block.hash,
-            height,
-            time: block.header.time,
-            txn: await this._getTxn(height, prevHeight) + block.transactions.length
-        }
-
-        await this._txIndex.indexing(block.transactions, hash)
-        await this._addrIndex.indexing(block.transactions, hash)
-        await this._addrIndex.resolveInput(block.transactions, hash)
-
-        const trDb = this._db.batch()
-
-        trDb.put(Enconding.BlockByHashIdx.key(hash), Enconding.BlockByHashIdx.encode(block))
-            .put(Enconding.BlockHeightByHashIdx.key(hash), Enconding.BlockHeightByHashIdx.encode(height))
-            .put(Enconding.BlockHashByHeightIdx.key(bHeight), Enconding.BlockHashByHeightIdx.encode(hash))
-            .put(Enconding.Tip.key(bHeight), Enconding.Tip.encode(tip))
-            .put(Enconding.Tip.key(), Enconding.Tip.encode(tip))
-
-        const undoCoins = new Array<OutputEntry>()
-
-        await this._getCoinAndUndo(block.transactions, hash, trDb, undoCoins)
-
-        Logger.trace("Writting %d operations", trDb.length)
-
-        await trDb.write()
-        await this._undoDb.put(Enconding.UndoTxo.key(hash), Enconding.UndoTxo.encode(undoCoins))
-
-        if (undoCoins.length > 0)
-            Logger.debug("Wrote %d txo in undo index", undoCoins.length)
-
-        this._cacheTip = tip
-        this._cacheHeightByHash.set(hash.toHex(), Enconding.BlockHeightByHashIdx.encode(height))
-        this._cacheHashByHeight.set(height, hash)
-
-        timer.stop()
-
-        this._showStatus(timer)
-
-        return true
     }
 
+    public async rollback(toHeight: number) {
+        let height = (await this.getLocalTip()).height
+
+        while (height > toHeight && this._db.isOpen()) {
+            await this.deleteBlockInfo(height)
+            height = (await this.getLocalTip()).height
+        }
+    }
+
+    public async deleteBlockInfo(height: number) {
+        const hash = await this.getHash(height);
+        const binHeight = BufferHelper.numberToBuffer(height, 4, 'be');
+        const binNewHeight = BufferHelper.numberToBuffer(height - 1, 4, 'be');
+        const undo = await this._getKey(this._undoDb, hash, Enconding.UndoTxo);
+        const dbBatch = this._db.batch();
+        const block = await this.getBlock(hash)
+
+        if (undo)
+            for (const output of undo)
+                dbBatch.put(Enconding.CoinTxo.key(output.outpoint), Enconding.CoinTxo.encode(output));
+
+        const tip = await this._getKey(this._db, binNewHeight, Enconding.Tip);
+
+        if (tip) {
+            Logger.debug("Updated localTip: Hash=%s Height=%d", tip.hash, tip.height)
+
+            dbBatch.del(Enconding.Tip.key(binHeight))
+                .put(Enconding.Tip.key(), Enconding.Tip.encode(tip))
+
+            this._cacheTip = tip
+        }
+
+        Logger.info("Height: %d, Hash: %s", height, hash ? hash.toString('hex') : 'n/a')
+
+        if (!hash) {
+            Logger.warn("Height %d no found", height);
+
+            if (dbBatch.length > 0)
+                await dbBatch.write();
+
+            return;
+        }
+
+        await this._connectOutput(block.transactions)
+
+        await Promise.all([
+            dbBatch.del(Enconding.BlockByHashIdx.key(hash))
+                .del(Enconding.BlockHeightByHashIdx.key(hash))
+                .del(Enconding.BlockHashByHeightIdx.key(binHeight))
+                .write(),
+
+            this._undoDb.del(Enconding.UndoTxo.key(hash)),
+
+            this.TxIndex.deleteIndexes(block.transactions.map(tx => tx._getHash())),
+
+            this.AddrIndex.deleteTxoIndexes(block.transactions)
+        ])
+    }
+
+    private async _connectOutput(transactions: Transaction[]) {
+        for (const tx of transactions) {
+            for (const txi of tx.inputs) {
+                const prevTxIdx = await this.TxIndex.getIndexByHash(txi.prevTxId.reverse())
+
+                if (!prevTxIdx) continue
+
+                const block = await this.getBlock(prevTxIdx.blockHash)
+                const prevTx = block.transactions[prevTxIdx.index]
+                const txo = prevTx.outputs[txi.outputIndex]
+
+                if (!txo) continue
+
+                txi.output = txo
+            }
+        }
+    }
 
 }

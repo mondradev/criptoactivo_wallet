@@ -2,7 +2,7 @@ import { Encoder } from "./encoder"
 import { TxindexEntry } from "./txindexentry"
 import { AddrindexEntry } from "./addrindexentry"
 import { ChainTip } from "../istore"
-import { Block } from "bitcore-lib"
+import { Block, Transaction } from "bitcore-lib"
 import { OutputEntry } from "./outputentry"
 
 import BufferHelper from "../../../../utils/bufferhelper"
@@ -74,5 +74,10 @@ export const Enconding = {
     CoinTxo: new Encoder<OutputEntry>('c', { // TODO: Change from c to C
         encode: (value: OutputEntry) => value.toBuffer(),
         decode: (data: Buffer) => OutputEntry.fromBuffer(data)
+    }),
+
+    Mempool: new Encoder<Transaction> ('m', {
+        encode : (value : Transaction) => value.toBuffer(),
+        decode : (raw : Buffer) => new Transaction().fromBuffer(raw)
     })
 }

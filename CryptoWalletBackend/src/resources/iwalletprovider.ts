@@ -9,8 +9,9 @@ export interface IWalletProvider {
      *  
      * @param address Dirección a obtener el historial de transacciones.
      * @param network Tipo de red a consultar.
+     * @param height Altura a partir de donde se hará la consulta.
      */
-    getHistorialByAddress(address: string, network: string): Promise<TxData[]>
+    getHistoryByAddress(address: string, network: string, height?: number): Promise<TxData[]>
 
     /**
      * Obtiene una transacción del hash especificado.
@@ -19,6 +20,14 @@ export interface IWalletProvider {
      * @param network Tipo de red a consultar.
      */
     getTransaction(txid: string, network: string): Promise<TxData>
+
+    /**
+     * Obtiene una transacción pendiente del hash especificado.
+     * 
+     * @param txid Hash único de la transacción.
+     * @param network Tipo de red a consultar.
+     */
+    getTransactionFromMempool(txid: string, network: string): Promise<TxData>   
 
     /**
      * Obtiene la información de punta de la cadena.
@@ -58,7 +67,7 @@ export type TxData = {
     height: number,
     block: string,
     txid: string,
+    index: number,
     data: string,
-    time: number,
-    state: 'spent' | 'unspent' | 'pending'
+    time: number
 }

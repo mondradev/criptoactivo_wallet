@@ -1,5 +1,5 @@
 import * as Extras from '../src/utils'
-import * as yargs from 'yargs'
+import { argv } from 'yargs'
 import ConfigFile from './wallet.json';
 import Path from 'path'
 import Fs from 'fs'
@@ -11,9 +11,9 @@ export class AssetConfig {
     private _seeds: Array<string>
 
     constructor(config: any) {
-        this._network = yargs.argv[config.name + 'Network'] || config.network || 'mainnet'
-        this._port = yargs.argv[config.name + 'Port'] || config.port
-        this._maxConnections = yargs.argv[config.name + 'MaxConnections'] || config.maxConnections || 16
+        this._network = argv[config.name + 'Network'] || config.network || 'mainnet'
+        this._port = argv[config.name + 'Port'] || config.port
+        this._maxConnections = argv[config.name + 'MaxConnections'] || config.maxConnections || 16
         this._seeds = config.seeds || []
     }
 
@@ -28,7 +28,7 @@ class ConfigManager {
     private _assets: { [asset: string]: AssetConfig } = {}
 
     public get logLevel(): string {
-        return Extras.coalesce(yargs.argv['logLevel'], ConfigFile.logLevel).toLowerCase();
+        return Extras.coalesce(argv['logLevel'], ConfigFile.logLevel).toLowerCase();
     }
 
     public get walletApi(): {
@@ -36,8 +36,8 @@ class ConfigManager {
         port: number;
     } {
         return {
-            host: Extras.coalesce(yargs.argv['walletApiHost'], ConfigFile.walletApi.host),
-            port: Extras.coalesce(yargs.argv['walletApiPort'], ConfigFile.walletApi.port)
+            host: Extras.coalesce(argv['walletApiHost'], ConfigFile.walletApi.host),
+            port: Extras.coalesce(argv['walletApiPort'], ConfigFile.walletApi.port)
         };
     }
 
