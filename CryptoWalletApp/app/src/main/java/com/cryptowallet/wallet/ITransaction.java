@@ -37,14 +37,14 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Cripto-activo de la transacción.
      */
-    SupportedAssets getCriptoAsset();
+    SupportedAssets getCryptoAsset();
 
     /**
      * Obtiene la comisión gastada en la transacción.
      *
      * @return Comisión de la transacción.
      */
-    long getNetworkFee();
+    long getFee();
 
     /**
      * Obtiene la cantidad gastada en la transacción sin incluir la comisión.
@@ -91,7 +91,7 @@ public interface ITransaction extends Comparable<ITransaction> {
      *
      * @return Un valor true si la transacción fue confirmada.
      */
-    boolean isCommited();
+    boolean isConfirm();
 
     /**
      * Obtiene el identificador único del bloque padre de esta transacción.
@@ -108,32 +108,18 @@ public interface ITransaction extends Comparable<ITransaction> {
     long getBlockHeight();
 
     /**
-     * Obtiene el estado de la transacción en la cadena de bloques.
+     * Obtiene el tamaño de la transacción en bytes.
      *
-     * @return Estado de la transacción.
+     * @return Tamaño en bytes.
      */
-    TransactionState getState();
-
-    /**
-     * Obtiene el tamaño de la transacción en kilobytes.
-     *
-     * @return Tamaño en kilobytes.
-     */
-    float getSizeInKB();
+    long getSize();
 
     /**
      * Obtiene la billetera que contiene esta transacción.
      *
      * @return Billetera contenedora.
      */
-    IWallet getWallet();
-
-    /**
-     * Obtiene la cantidad en su valor fiat.
-     *
-     * @return Valor fiat.
-     */
-    float getFiatAmount();
+    AbstractWallet getWallet();
 
     /**
      * Indica si la transacción es un pago.
@@ -144,7 +130,22 @@ public interface ITransaction extends Comparable<ITransaction> {
 
     /**
      * Indica si es una transacción con nuevas monedas.
+     *
      * @return Un true si la transacción es de nuevas monedas.
      */
     boolean isCoinbase();
+
+    /**
+     * Obtiene las confirmaciones de la transacción.
+     *
+     * @return El número de confirmaciones.
+     */
+    long getConfirmations();
+
+    /**
+     * Obtiene los bytes que representa a la transacción.
+     *
+     * @return Matriz unidimensional de bytes.
+     */
+    byte[] serialize();
 }

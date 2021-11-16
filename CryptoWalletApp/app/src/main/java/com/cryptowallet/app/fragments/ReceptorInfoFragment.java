@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app.fragments;
 
+import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -37,13 +38,16 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentActivity;
 
 import com.cryptowallet.BuildConfig;
+import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.IWallet;
-import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.AbstractWallet;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.snackbar.Snackbar;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -85,57 +89,35 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
      */
     private static final String FILENAME_QR_TEMP = "qrcode_";
 
-
     /**
      * Extensión del archivo temporal del código QR.
      */
     private static final String EXTENSION_QR_TEMP = ".jpeg";
 
     /**
-     * Clave del parametro activo.
-     */
-    private static final String ASSET_KEY
-            = String.format("%s.AssetKey", ReceptorInfoFragment.class.getName());
-
-    /**
-     * Controlador de la billetera.
-     */
-    private IWallet mWallet;
-
-    /**
      * Muestra un cuadro de diálogo inferior con los datos de recepción de la billetera.
      *
      * @param activity Actividad que invoca.
-     * @param asset    Activo de la billetera.
+     * @param wallet   Instancia de la billetera.
      */
-    static void show(@NonNull FragmentActivity activity, @NonNull SupportedAssets asset) {
-        Bundle parameters = new Bundle();
-        parameters.putCharSequence(ASSET_KEY, asset.name());
+    static void show(@NonNull FragmentActivity activity, @NonNull AbstractWallet wallet) {
+        final ReceptorInfoFragment fragment = new ReceptorInfoFragment();
+        final Bundle parameters = new Bundle();
 
-        ReceptorInfoFragment fragment = new ReceptorInfoFragment();
+        parameters.putString(Constants.EXTRA_ADDRESS, wallet.getCurrentPublicAddress());
+        parameters.putString(Constants.EXTRA_RECEIVER_URI, wallet.generateUri().toString());
+        parameters.putInt(Constants.EXTRA_ICON_RES_ID, wallet.getIcon());
         fragment.setArguments(parameters);
         fragment.show(activity.getSupportFragmentManager(), TAG_FRAGMENT);
     }
 
-    /**
-     * Este método es invocado cuando el fragmento es creado.
-     *
-     * @param savedInstanceState Datos de estado de la aplicación.
-     */
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        mWallet = WalletManager.get(
-                SupportedAssets.valueOf(requireArguments().getString(ASSET_KEY)));
-    }
 
     /**
      * Este método es llamado se crea una nueva instancia de la vista del fragmento.
      */
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater,
+    public View onCreateView(@NotNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.bsd_receptor_info, container, false);
@@ -143,13 +125,17 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
         if (root == null)
             throw new UnsupportedOperationException();
 
+        final Bundle arguments = requireArguments();
+
         root.findViewById(R.id.mReceInfoShareButton).setOnClickListener(this::onPressedButton);
         root.findViewById(R.id.mReceInfoCopyButton).setOnClickListener(this::onPressedButton);
 
-        ((TextView) root.findViewById(R.id.mReceInfoAddress)).setText(mWallet.getReceiverAddress());
+        ((TextView) root.findViewById(R.id.mReceInfoAddress))
+                .setText(arguments.getString(Constants.EXTRA_ADDRESS));
         ((ImageView) root.findViewById(R.id.mReceInfoQrCode)).setImageBitmap(
-                Utils.getQrCode(mWallet.getReceiverUri().toString(), QR_CODE_SIZE));
-        ((ImageView) root.findViewById(R.id.mSendIcon)).setImageResource(mWallet.getIcon());
+                Utils.getQrCode(arguments.getString(Constants.EXTRA_RECEIVER_URI), QR_CODE_SIZE));
+        ((ImageView) root.findViewById(R.id.mSendIcon))
+                .setImageResource(arguments.getInt(Constants.EXTRA_ICON_RES_ID));
 
         return root;
     }
@@ -167,17 +153,16 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
 
                 Objects.requireNonNull(clipboard);
 
-                ClipData data = ClipData.newPlainText(getString(R.string.address_title), mWallet.getReceiverAddress());
+                ClipData data = ClipData.newPlainText(getString(R.string.address_title),
+                        requireArguments().getString(Constants.EXTRA_ADDRESS));
                 clipboard.setPrimaryClip(data);
 
-                Snackbar snackbar = Snackbar.make(
+                Snackbar.make(
                         requireView(),
                         R.string.address_copy_to_clipboard_text,
                         Snackbar.LENGTH_SHORT
-                );
-
-                snackbar.setAnchorView(requireView());
-                snackbar.show();
+                ).setAnchorView(requireView())
+                        .show();
 
                 break;
 
@@ -203,6 +188,19 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
 
                 break;
         }
+    }
+
+    /**
+     * Este método es llamado se crea una nueva instancia del diálogo.
+     */
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+        final BottomSheetDialog sheetDialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+        sheetDialog.setOnShowListener(dialog -> ((BottomSheetDialog) dialog).getBehavior()
+                .setState(BottomSheetBehavior.STATE_EXPANDED));
+
+        return sheetDialog;
     }
 
     /**
@@ -257,7 +255,7 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
         Intent sendIntent = new Intent()
                 .setAction(Intent.ACTION_SEND)
                 .setType("image/jpeg")
-                .putExtra(Intent.EXTRA_TEXT, mWallet.getReceiverAddress())
+                .putExtra(Intent.EXTRA_TEXT, requireArguments().getString(Constants.EXTRA_ADDRESS))
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 

@@ -25,6 +25,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.AttrRes;
@@ -32,6 +33,8 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.StyleRes;
 
+import com.cryptowallet.wallet.SupportedAssets;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -41,10 +44,14 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -55,7 +62,7 @@ import static android.graphics.Bitmap.Config.ARGB_8888;
  * Clase con funciones de utilería para la aplicación.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 1.1
+ * @version 1.2
  */
 public final class Utils {
 
@@ -194,14 +201,23 @@ public final class Utils {
     }
 
     /**
-     * Ejecuta una comando ignorando las excepciones lanzadas.
+     * Ejecuta una comando ignorando las excepciones lanzadas. Si existe una excepción se retorna
+     * un valor false.
      *
      * @param command Comando a ejecutar.
+     * @return True si se ejecutó sin excepciones.
      */
-    public static void tryNotThrow(TryNotThrowCommand command) {
+    @CanIgnoreReturnValue
+    public static boolean tryNotThrow(TryNotThrowCommand command) {
         try {
             command.run();
-        } catch (Exception ignored) {
+
+            return true;
+        } catch (Exception e) {
+            if (e.getStackTrace().length > 1)
+                Log.e("Utils", "Method: " + e.getStackTrace()[1], e);
+            Log.e("Utils", String.format("Exception avoided: %s", e.getMessage()));
+            return false;
         }
     }
 
@@ -213,7 +229,8 @@ public final class Utils {
     public static boolean tryReturnBoolean(TryReturnCommand<Boolean> command, boolean defaultValue) {
         try {
             return command.execute();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Log.d("Utils", String.format("Exception avoided: %s", e.getMessage()));
         }
 
         return defaultValue;
@@ -286,6 +303,77 @@ public final class Utils {
     }
 
     /**
+     * Obtiene la cadena que representa una cantidad de bytes, utilizando sus equivalentes.
+     *
+     * @param size Tamaño a convertir.
+     * @return Una cadena que representa el tamaño.
+     */
+    public static String toSizeFriendlyString(long size) {
+        int index = 0;
+        float newSize = size;
+        final int maxSize = 1024;
+        final List<String> units = Arrays.asList("B", "KB", "MB", "GB", "TB");
+
+        while (newSize > maxSize) {
+            newSize = newSize / maxSize;
+            index++;
+        }
+
+        return String.format("%s %s", NumberFormat.getNumberInstance().format(newSize),
+                units.get(index));
+    }
+
+    /**
+     * Obtiene un nuevo <code>double</code> con el valor representado por la cadena <code>text</code>.
+     *
+     * @param text Cadena que representa el valor de doble precisión a convertir.
+     * @return Un valor double.
+     */
+    public static double parseDouble(@NonNull String text) {
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException ignored) {
+            return 0f;
+        }
+    }
+
+    public static <T> T coalesce(T value, T defaultValue) {
+        if (value != null)
+            return value;
+
+        return defaultValue;
+    }
+
+    /**
+     * Obtiene un nuevo <code>int</code> con el valor representado por la cadena <code>text</code>.
+     *
+     * @param text Cadena que representa el valor de entero a convertir.
+     * @return Un valor entero.
+     */
+    public static int parseInt(String text) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    /**
+     * Convierte una cantidad expresada en un cripto-activo en una cantidad expresada en un activo
+     * fiduciario a partir de su equivalencia del entero.
+     *
+     * @param amount      Monto a convertir.
+     * @param cryptoAsset Cripto-activo en el cual se expresa el monto.
+     * @param price       Precio del cripto-activo.
+     * @param fiatAsset   Activo en el cual se expresa el precio del cripto-activo.
+     * @return Un monto equivalente al monto en cripto-activo.
+     */
+    public static long cryptoToFiat(long amount, SupportedAssets cryptoAsset,
+                                    long price, SupportedAssets fiatAsset) {
+        return (amount * price) / cryptoAsset.getUnit();
+    }
+
+    /**
      * Provee de una función que puede lanzar excepciones.
      */
     public interface TryNotThrowCommand {
@@ -311,5 +399,53 @@ public final class Utils {
          * @throws Exception Si un error surge.
          */
         T execute() throws Exception;
+    }
+
+    /**
+     * Funciones de utilidad para las listas.
+     *
+     * @author Ing. Javier Flores (jjflores@innsytech.com)
+     * @version 1.0
+     */
+    public static class Lists {
+
+        /**
+         * Función para realizar un recorrido de toda la colección y acumula el valor devuelto por
+         * la función acumuladora.
+         *
+         * @param list         Colección de datos.
+         * @param aggregator   Función acumuladora.
+         * @param initialValue Valor inicial del acumulador.
+         * @param <T>          Tipo de la colección.
+         * @param <R>          Valor del acumulador.
+         * @return Total acumulado.
+         */
+        public static <T, R> R aggregate(List<T> list, BiFunction<T, R, R> aggregator,
+                                         R initialValue) {
+            R aggregate = initialValue;
+            for (T item : list)
+                aggregate = aggregator.accept(item, aggregate);
+
+            return aggregate;
+        }
+
+        /**
+         * Permite realizar un mapeo a una lista de valores.
+         *
+         * @param list   Lista de valores.
+         * @param mapper Función de mapeo.
+         * @param <T>    Tipo de la lista.
+         * @param <R>    Tipo de la nueva lista.
+         * @return Nueva lista.
+         */
+        public static <T, R> List<R> map(List<T> list, Function<T, R> mapper) {
+            List<R> newList = new ArrayList<>();
+
+            for (T item : list)
+                newList.add(mapper.accept(item));
+
+            return newList;
+        }
+
     }
 }

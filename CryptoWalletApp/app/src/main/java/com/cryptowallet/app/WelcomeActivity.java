@@ -18,6 +18,7 @@
 
 package com.cryptowallet.app;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -29,8 +30,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
-import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.services.WalletProvider;
+import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 
 import java.util.Objects;
 
@@ -39,10 +40,14 @@ import java.util.Objects;
  * palabras.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.0
+ * @version 2.1
  */
-public class WelcomeActivity extends AppCompatActivity
-        implements DialogInterface.OnClickListener {
+public class WelcomeActivity extends AppCompatActivity implements DialogInterface.OnClickListener {
+
+    /**
+     * Instancia del servicio de las billeteras.
+     */
+    private WalletProvider mWalletProvider;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -52,9 +57,23 @@ public class WelcomeActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Preferences.get().loadTheme(this);
 
         Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_welcome);
+
+        mWalletProvider = WalletProvider.getInstance();
+    }
+
+    /**
+     * Este método es llamado cuando el contexto es adjuntado a la actividad. Se carga el idioma
+     * elegido por el usuario que se usará en la aplicación.
+     *
+     * @param newBase Contexto base.
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(Preferences.get(this).loadLanguage(newBase));
     }
 
     /**
@@ -64,7 +83,7 @@ public class WelcomeActivity extends AppCompatActivity
      * @param view Vista que desencadena el evento click.
      */
     public void onPressedCreateButton(View view) {
-        AlertMessages.showTerms(this, this);
+        AlertMessages.showTerms(this, getString(R.string.create_caption_button), this);
     }
 
     /**
@@ -91,14 +110,32 @@ public class WelcomeActivity extends AppCompatActivity
         Authenticator.registerPin(
                 this,
                 new Handler()::post,
-                (IAuthenticationSucceededCallback) authenticationToken ->
-                        WalletManager.get(SupportedAssets.BTC)
-                                .initialize(authenticationToken, (hasError) -> {
-                                    if (hasError)
-                                        AlertMessages.showCreateError(getApplicationContext());
-                                    else
-                                        startActivity(new Intent(getBaseContext(),
-                                                MainActivity.class));
-                                }));
+                (IAuthenticationSucceededCallback) authenticationToken -> {
+                    ProgressDialog.show(WelcomeActivity.this);
+                    mWalletProvider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
+                        /**
+                         * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
+                         */
+                        @Override
+                        public void successful() {
+                            ProgressDialog.hide();
+                            startActivity(new Intent(getApplicationContext(),
+                                    MainActivity.class));
+                        }
+
+                        /**
+                         * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
+                         * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
+                         * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
+                         * ya que este se realiza a través de {@link Authenticator}.
+                         *
+                         * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
+                         */
+                        @Override
+                        public void fail(Exception ex) {
+                            AlertMessages.showCreateError(WelcomeActivity.this);
+                        }
+                    });
+                });
     }
 }

@@ -231,7 +231,7 @@ public class ChainTipInfo {
          */
         public Builder setTime(int time) {
             Calendar calendar = Calendar.getInstance();
-            calendar.setTimeInMillis(time * 1000);
+            calendar.setTimeInMillis(time * 1000L);
 
             return setTime(calendar.getTime());
         }

@@ -21,9 +21,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
     android:gravity="center_horizontal"
     android:orientation="vertical"
-    android:background="?attr/colorSurface"
     tools:context=".app.SendPaymentsActivity">
 
     <ImageView
@@ -41,6 +41,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
+        android:gravity="center"
         android:text="@string/balance_sample_text"
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
@@ -65,8 +66,8 @@
         android:hint="@string/recipient_address_text"
 
         app:endIconDrawable="@drawable/ic_qrcode_scan"
-        app:endIconTint="@color/sl_color_primary_iconbutton"
-        app:endIconMode="custom">
+        app:endIconMode="custom"
+        app:endIconTint="@color/sl_color_primary_iconbutton">
 
         <com.google.android.material.textfield.TextInputEditText
             android:layout_width="match_parent"
@@ -90,8 +91,8 @@
 
         app:endIconCheckable="true"
         app:endIconDrawable="@drawable/sl_cash_24dp"
-        app:endIconTint="@color/sl_checked_primary"
-        app:endIconMode="custom">
+        app:endIconMode="custom"
+        app:endIconTint="@color/sl_checked_primary">
 
         <com.google.android.material.textfield.TextInputEditText
             android:layout_width="match_parent"
@@ -156,8 +157,8 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="0dp"
-            android:visibility="gone"
-            android:hint="@string/fee_by_kb_pattern">
+            android:hint="@string/fee_by_kb_pattern"
+            android:visibility="gone">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:layout_width="match_parent"
@@ -173,10 +174,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
-        android:gravity="end"
-        android:orientation="vertical"
         android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp">
+        android:layout_marginEnd="16dp"
+        android:gravity="end"
+        android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -184,10 +185,10 @@
             android:orientation="horizontal">
 
             <TextView
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/total_fee_text" />
+                android:text="@string/total_fee_text"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2" />
 
             <TextView
                 android:id="@+id/mSendTotalFee"
@@ -206,22 +207,30 @@
             android:orientation="horizontal">
 
             <TextView
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/total_to_pay_text" />
+                android:text="@string/total_to_pay_text"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2" />
 
             <TextView
                 android:id="@+id/mSendTotalPay"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="@string/balance_sample_text" />
+                android:text="@string/balance_sample_text"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
 
         </LinearLayout>
 
     </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/mSendProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:indeterminate="true"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/mSendPayButton"
@@ -230,7 +239,6 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="24dp"
         android:layout_marginEnd="16dp"
-        android:enabled="false"
         android:onClick="onPay"
         android:text="@string/pay_text" />
 

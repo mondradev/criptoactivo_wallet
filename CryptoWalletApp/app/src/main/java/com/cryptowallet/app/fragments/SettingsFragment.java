@@ -36,13 +36,14 @@ import com.cryptowallet.R;
 import com.cryptowallet.app.BackupActitivy;
 import com.cryptowallet.app.Configure2FaActivity;
 import com.cryptowallet.app.Preferences;
+import com.cryptowallet.app.ProgressDialog;
 import com.cryptowallet.app.SplashActivity;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
 import com.cryptowallet.app.authentication.IAuthenticationUpdatedCallback;
 import com.cryptowallet.app.authentication.TwoFactorAuthentication;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,7 @@ import static android.app.Activity.RESULT_OK;
  * @see Preferences
  */
 public class SettingsFragment extends PreferenceFragmentCompat {
+
 
     /**
      * Identificador de la petición de configuración de 2FA.
@@ -126,10 +128,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * Elimina todas la billeteras de la aplicación y restaura las configuraciones de la misma.
      */
     private void deleteWallets() {
-        WalletManager.forEachAsset((asset) -> {
-            if (!WalletManager.get(asset).delete())
+        WalletProvider.getInstance().forEachWallet((wallet) -> {
+            if (!wallet.delete())
                 throw new IllegalStateException("Unable to delete wallet");
-
         });
 
         Preferences.get().clear();
@@ -159,9 +160,11 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                         startActivityForResult(intent, CONFIGURE_2FA_REQUEST);
                     });
         else {
-            // TODO Show Dialog 2FA
-            TwoFactorAuthentication.get(requireContext()).reset();
-            return true;
+            TwoFactorAuthenticationFragment.show(requireActivity(),
+                    () -> {
+                        TwoFactorAuthentication.get(requireContext()).reset();
+                        ((SwitchPreference) preference).setChecked(false);
+                    });
         }
 
         return false;
@@ -223,11 +226,10 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         List<String> currenciesNames = new ArrayList<>();
         List<String> currenciesValues = new ArrayList<>();
 
-        for (SupportedAssets asset : SupportedAssets.values())
-            if (asset.isFiat()) {
-                currenciesNames.add(requireContext().getString(asset.getName()));
-                currenciesValues.add(asset.name());
-            }
+        for (SupportedAssets asset : SupportedAssets.getSupportedFiatAssets()) {
+            currenciesNames.add(requireContext().getString(asset.getName()));
+            currenciesValues.add(asset.name());
+        }
 
         ListPreference currenciesList = requirePreference("currency");
         currenciesList.setEntries(currenciesNames.toArray(new CharSequence[0]));
@@ -316,10 +318,11 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * @return Un true si la preferencia fue establecida.
      */
     private boolean onSelectedCurrency(Preference preference, Object selectedCurrency) {
-        Preferences.get().setFiat(SupportedAssets.valueOf(selectedCurrency.toString()));
+        SupportedAssets fiatAsset = SupportedAssets.valueOf(selectedCurrency.toString());
+        Preferences.get().setFiat(fiatAsset);
         requirePreference("currency").setSummary(Preferences.get().getFiat().getName());
 
-        WalletManager.forEachAsset((asset) -> WalletManager.get(asset).updatePriceListeners());
+        WalletProvider.getInstance().updateFiatCurrency(fiatAsset);
 
         return true;
     }
@@ -390,11 +393,12 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 
         Authenticator.updatePin(requireActivity(), Executors.newSingleThreadExecutor(),
                 (IAuthenticationUpdatedCallback) (byte[] oldToken, byte[] newToken) -> {
-                    WalletManager.forEachAsset(
-                            (asset) -> WalletManager.get(asset)
-                                    .updatePassword(oldToken, newToken));
-
-                    // TODO Show progress
+                    ProgressDialog.show(requireActivity());
+                    WalletProvider.getInstance()
+                            .forEachWallet((wallet) -> {
+                                wallet.updatePassword(oldToken, newToken);
+                                ProgressDialog.hide();
+                            });
                 });
 
         return true;
@@ -408,7 +412,6 @@ public class SettingsFragment extends PreferenceFragmentCompat {
      * @return Un valor true si es cambiado el lenguaje.
      */
     private boolean onSelectedLanguage(Preference preference, Object selectedLanguage) {
-        // TODO: Bug - Don't load new language in spanish to english
         if (selectedLanguage.toString().equals(Preferences.get().getLanguage().getTag()))
             return false;
 

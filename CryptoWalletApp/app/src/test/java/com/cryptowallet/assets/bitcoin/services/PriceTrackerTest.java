@@ -18,12 +18,16 @@
 
 package com.cryptowallet.assets.bitcoin.services;
 
-import com.cryptowallet.services.coinmarket.BitfinexPriceTracker;
-import com.cryptowallet.services.coinmarket.BitsoPriceTracker;
+import com.cryptowallet.services.coinmarket.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
+import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
+import com.cryptowallet.services.coinmarket.pricetrackers.BitsoPriceTracker;
+import com.cryptowallet.utils.BiConsumer;
 
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
+
+import java.util.concurrent.Executors;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
@@ -38,27 +42,17 @@ import static org.mockito.Mockito.verify;
 public class PriceTrackerTest {
 
     /**
-     * Libro de Bitcoin-PesosMxn Bitso
-     */
-    private static final String BOOK_BTC_MXN = "btc_mxn";
-
-    /**
-     * Libro de Bitcoin-USD Bitfinex
-     */
-    private static final String BOOK_BTC_USD = "tBTCUSD";
-
-    /**
      * Evalua el seguimiento del precio de Bitcoin en Bitso y es pasada si este es mayor a cero.
      */
     @Test
     public void bitsoPriceTracker() {
-        final PriceTracker bitsoBtcMxnTracker = BitsoPriceTracker.get(BOOK_BTC_MXN);
-        final PriceTracker.IListener listener = mock(PriceTracker.IListener.class);
+        final PriceTracker bitsoBtcMxnTracker = BitsoPriceTracker.get(BitsoPriceTracker.BTCMXN);
+        final BiConsumerBookAndLong listener = mock(BiConsumerBookAndLong.class);
 
-        bitsoBtcMxnTracker.addChangeListener(listener);
+        bitsoBtcMxnTracker.addPriceChangedListener(Executors.newSingleThreadExecutor(), listener);
 
         verify(listener, timeout(2000))
-                .onChange(ArgumentMatchers.floatThat(price -> price > 0));
+                .accept(ArgumentMatchers.any(), ArgumentMatchers.longThat(price -> price > 0));
     }
 
     /**
@@ -66,12 +60,19 @@ public class PriceTrackerTest {
      */
     @Test
     public void bitfinexPriceTracker() {
-        final PriceTracker bitfinexBtcUsdTracker = BitfinexPriceTracker.get(BOOK_BTC_USD);
-        final PriceTracker.IListener listener = mock(PriceTracker.IListener.class);
+        final PriceTracker bitfinexBtcUsdTracker
+                = BitfinexPriceTracker.get(BitfinexPriceTracker.BTCUSD);
+        final BiConsumerBookAndLong listener = mock(BiConsumerBookAndLong.class);
 
-        bitfinexBtcUsdTracker.addChangeListener(listener);
+        bitfinexBtcUsdTracker.addPriceChangedListener(Executors.newSingleThreadExecutor(), listener);
 
         verify(listener, timeout(2000))
-                .onChange(ArgumentMatchers.floatThat(price -> price > 0));
+                .accept(ArgumentMatchers.any(), ArgumentMatchers.longThat(price -> price > 0));
+    }
+
+    /**
+     * Consumidor de números de longitud 64 bits.
+     */
+    interface BiConsumerBookAndLong extends BiConsumer<Book, Long> {
     }
 }

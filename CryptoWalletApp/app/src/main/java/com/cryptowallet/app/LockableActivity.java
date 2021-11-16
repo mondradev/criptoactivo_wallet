@@ -18,19 +18,23 @@
 
 package com.cryptowallet.app;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Timeout;
 
 import java.util.Objects;
@@ -57,10 +61,10 @@ import java.util.Objects;
  * enviando a la actividad principal cada vez que se suspenda la aplicación.
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
- * @version 2.1
+ * @version 2.2
  */
 // TODO Fix lifecycle, don't recovery state
-public abstract class LockableActivity extends AppCompatActivity implements LifecycleObserver {
+public abstract class LockableActivity extends AppCompatActivity {
 
     /**
      * Etiqueta de la clase.
@@ -70,7 +74,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Clase principal de la billetera.
      */
-    private static Class<? extends LockableActivity> mMainActivity;
+    private static Class<? extends FragmentActivity> mMainActivity;
 
     /**
      * Indica que la aplicación requiere ser bloqueda.
@@ -88,16 +92,26 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     private static boolean mLocked;
 
     /**
-     * Tema actual de la aplicación.
+     *
      */
-    private String mCurrentTheme;
+    private static Runnable mOnResume;
+
+    /**
+     *
+     */
+    private static Runnable mOnPause;
+
+    /**
+     *
+     */
+    private static LifecycleObserver mLifecycleObserver;
 
     /**
      * Registra la clase de la actividad prinpal de la aplicación.
      *
      * @param clazz Clase de la actividad.
      */
-    public static void registerMainActivityClass(@NonNull Class<? extends LockableActivity> clazz) {
+    public static void registerMainActivityClass(@NonNull Class<? extends FragmentActivity> clazz) {
         mMainActivity = clazz;
     }
 
@@ -118,7 +132,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Detiene el temporizador de bloqueo.
      */
-    protected static void stopTimer() {
+    public static void stopTimer() {
         if (mLockTimer != null)
             mLockTimer.cancel();
     }
@@ -126,8 +140,7 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
     /**
      * Llama la actividad principal requiriendo que esta sea bloqueada.
      */
-    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    private void callLockScreen() {
+    protected void onResumeApp() {
         if (mMainActivity == null)
             throw new UnsupportedOperationException(
                     "Requires register the class by #registerMainActivityClass(Class)");
@@ -147,7 +160,35 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
         mLocked = true;
 
         LockableActivity.this.startActivity(intent);
-        LockableActivity.this.finishAfterTransition();
+        LockableActivity.this.finish();
+    }
+
+
+    /**
+     * Este método es llamado cuando se sale de la aplicación.
+     */
+    protected void onLeaveApp() {
+        createLockTimer();
+    }
+
+    /**
+     * Obtiene la instancia del servicio de billeteras.
+     *
+     * @return Instancia del servicio.
+     */
+    public WalletProvider getWalletService() {
+        return WalletProvider.getInstance();
+    }
+
+    /**
+     * Este método es llamado cuando el contexto es adjuntado a la actividad. Se carga el idioma
+     * elegido por el usuario que se usará en la aplicación.
+     *
+     * @param newBase Contexto base.
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(Preferences.get(this).loadLanguage(newBase));
     }
 
     /**
@@ -155,50 +196,47 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
      *
      * @param savedInstanceState Estado guardado de la aplicación.
      */
+    @CallSuper
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Preferences.get().loadTheme(this);
+        Preferences.get(this).loadTheme(this);
 
-        mCurrentTheme = Preferences.get().getTheme().getName();
+        mOnResume = this::onResumeApp;
+        mOnPause = this::onLeaveApp;
 
-        ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
-    }
+        if (mLifecycleObserver == null) {
+            mLifecycleObserver = new LifecycleObserver() {
 
-    /**
-     * Este método es llamado cuando la actividad es destruída.
-     */
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+                @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                public void onResume() {
+                    if (mOnResume != null)
+                        mOnResume.run();
+                }
 
-        ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
-    }
+                @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+                public void onPause() {
+                    if (mOnPause != null)
+                        mOnPause.run();
+                }
 
-    /**
-     * Este método es llamado cuando se sale de la aplicación.
-     */
-    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-    public void onLeaveApp() {
-        createLockTimer();
-    }
+                @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+                public void onDestroy() {
+                    ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifecycleObserver);
+                    mLifecycleObserver = null;
+                }
 
-    /**
-     * Este método es llamado cuando se recupera la aplicación al haber cambiado a otra.
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
+            };
 
-        if (!mCurrentTheme.contentEquals(Preferences.get().getTheme().getName()))
-            recreate();
+            ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifecycleObserver);
+        }
     }
 
     /**
      * Borra la bandera de bloqueo.
      */
-    protected void unlockApp() {
+    public void unlockApp() {
         if (!mRequireLock)
             return;
 
@@ -264,10 +302,9 @@ public abstract class LockableActivity extends AppCompatActivity implements Life
      */
     @NonNull
     protected <T extends View> T requireView(int id) {
-        View view = findViewById(id);
+        T view = this.findViewById(id);
         Objects.requireNonNull(view);
 
-        //noinspection unchecked
-        return (T) view;
+        return view;
     }
 }

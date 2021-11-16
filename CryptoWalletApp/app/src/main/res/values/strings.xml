@@ -22,6 +22,8 @@
     <string name="recents_text">Last transactions</string>
     <string name="received_text">Received</string>
     <string name="sent_text">Sent</string>
+    <string name="notify_receive_pending">You have receive %s uncommited</string>
+    <string name="notify_receive_completed">You have receive %s committed in block %s</string>
     <string name="notify_receive">You have receive %s</string>
     <string name="nofity_send">You have send %s</string>
     <string name="recipient_address_text">Recipient address</string>
@@ -31,14 +33,13 @@
     <string name="empty_recents_text">No transactions yet</string>
     <string name="cryptocurrency_sample_text" translatable="false">Bitcoin</string>
     <string name="operation_kind_sample">Received</string>
-    <string name="status_sample_text">(UC)</string>
+    <string name="status_sample_symbol_text">(UC)</string>
     <string name="datetime_sample_text">today @ 08:00 AM</string>
-    <string name="amount_sample_text" translatable="false">0.002 BTC</string>
+    <string name="amount_sample_text" translatable="false">20.99M BTC</string>
     <string name="today_text">today</string>
     <string name="yesterday_text">yesterday</string>
     <string name="qr_reader_indications">Place a QR Code</string>
     <string name="no_enought_funds_error">No enought funds</string>
-    <string name="sent_payment_text">You have sent %s</string>
     <string name="qr_receive_description">QR code used to send payments</string>
     <string name="backup_text">Backup</string>
     <string name="indications_restore_text">The next 12 words guarantees access to your funds from any other wallet. Keep this information secure by writing it down on a piece of paper.</string>
@@ -57,15 +58,14 @@
     <string name="change_pin_setting">Change PIN</string>
     <string name="biometric_setting">Use biometric</string>
     <string name="version_text">Version</string>
-    <string name="commit_pin">Confirm your PIN</string>
+    <string name="confirm_pin_text">Confirm your PIN</string>
     <string name="not_match_pin_error">Wrong PIN</string>
     <string name="authenticate_title">Authentication</string>
     <string name="transaction_title">Transaction</string>
     <string name="datetime_text">Timestamp</string>
-    <string name="commit_text">Commits</string>
+    <string name="confirmations_text">Confirmations</string>
     <string name="fail_to_delete_error">Couldn\'t delete the wallet</string>
     <string name="unknown_version">Unknown Version</string>
-    <string name="notify_send">You have send %s</string>
     <string name="address_title">Addresses</string>
     <string name="blueMode">Blue</string>
     <string name="usd_fiat" translatable="false">USD</string>
@@ -80,7 +80,7 @@
     <string name="biometric_summary">Enable if you want to use the fingerprint to unlock wallet</string>
     <string name="timeout_lock_summary">Set the time you wait to block the wallet</string>
     <string name="wrong_word_error">Wrong words: %s</string>
-    <string name="fiat_sample_text" translatable="false">~ $ 0.00 USD</string>
+    <string name="fiat_sample_text" translatable="false">≈ $ 0.00 USD</string>
     <string name="unknown_data_text">(Unavailable data)</string>
     <string name="two_factor_summary">Two-factor authentication adds an additional layer of security to the send payments process</string>
     <string name="two_factor_setting_title">Use 2FA</string>
@@ -170,14 +170,40 @@
     <string name="coinbase_address">(New coins)</string>
     <string name="tx_hash_sample" translatable="false">a1cbbcc70c2565e9730d2a2f62c39573a470de4d596a176ba50ba272e37bb99a</string>
     <string name="address_sample" translatable="false">msyfBnf2pTwXc6uTHXH7yKyq5MK1ggq8C8</string>
-    <string name="information_text">Information</string>
+    <string name="summary_text">Summary</string>
     <string name="id_text" translatable="false">ID</string>
     <string name="block_text">Block</string>
     <string name="blockhash_text" translatable="false">Hash</string>
     <string name="blockhash_sample_text" translatable="false">0000000000000000001139feb52b3eac11284ddbd326f29184c520d430a5c412</string>
     <string name="blockheight_text">Height</string>
     <string name="blockheight_sample_text" translatable="false">502,125</string>
-    <string name="commits_sample_text" translatable="false">150</string>
+    <string name="confirmations_sample_text" translatable="false">150</string>
     <string name="inputs_text">Inputs</string>
     <string name="outputs_text">Outputs</string>
+    <string name="size_text">Size</string>
+    <string name="size_sample_text" translatable="false">197 B</string>
+    <string name="status_text">Status</string>
+    <string name="mempool_status_text">In mempool</string>
+    <string name="confirmed_status_text">Confirmed</string>
+    <string name="unconfirmed_status_text">Unconfirmed</string>
+    <string name="error_to_initialize_title">Fail to initialize</string>
+    <string name="error_to_initialize_message">An error occurred while initializing the wallet, please try again later</string>
+    <string name="from_text">From</string>
+    <string name="to_text">To</string>
+    <string name="authenticator_2fa_title">Authentication 2-Factors</string>
+    <string name="authenticate_text">Authenticate</string>
+    <string name="fee_error">Your custom fee isn\'t valid</string>
+    <string name="successful_payment_pattern">Your payment of %s was successful</string>
+    <string name="share_successful_payment_title">Share successful payment</string>
+    <string name="fail_to_send_tx_error">Fail to send a transaction, try again</string>
+    <string name="default_notification_channel_id" translatable="false">cryptowallet_notifications</string>
+    <string name="receive_notification_channel_name">Receiving payments</string>
+    <string name="sync_notification_title">Synchronizing wallets</string>
+    <string name="sync_notification_message">Download pending information from wallets</string>
+    <string name="default_notification_channel_name" translatable="false">General</string>
+    <string name="loaders_text">Just a minute please</string>
+    <string name="payments_notification_channel_id" translatable="false">cryptowallet_payments</string>
+    <string name="error_authentication_internal">Unable to authenticate due to internal application error</string>
+    <string name="error_authentication_canceled">User canceled the operation</string>
+    <string name="error_authentication_limits">Limit of failed attempts reached, try later</string>
 </resources>

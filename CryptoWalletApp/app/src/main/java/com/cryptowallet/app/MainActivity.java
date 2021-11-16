@@ -19,7 +19,6 @@
 package com.cryptowallet.app;
 
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
@@ -27,14 +26,10 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.cryptowallet.R;
-import com.cryptowallet.app.authentication.AuthenticationCallback;
-import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.app.fragments.SettingsFragment;
 import com.cryptowallet.app.fragments.TransactionHistoryFragment;
 import com.cryptowallet.app.fragments.WalletFragment;
 import com.cryptowallet.utils.Utils;
-import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
@@ -44,13 +39,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.0
  */
-// TODO Bug animation change between fragments
 public class MainActivity extends LockableActivity {
-
-    /**
-     * Código de una salida por una autenticación fallida o cancelada.
-     */
-    private static final int AUTHENTICATION_FAIL = 1;
 
     /**
      * Clave que indica que la actividad se está recreando.
@@ -59,14 +48,20 @@ public class MainActivity extends LockableActivity {
             = String.format("%s.IsRecreatingKey", MainActivity.class.getName());
 
     /**
-     * Instancia de las funciones de respuesta del autenticador.
+     * Clave que indica la posición del fragmento seleccionado.
      */
-    private IAuthenticationCallback mAuthenticationCallback;
+    private static final String CURRENT_POS_KEY
+            = String.format("%s.CurrentPosKey", MainActivity.class.getName());
 
     /**
      * Fragmento mostrado actualmente.
      */
     private Fragment mCurrentFragment;
+
+    /**
+     * Posición del fragmento.
+     */
+    private int mCurrentPos = -1;
 
     /**
      * Este método es llamado cuando se crea por primera vez la actividad.
@@ -78,57 +73,23 @@ public class MainActivity extends LockableActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (mAuthenticationCallback == null)
-            mAuthenticationCallback = createAuthenticationCallback();
-
         BottomNavigationView bar = findViewById(R.id.mMainBottomNav);
         bar.setOnNavigationItemSelectedListener(this::onNavigationItemSelected);
 
         if (isLockApp())
-            Preferences.get()
-                    .authenticate(this, new Handler()::post, mAuthenticationCallback);
-        else if (savedInstanceState == null || !savedInstanceState.getBoolean(IS_RECREATING_KEY))
+            unlockApp();
+
+        if (savedInstanceState == null || !savedInstanceState.getBoolean(IS_RECREATING_KEY)) {
+            if (savedInstanceState != null)
+                savedInstanceState.remove(IS_RECREATING_KEY);
+
             showFragment(R.id.mMenuWallet);
+        }
+
+        if (savedInstanceState != null)
+            mCurrentPos = savedInstanceState.getInt(CURRENT_POS_KEY);
     }
 
-    /**
-     * Crea las funciones de vuelta de la autenticación de usuario.
-     *
-     * @return Instancia de las funciones.
-     */
-    private IAuthenticationCallback createAuthenticationCallback() {
-        if (mAuthenticationCallback != null)
-            return mAuthenticationCallback;
-
-        return new AuthenticationCallback() {
-            /**
-             * Este evento surge cuando la autenticación es satisfactoria.
-             *
-             * @param authenticationToken Token de autenticación.
-             */
-            @Override
-            public void onAuthenticationSucceeded(byte[] authenticationToken) {
-                unlockApp();
-                WalletManager.get(SupportedAssets.BTC)
-                        .initialize(authenticationToken,
-                                (hasError) -> showFragment(R.id.mMenuWallet));
-            }
-
-            /**
-             * Este evento surge cuando ocurre un error y se completa la operación del
-             * autenticador.
-             *
-             * @param errorCode Un valor entero que identifica el error.
-             * @param errString Un mensaje de error que puede ser mostrado en la IU.
-             */
-            @Override
-            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                MainActivity.this.moveTaskToBack(true);
-                finishAffinity();
-                System.exit(AUTHENTICATION_FAIL);
-            }
-        };
-    }
 
     /**
      * Muestra el fragmento especificado por el identificador del menú.
@@ -148,11 +109,11 @@ public class MainActivity extends LockableActivity {
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
             case R.id.mMenuWallet:
-                return showFragment(WalletFragment.class);
+                return showFragment(WalletFragment.class, 0);
             case R.id.mMenuHistory:
-                return showFragment(TransactionHistoryFragment.class);
+                return showFragment(TransactionHistoryFragment.class, 1);
             case R.id.mMenuSettings:
-                return showFragment(SettingsFragment.class);
+                return showFragment(SettingsFragment.class, 2);
             default:
                 return false;
         }
@@ -168,15 +129,17 @@ public class MainActivity extends LockableActivity {
         super.onSaveInstanceState(outState);
 
         outState.putBoolean(IS_RECREATING_KEY, true);
+        outState.putInt(CURRENT_POS_KEY, mCurrentPos);
     }
 
     /**
      * Muestra el fragmento especificado por la clase.
      *
      * @param fragment Clase del fragmento a mostrar.
+     * @param newPos   Posición del fragmento a mostrar.
      * @return True si el fragmento se visualizó.
      */
-    private boolean showFragment(@NonNull Class<? extends Fragment> fragment) {
+    private boolean showFragment(@NonNull Class<? extends Fragment> fragment, int newPos) {
         if (mCurrentFragment != null && !mCurrentFragment.isVisible())
             return false;
 
@@ -187,16 +150,20 @@ public class MainActivity extends LockableActivity {
             Fragment fragmentInstance = fragment.newInstance();
 
             FragmentTransaction transaction = getSupportFragmentManager()
-                    .beginTransaction()
-                    .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left)
-                    .replace(R.id.mMainContainer, fragmentInstance, fragmentInstance.getTag());
+                    .beginTransaction();
 
-            if (mCurrentFragment != null)
-                transaction.addToBackStack(null);
+            if (mCurrentPos > newPos)
+                transaction = transaction
+                        .setCustomAnimations(R.anim.enter_from_left, R.anim.exit_to_right);
+            else if (mCurrentPos < newPos)
+                transaction = transaction
+                        .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left);
 
-            transaction.commit();
+            transaction.replace(R.id.mMainContainer, fragmentInstance, fragmentInstance.getTag())
+                    .commit();
 
             mCurrentFragment = fragmentInstance;
+            mCurrentPos = newPos;
 
             return true;
         }, false);

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright © 2020. Criptoactivo
+  ~ Copyright © 2020. InnSy Tech
+  ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<resources>
+    <!-- Blue theme -->
+    <style name="AppTheme.Blue" parent="AppTheme.Dark">
+        <item name="colorPrimary">@color/bluePrimary</item>
+        <item name="colorPrimaryDark">@color/blueDarkPrimary</item>
+        <item name="colorAccent">@color/blueAccent</item>
+        <item name="colorBackground">@color/blueBackground</item>
+        <item name="colorSurface">@color/blueSurface</item>
+        <item name="colorPendingTx">@color/colorPendingTx</item>
+        <item name="colorReceivedTx">@color/colorReceiveTx</item>
+        <item name="colorSentTx">@color/colorSendTx</item>
+        <item name="colorSplashBackground">@color/blueBackground</item>
+
+        <item name="txEmptyListDrawable">@drawable/ic_txemptylist</item>
+
+        <item name="bottomSheetDialogTheme">@style/AppTheme.Blue.BottomSheetDialog</item>
+        <item name="fullScreenDialogTheme">@style/AppTheme.Blue.FullScreenDialog</item>
+        <item name="materialCardViewStyle">@style/AppTheme.Blue.CardView</item>
+        <item name="borderlessButtonStyle">@style/Widget.MaterialComponents.Button.TextButton</item>
+        <item name="pinKeyboardTheme">@style/AppTheme.Blue.PinKeyboard</item>
+        <item name="alertDialogTheme">@style/AppTheme.Blue.AlertDialog</item>
+        <item name="android:alertDialogTheme">@style/AppTheme.Blue.AlertDialog</item>
+    </style>
+
+    <style name="AppTheme.Blue.BottomSheetDialog" parent="AppTheme.Dark.BottomSheetDialog">
+        <item name="colorAccent">@color/blueAccent</item>
+        <item name="colorPrimary">@color/bluePrimary</item>
+        <item name="colorPrimaryDark">@color/blueDarkPrimary</item>
+        <item name="colorSurface">@color/blueCardBackground</item>
+    </style>
+
+    <style name="AppTheme.Blue.PinKeyboard" parent="@style/AppTheme.Dark.PinKeyboard">
+        <item name="colorAccent">@color/blueAccent</item>
+        <item name="colorPrimary">@color/bluePrimary</item>
+        <item name="colorPrimaryDark">@color/blueDarkPrimary</item>
+        <item name="colorSurface">@color/blueCardBackground</item>
+    </style>
+
+    <style name="AppTheme.Blue.FullScreenDialog" parent="AppTheme.Dark.FullScreenDialog">
+        <item name="colorAccent">@color/blueAccent</item>
+        <item name="colorPrimary">@color/bluePrimary</item>
+        <item name="colorPrimaryDark">@color/blueDarkPrimary</item>
+        <item name="colorSurface">@color/blueCardBackground</item>
+    </style>
+
+    <style name="AppTheme.Blue.CardView" parent="CardView.Dark">
+        <item name="cardBackgroundColor">@color/blueCardBackground</item>
+    </style>
+
+    <style name="AppTheme.Blue.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="android:background">@color/blueCardBackground</item>
+    </style>
+
+    <!-- Blue colors -->
+    <color name="bluePrimary">#CE93D8</color>
+    <color name="blueDarkPrimary">#1E004a</color>
+    <color name="blueAccent">#E040FB</color>
+    <color name="blueBackground">#003982</color>
+    <color name="blueSurface">#192b60</color>
+    <color name="blueCardBackground">#3162b2</color>
+</resources>

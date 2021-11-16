@@ -32,8 +32,8 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.preference.PreferenceManager;
 
 import com.cryptowallet.R;
-import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.app.authentication.Authenticator;
+import com.cryptowallet.app.authentication.IAuthenticationCallback;
 import com.cryptowallet.wallet.SupportedAssets;
 
 import java.util.ArrayList;
@@ -157,12 +157,12 @@ public final class Preferences {
     }
 
     /**
-     * Crea la instancia nueva de Preferencias.
+     * Obtiene la instancia del singleton.
      *
      * @param context Contexto de la aplicación.
      * @return Una instancia nueva de Preferencias.
      */
-    public static Preferences create(Context context) {
+    public static Preferences get(Context context) {
         if (mInstance != null)
             return get();
 
@@ -178,7 +178,7 @@ public final class Preferences {
      */
     public static Preferences get() {
         if (mInstance == null)
-            throw new IllegalStateException("Require call to #create(Context)");
+            throw new IllegalStateException("Require call to Preferences#get(Context)");
 
         return mInstance;
     }
@@ -281,24 +281,23 @@ public final class Preferences {
     /**
      * Habilita el lenguaje especificado.
      *
-     * @param activity    Actividad que habilita el idioma.
+     * @param context     Actividad que habilita el idioma.
      * @param languageTag Etiqueta del lenguaje a utilizar.
      */
-    private void enableLanguage(FragmentActivity activity, String languageTag) {
+    private Context enableLanguage(Context context, String languageTag) {
         if (!mLanguageMap.containsKey(languageTag))
             throw new IllegalArgumentException(languageTag + " don't supported");
 
         Log.d(TAG, "Loading language " + languageTag);
 
-        Locale locale = Locale.forLanguageTag(languageTag);
+        final Locale locale = Locale.forLanguageTag(languageTag);
         Locale.setDefault(locale);
 
-        Configuration config = new Configuration();
-        config.setLocale(locale);
-        config.setLayoutDirection(locale);
+        Configuration configuration = context.getResources().getConfiguration();
+        configuration.setLocale(locale);
+        configuration.setLayoutDirection(locale);
 
-        activity.getResources()
-                .updateConfiguration(config, activity.getResources().getDisplayMetrics());
+        return context.createConfigurationContext(configuration);
     }
 
     /**
@@ -313,10 +312,10 @@ public final class Preferences {
     /**
      * Carga el lenguaje guardado en la configuración.
      *
-     * @param activity Actividad que cargará el idioma.
+     * @param context Contexto de la aplicación.
      */
-    void loadLanguage(FragmentActivity activity) {
-        enableLanguage(activity, getLanguage().getTag());
+    Context loadLanguage(Context context) {
+        return enableLanguage(context, getLanguage().getTag());
     }
 
     /**

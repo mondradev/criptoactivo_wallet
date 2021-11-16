@@ -21,8 +21,13 @@ package com.cryptowallet.assets.bitcoin.services.retrofit;
 import java.util.List;
 
 import retrofit2.Call;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
+import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 /**
  * Define los endpoints de la api Bitcoin que serán utilizados por {@link retrofit2.Retrofit}.
@@ -31,16 +36,30 @@ import retrofit2.http.Path;
  * @version 1.0
  */
 public interface BitcoinApi {
+
+    /**
+     * Envía una transacción a la red para distribuirla y pueda ser agregada a la cadena de bloques.
+     *
+     * @param network Tipo de red a la cual pertenece la transacción.
+     * @param hex     Datos de la transacción en crudo.
+     * @return Un true si la transacción fue enviada.
+     */
+    @PUT("btc/{network}/broadcast")
+    @FormUrlEncoded
+    Call<SuccessfulResponse> broadcastTx(@Path("network") String network, @Field("hex") String hex);
+
     /**
      * Obtiene el historial de transacciones de una dirección.
      *
      * @param network Tipo de red a la cual pertenece la dirección. Ej: mainnet o testnet.
      * @param address Dirección serializada en formato hexadecimal.
+     * @param height  Altura utilizada como punto de partida de la búsqueda.
      * @return Una instancia que gestiona la llamada asíncrona a la API.
      */
     @GET("btc/{network}/txhistory/{address}")
-    Call<List<TxData>> getTxHistory(@Path("network") String network,
-                                    @Path("address") String address);
+    Call<List<TxDataResponse>> getTxHistory(@Path("network") String network,
+                                            @Path("address") String address,
+                                            @Query("height") int height);
 
     /**
      * Obtiene la transacción especificada por el TxID.
@@ -50,7 +69,7 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamada asíncrona de la API.
      */
     @GET("btc/{network}/tx/{txid}")
-    Call<TxData> getTx(@Path("network") String network, @Path("txid") String txid);
+    Call<TxDataResponse> getTx(@Path("network") String network, @Path("txid") String txid);
 
     /**
      * Obtiene la información de la blockchain.
@@ -59,7 +78,7 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamana asíncrona de la API.
      */
     @GET("btc/{network}/chaininfo")
-    Call<ChainInfo> getChainInfo(@Path("network") String network);
+    Call<ChainInfoResponse> getChainInfo(@Path("network") String network);
 
     /**
      * Obtiene las dependencias de la transacción especificada por el TxID.
@@ -69,6 +88,37 @@ public interface BitcoinApi {
      * @return Una instancia que gestiona la llamada asíncrona de la API.
      */
     @GET("btc/{network}/txdeps/{txid}")
-    Call<List<TxData>> getTxDeps(@Path("network") String network,
-                                 @Path("txid") String txid);
+    Call<List<TxDataResponse>> getTxDeps(@Path("network") String network,
+                                         @Path("txid") String txid);
+
+    /**
+     * Obtiene las transacciones de las direcciones especificadas.
+     *
+     * @param network   Tipo de red a la cual pertenecen las direcciones. Ej. mainnet o testnet.
+     * @param addresses Direcciones a consultar.
+     * @param height    Altura utilizada como punto de partida de la búsqueda.
+     * @return Una instancia que gesitona la llamada asíncrona de la API.
+     */
+    @POST("btc/{network}/history")
+    @FormUrlEncoded
+    Call<List<TxDataResponse>> getHistory(@Path("network") String network,
+                                          @Field("addresses") String addresses,
+                                          @Query("height") int height);
+
+
+    /**
+     * Subscribe una billetera al servicio de notificaciones.
+     *
+     * @param network   Tipo de red a la cual pertenecen las direcciones. Ej. mainnet o testnet.
+     * @param pushToken Token de notificaciones push.
+     * @param walletId  Identificador de la billetera.
+     * @param addresses Direcciones a registrar. Incluir las 100 siguientes direcciones.
+     * @return Una instancia que gestiona la llamada asíncrona de la API.
+     */
+    @POST("btc/{network}/subscribe")
+    @FormUrlEncoded
+    Call<SuccessfulResponse> subscribe(@Path("network") String network,
+                                       @Field("pushToken") String pushToken,
+                                       @Field("walletId") String walletId,
+                                       @Field("addresses") String addresses);
 }

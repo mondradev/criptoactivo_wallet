@@ -22,6 +22,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -33,17 +34,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.cryptowallet.R;
 import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
+import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
 import com.cryptowallet.wallet.SupportedAssets;
-import com.cryptowallet.wallet.WalletManager;
+import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.snackbar.BaseTransientBottomBar;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Esta actividad permite la restauración de la billetera a través de las 12 palabras.
@@ -69,13 +73,6 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
     private LinearLayout mWordsContainer;
 
     /**
-     * Carga la lista de palabras.
-     */
-    private void loadWords() {
-        mWordsList = WalletManager.get(SupportedAssets.BTC).getWordsList();
-    }
-
-    /**
      * Este método es llamado cuando se crea por primera vez la actividad.
      *
      * @param savedInstanceState Estado guardado de la aplicación.
@@ -83,16 +80,13 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Preferences.get().loadTheme(this);
 
         setContentView(R.layout.activity_restore);
         setTitle(R.string.restore_caption_button);
 
-        loadWords();
-
         mSeedWordsText = findViewById(R.id.mResSeedWordsText);
         mWordsContainer = findViewById(R.id.mResWordsContainer);
-
-        mSeedWordsText.setFocusable(true);
 
         mSeedWordsText.addTextChangedListener((IAfterTextChangedListener) text -> {
             mWordsContainer.removeAllViews();
@@ -124,6 +118,9 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
             for (String word : filtered)
                 mWordsContainer.addView(createWordChip(word));
         });
+
+        mWordsList = WalletProvider.getInstance().getWordsList();
+        mSeedWordsText.setFocusable(true);
     }
 
     /**
@@ -203,13 +200,20 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
      */
     public void onPressedRestoreButton(View view) {
         try {
-            String seedStr = mSeedWordsText.getText().toString().trim();
+            List<String> seedStr = Lists
+                    .newArrayList(mSeedWordsText.getText().toString().trim().split(" "));
 
-            if (!WalletManager.get(SupportedAssets.BTC).verifySeed(seedStr))
+            if ((seedStr.size() % 3) != 0)
+                return;
+
+            final WalletProvider provider = WalletProvider.getInstance();
+
+            if (!provider.verifyMnemonicCode(seedStr))
                 throw new IllegalArgumentException();
 
-            WalletManager.get(SupportedAssets.BTC).restore(seedStr);
-            AlertMessages.showTerms(this, this);
+            provider.restore(Lists.newArrayList(SupportedAssets.BTC), seedStr);
+
+            AlertMessages.showTerms(RestoreActivity.this, RestoreActivity.this.getString(R.string.restore_caption_button), this);
         } catch (Exception ignored) {
             Snackbar.make(
                     findViewById(R.id.mResRestoreButton),
@@ -228,21 +232,41 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
      */
     @Override
     public void onClick(DialogInterface dialog, int which) {
+        final WalletProvider provider = WalletProvider.getInstance();
         Authenticator.reset(this.getApplicationContext());
         Authenticator.registerPin(
                 this,
                 new Handler()::post,
-                (IAuthenticationSucceededCallback) authenticationToken ->
-                        WalletManager.get(SupportedAssets.BTC)
-                                .initialize(authenticationToken, (hasError) -> {
-                                    if (hasError)
-                                        AlertMessages.showRestoreError(getApplicationContext());
-                                    else {
-                                        Intent intent = new Intent(getApplicationContext(),
-                                                MainActivity.class);
-                                        finishAffinity();
-                                        startActivity(intent);
-                                    }
-                                }));
+                (IAuthenticationSucceededCallback) authenticationToken -> {
+                    ProgressDialog.show(RestoreActivity.this);
+                    provider.authenticateWallet(authenticationToken, new IOnAuthenticated() {
+                        /**
+                         * Este método es invocado cuando la billetera se ha autenticado de manera satisfactoria.
+                         */
+                        @Override
+                        public void successful() {
+                            ProgressDialog.hide();
+                            finishAffinity();
+                            startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                        }
+
+                        /**
+                         * Este método es invocado cuando ocurre un error en la autenticación de la billetera con
+                         * respecto al cifrado y descifrada así como alguna otra configuración interna del proceso de
+                         * autenticación de billetera. Esto es independiente del proceso de autenticación del usuario,
+                         * ya que este se realiza a través de {@link Authenticator}.
+                         *
+                         * @param ex Excepción ocurrida cuando se estaba realizando la autenticación.
+                         */
+                        @Override
+                        public void fail(Exception ex) {
+                            Log.e("Restore", Objects.requireNonNull(ex.getMessage()));
+
+                            AlertMessages.showRestoreError(RestoreActivity.this);
+                        }
+                    });
+                }
+        );
     }
+
 }

@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright © 2020. Criptoactivo
   ~ Copyright © 2020. InnSy Tech
   ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
@@ -19,6 +18,7 @@
 
 <resources>
     <declare-styleable name="CustomAttr">
+        <attr name="fullScreenDialogTheme" format="reference" />
         <attr name="pinKeyboardTheme" format="reference" />
         <attr name="iconButtonStyle" format="reference" />
         <attr name="toggleIconStyle" format="reference" />
@@ -27,5 +27,7 @@
         <attr name="colorReceivedTx" format="color" />
         <attr name="colorPendingTx" format="color" />
         <attr name="colorBackground" format="color" />
+        <attr name="colorSuccess" format="color" />
+        <attr name="colorSplashBackground" format="color" />
     </declare-styleable>
 </resources>
