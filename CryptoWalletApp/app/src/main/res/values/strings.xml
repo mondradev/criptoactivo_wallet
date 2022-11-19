@@ -23,7 +23,7 @@
     <string name="received_text">Received</string>
     <string name="sent_text">Sent</string>
     <string name="notify_receive_pending">You have receive %s uncommited</string>
-    <string name="notify_receive_completed">You have receive %s committed in block %s</string>
+    <string name="notify_receive_completed">You have receive %1$s committed in block %2$s</string>
     <string name="notify_receive">You have receive %s</string>
     <string name="nofity_send">You have send %s</string>
     <string name="recipient_address_text">Recipient address</string>
