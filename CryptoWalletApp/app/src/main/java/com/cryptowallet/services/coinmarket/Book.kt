@@ -15,10 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.cryptowallet.services.coinmarket
 
-package com.cryptowallet.services.coinmarket;
-
-import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.wallet.SupportedAssets
 
 /**
  * Define los atributos requeridos para los libros de un seguidor de precio. En este se especifica
@@ -29,62 +28,27 @@ import com.cryptowallet.wallet.SupportedAssets;
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 1.0
  * @see PriceTracker
+ *
  * @see SupportedAssets
  */
-public class Book {
-
+data class Book
+/**
+ * Crea una instancia de un libro de comercio.
+ *
+ * @param crypto     Activo comerciado.
+ * @param priceAsset Activo de precio.
+ * @param key        Clave del libro.
+ */(
     /**
      * Activo comerciado.
      */
-    private SupportedAssets mCryptoAsset;
-
+    val cryptoAsset: SupportedAssets,
     /**
      * Activo usado para el precio.
      */
-    private SupportedAssets mPriceAsset;
-
+    val priceAsset: SupportedAssets,
     /**
      * Clave utilizada para identificar el libro de comercio.
      */
-    private String mKey;
-
-    /**
-     * Crea una instancia de un libro de comercio.
-     *
-     * @param crypto     Activo comerciado.
-     * @param priceAsset Activo de precio.
-     * @param key        Clave del libro.
-     */
-    public Book(SupportedAssets crypto, SupportedAssets priceAsset, String key) {
-        this.mCryptoAsset = crypto;
-        this.mPriceAsset = priceAsset;
-        this.mKey = key;
-    }
-
-    /**
-     * Obtiene el activo comerciado en el libro.
-     *
-     * @return Activo.
-     */
-    public SupportedAssets getCryptoAsset() {
-        return mCryptoAsset;
-    }
-
-    /**
-     * Obtiene el activo utilizado para dar precio.
-     *
-     * @return Activo de precio.
-     */
-    public SupportedAssets getPriceAsset() {
-        return mPriceAsset;
-    }
-
-    /**
-     * Obtiene la clave utilizada para identificar el libro en el intercambio.
-     *
-     * @return Clave del libro.
-     */
-    public String getKey() {
-        return mKey;
-    }
-}
+    val key: String
+)
