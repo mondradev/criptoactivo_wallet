@@ -16,21 +16,20 @@
  * limitations under the License.
  */
 
-
 plugins {
-    id 'kotlin-android'
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
 }
 
 android {
     namespace 'com.cryptowallet'
-    compileSdkVersion rootProject.ext.compileSdk
+    compileSdk rootProject.ext.compileSdk
 
     defaultConfig {
         applicationId "com.cryptowallet"
-        minSdkVersion 21
-        targetSdkVersion rootProject.ext.compileSdk
+        minSdk 21
+        targetSdk rootProject.ext.compileSdk
         versionCode 2
         versionName '1.6'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -43,14 +42,14 @@ android {
         }
     }
 
-//    compileOptions {
-//        sourceCompatibility = '1.8'
-//        targetCompatibility = '1.8'
-//    }
-//
-//    testOptions {
-//        unitTests.returnDefaultValues = true
-//    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_11.toString()
+    }
 }
 
 dependencies {
