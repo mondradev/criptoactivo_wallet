@@ -33,7 +33,7 @@ plugins {
 }
 
 ext {
-    compileSdk = 30
+    compileSdk = 33
     kotlin = '1.7.20'
     androidBuildTools = '7.3.1'
 }
