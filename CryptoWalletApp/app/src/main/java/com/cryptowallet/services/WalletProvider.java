@@ -372,7 +372,7 @@ public final class WalletProvider {
                 .setSmallIcon(asset.getIcon())
                 .setContentTitle(mContext.getString(asset.getName()))
                 .setContentText(message)
-                .setColor(Utils.resolveColor(mContext, R.attr.colorAccent))
+                .setColor(Utils.resolveColor(mContext, androidx.appcompat.R.attr.colorAccent))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setSound(soundUri)
                 .setAutoCancel(true)

@@ -141,9 +141,9 @@ public class TransactionHistoryFragment extends Fragment {
         mSwipeRefresh.setOnRefreshListener(this::onRefresh);
         mSwipeRefresh.setRefreshing(true);
         mSwipeRefresh.setColorSchemeColors(
-                Utils.resolveColor(requireContext(), R.attr.colorOnPrimary));
+                Utils.resolveColor(requireContext(), com.google.android.material.R.attr.colorOnPrimary));
         mSwipeRefresh.setProgressBackgroundColorSchemeColor(Utils.resolveColor(requireContext(),
-                R.attr.colorAccent));
+                androidx.appcompat.R.attr.colorAccent));
 
         mOnNewTransactionListener = (tx) -> {
             if (!mIsReady) return;

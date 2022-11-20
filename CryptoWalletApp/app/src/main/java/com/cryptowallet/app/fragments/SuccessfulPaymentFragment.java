@@ -213,7 +213,7 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
                 view.getMeasuredHeight(),
                 ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        canvas.drawColor(Utils.resolveColor(requireContext(), R.attr.colorSurface));
+        canvas.drawColor(Utils.resolveColor(requireContext(), com.google.android.material.R.attr.colorSurface));
         view.draw(canvas);
 
         return bitmap;
