@@ -51,7 +51,7 @@ import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.bitcoinj.crypto.MnemonicCode;
 import org.bouncycastle.util.encoders.Hex;
@@ -207,10 +207,10 @@ public final class WalletProvider {
         });
 
         FirebaseApp.initializeApp(mContext);
-        FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(instanceIdResult -> {
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(instanceIdResult -> {
             if (instanceIdResult.getResult() == null) return;
 
-            String newToken = instanceIdResult.getResult().getToken();
+            String newToken = instanceIdResult.getResult();
 
             mPreference.edit().putString(TOKEN_FCM, newToken).apply();
         });
