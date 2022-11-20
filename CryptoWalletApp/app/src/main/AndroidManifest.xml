@@ -69,7 +69,9 @@
         <activity android:name=".app.MainActivity" />
         <activity android:name=".app.SendPaymentsActivity" />
         <activity android:name=".app.WelcomeActivity" />
-        <activity android:name=".app.SplashActivity" android:exported="true">
+        <activity
+            android:name=".app.SplashActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -136,13 +138,13 @@
         <service
             android:name=".services.WalletSyncForegroundService"
             android:enabled="true"
-            android:stopWithTask="false"
-            android:exported="false" />
+            android:exported="false"
+            android:stopWithTask="false" />
         <service
             android:name=".services.WalletSyncService"
             android:enabled="true"
-            android:stopWithTask="false"
-            android:exported="false" />
+            android:exported="false"
+            android:stopWithTask="false" />
     </application>
 
 </manifest>

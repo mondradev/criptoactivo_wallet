@@ -18,6 +18,10 @@
 
 package com.cryptowallet.assets.bitcoin.services;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.cryptowallet.assets.bitcoin.wallet.BitcoinTransaction;
@@ -36,10 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 /**
  * Prueba las funciones del proveedor de datos para billeteras de Bitcoin.

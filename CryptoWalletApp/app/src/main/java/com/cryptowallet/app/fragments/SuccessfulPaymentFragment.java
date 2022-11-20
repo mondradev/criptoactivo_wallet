@@ -18,6 +18,8 @@
 
 package com.cryptowallet.app.fragments;
 
+import static android.graphics.Bitmap.Config.ARGB_8888;
+
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -51,8 +53,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-
-import static android.graphics.Bitmap.Config.ARGB_8888;
 
 /**
  * Este fragmento provee de un cuadro de dialogo inferior que permite visualizar los datos de la

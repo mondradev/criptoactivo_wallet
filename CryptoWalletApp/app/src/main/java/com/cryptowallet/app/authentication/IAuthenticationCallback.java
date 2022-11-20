@@ -48,7 +48,7 @@ public interface IAuthenticationCallback {
      * @param errorCode Un valor entero que identifica el error.
      * @param errString Un mensaje de error que puede ser mostrado en la IU.
      */
-    void onAuthenticationError(int errorCode, @NonNull CharSequence errString) ;
+    void onAuthenticationError(int errorCode, @NonNull CharSequence errString);
 
     /**
      * Este evento surge cuando se actualiza el PIN del autenticador.

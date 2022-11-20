@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright © 2020. Criptoactivo
   ~ Copyright © 2020. InnSy Tech
   ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
@@ -17,16 +16,15 @@
   ~ limitations under the License.
   -->
 
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
 
     android:layout_width="match_parent"
     android:layout_height="match_parent"
 
-    tools:context=".app.MainActivity"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    tools:context=".app.MainActivity">
 
     <FrameLayout
         android:id="@+id/mMainContainer"
@@ -39,10 +37,10 @@
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/mMainBottomNav"
+        style="@style/Widget.MaterialComponents.BottomNavigationView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        app:menu="@menu/mn_main_nav"
-        style="@style/Widget.MaterialComponents.BottomNavigationView" />
+        app:menu="@menu/mn_main_nav" />
 
 </LinearLayout>

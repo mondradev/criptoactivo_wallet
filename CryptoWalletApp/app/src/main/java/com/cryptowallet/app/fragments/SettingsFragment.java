@@ -18,6 +18,8 @@
 
 package com.cryptowallet.app.fragments;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -49,8 +51,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executors;
-
-import static android.app.Activity.RESULT_OK;
 
 /**
  * Este fragmento permite configurar los ajustes de la aplicación.

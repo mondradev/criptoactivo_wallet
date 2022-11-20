@@ -18,6 +18,10 @@
 
 package com.cryptowallet.assets.bitcoin.services;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+
 import com.cryptowallet.services.coinmarket.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
@@ -28,10 +32,6 @@ import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 
 import java.util.concurrent.Executors;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 
 /**
  * Pruebas para los seguidores de precio.

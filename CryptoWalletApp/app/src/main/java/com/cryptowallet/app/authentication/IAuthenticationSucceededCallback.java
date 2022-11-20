@@ -35,7 +35,8 @@ public interface IAuthenticationSucceededCallback extends IAuthenticationCallbac
      * de biométricos.
      */
     @Override
-    default void onAuthenticationFailed() {}
+    default void onAuthenticationFailed() {
+    }
 
     /**
      * Este evento surge cuando ocurre un error y se completa la operación del autenticador.
@@ -44,7 +45,8 @@ public interface IAuthenticationSucceededCallback extends IAuthenticationCallbac
      * @param errString Un mensaje de error que puede ser mostrado en la IU.
      */
     @Override
-    default void onAuthenticationError(int errorCode, @NonNull CharSequence errString){}
+    default void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+    }
 
     /**
      * Este evento surge cuando se actualiza el PIN del autenticador.
@@ -53,5 +55,6 @@ public interface IAuthenticationSucceededCallback extends IAuthenticationCallbac
      * @param newToken El token nuevo de la autenticación.
      */
     @Override
-    default void onAuthenticationUpdated(byte[] oldToken, byte[] newToken){}
+    default void onAuthenticationUpdated(byte[] oldToken, byte[] newToken) {
+    }
 }

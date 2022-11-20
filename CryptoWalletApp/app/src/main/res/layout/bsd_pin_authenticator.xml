@@ -20,26 +20,26 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:theme="?attr/pinKeyboardTheme"
-    android:paddingTop="24dp"
+    android:orientation="vertical"
     android:paddingStart="24dp"
+    android:paddingTop="24dp"
     android:paddingEnd="24dp"
-    android:orientation="vertical">
+    android:theme="?attr/pinKeyboardTheme">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAppearance="?attr/textAppearanceHeadline6"
-        android:text="@string/authenticate_title" />
+        android:text="@string/authenticate_title"
+        android:textAppearance="?attr/textAppearanceHeadline6" />
 
     <TextView
         android:id="@+id/mAuthDescription"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="2"
         android:layout_marginTop="8dp"
-        android:textAppearance="?attr/textAppearanceBody1"
-        android:text="@string/enter_pin" />
+        android:maxLines="2"
+        android:text="@string/enter_pin"
+        android:textAppearance="?attr/textAppearanceBody1" />
 
     <LinearLayout
         android:id="@+id/mAuthPinDigitsLayout"
@@ -101,8 +101,8 @@
         android:id="@+id/mAuthKeyboardLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:gravity="center_horizontal"
+        android:orientation="horizontal"
         android:paddingTop="16dp"
         android:paddingBottom="24dp">
 
@@ -112,21 +112,21 @@
             android:orientation="vertical">
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_1_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_4_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_7_text" />
 
         </LinearLayout>
@@ -137,27 +137,27 @@
             android:orientation="vertical">
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_2_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_5_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_8_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_0_text" />
         </LinearLayout>
 
@@ -167,27 +167,27 @@
             android:orientation="vertical">
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_3_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_6_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 android:text="@string/pad_9_text" />
 
             <Button
+                style="?attr/borderlessButtonStyle"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                style="?attr/borderlessButtonStyle"
                 app:icon="@drawable/ic_backspace_outline" />
 
         </LinearLayout>

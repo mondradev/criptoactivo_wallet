@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright © 2020. Criptoactivo
   ~ Copyright © 2020. InnSy Tech
   ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
@@ -18,5 +17,5 @@
   -->
 
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:alpha="0.12" android:color="?attr/colorOnSurface"/>
+    <item android:alpha="0.12" android:color="?attr/colorOnSurface" />
 </selector>

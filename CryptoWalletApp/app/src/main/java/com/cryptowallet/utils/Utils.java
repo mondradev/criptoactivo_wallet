@@ -18,6 +18,8 @@
 
 package com.cryptowallet.utils;
 
+import static android.graphics.Bitmap.Config.ARGB_8888;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -55,8 +57,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-
-import static android.graphics.Bitmap.Config.ARGB_8888;
 
 /**
  * Clase con funciones de utilería para la aplicación.

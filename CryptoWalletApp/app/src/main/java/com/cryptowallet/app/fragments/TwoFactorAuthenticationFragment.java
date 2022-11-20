@@ -18,6 +18,8 @@
 
 package com.cryptowallet.app.fragments;
 
+import static android.content.Context.CLIPBOARD_SERVICE;
+
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.os.Bundle;
@@ -49,8 +51,6 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
-
-import static android.content.Context.CLIPBOARD_SERVICE;
 
 /**
  * Este fragmento provee de un cuadro de dialogo inferior que permite la captura del codigo de

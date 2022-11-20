@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright © 2020. Criptoactivo
   ~ Copyright © 2020. InnSy Tech
   ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
@@ -21,11 +20,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
 
-    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:background="?attr/colorSurface"
     android:gravity="center_horizontal"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:orientation="vertical">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="wrap_content"
@@ -46,8 +45,8 @@
             android:layout_width="72dp"
             android:layout_height="72dp"
             android:layout_marginTop="16dp"
-            android:src="@drawable/ic_cryptowallet"
             android:contentDescription="@string/icon_description"
+            android:src="@drawable/ic_cryptowallet"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -59,17 +58,17 @@
         android:id="@+id/m2FaPhraseCaption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
         android:layout_marginStart="16dp"
         android:layout_marginTop="24dp"
         android:layout_marginEnd="16dp"
-        android:text="@string/secret_phrase_summary" />
+        android:text="@string/secret_phrase_summary"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:background="@drawable/bg_rectangle_rounded"
         android:backgroundTint="@color/sl_color_primary"
@@ -79,9 +78,9 @@
             android:id="@+id/m2FaSecretPhrase"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginStart="48dp"
             android:layout_marginEnd="0dp"
+            android:layout_weight="1"
             android:ellipsize="middle"
             android:singleLine="true"
             android:text="@string/secret_phrase_sample"
@@ -103,9 +102,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
+        android:text="@string/code_generated_text"
         android:textAlignment="center"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-        android:text="@string/code_generated_text" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -117,10 +116,10 @@
             android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLength="1"
-            android:importantForAutofill="no"
             android:imeOptions="actionNext"
+            android:importantForAutofill="no"
             android:inputType="number"
+            android:maxLength="1"
             android:nextFocusForward="@id/m2FaCodeDigit2"
             tools:ignore="LabelFor" />
 
@@ -129,10 +128,10 @@
             android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLength="1"
-            android:importantForAutofill="no"
             android:imeOptions="actionNext"
+            android:importantForAutofill="no"
             android:inputType="number"
+            android:maxLength="1"
             android:nextFocusForward="@id/m2FaCodeDigit3"
             tools:ignore="LabelFor" />
 
@@ -141,10 +140,10 @@
             android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLength="1"
-            android:importantForAutofill="no"
             android:imeOptions="actionNext"
+            android:importantForAutofill="no"
             android:inputType="number"
+            android:maxLength="1"
             android:nextFocusForward="@id/m2FaCodeDigit4"
             tools:ignore="LabelFor" />
 
@@ -153,10 +152,10 @@
             android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLength="1"
-            android:importantForAutofill="no"
             android:imeOptions="actionNext"
+            android:importantForAutofill="no"
             android:inputType="number"
+            android:maxLength="1"
             android:nextFocusForward="@id/m2FaCodeDigit5"
             tools:ignore="LabelFor" />
 
@@ -165,10 +164,10 @@
             android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLength="1"
-            android:importantForAutofill="no"
             android:imeOptions="actionNext"
+            android:importantForAutofill="no"
             android:inputType="number"
+            android:maxLength="1"
             android:nextFocusForward="@id/m2FaCodeDigit6"
             tools:ignore="LabelFor" />
 
@@ -177,10 +176,10 @@
             android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLength="1"
-            android:importantForAutofill="no"
             android:imeOptions="actionDone"
+            android:importantForAutofill="no"
             android:inputType="number"
+            android:maxLength="1"
             tools:ignore="LabelFor" />
 
     </LinearLayout>

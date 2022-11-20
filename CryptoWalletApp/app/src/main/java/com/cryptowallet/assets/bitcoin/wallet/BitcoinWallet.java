@@ -18,6 +18,8 @@
 
 package com.cryptowallet.assets.bitcoin.wallet;
 
+import static org.bitcoinj.wallet.Wallet.BalanceType.AVAILABLE_SPENDABLE;
+
 import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
@@ -97,8 +99,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-
-import static org.bitcoinj.wallet.Wallet.BalanceType.AVAILABLE_SPENDABLE;
 
 /**
  * Define el controlador para una billetera de Bitcoin.
@@ -908,7 +908,7 @@ public class BitcoinWallet extends AbstractWallet {
         Objects.requireNonNull(keyCrypter);
 
         return mBitcoinJWallet.getKeyChainSeed().decrypt(keyCrypter, "",
-                keyCrypter.deriveKey(Hex.toHexString(authenticationToken)))
+                        keyCrypter.deriveKey(Hex.toHexString(authenticationToken)))
                 .getMnemonicCode();
     }
 

@@ -18,6 +18,9 @@
 
 package com.cryptowallet.app.fragments;
 
+import static android.content.Context.CLIPBOARD_SERVICE;
+import static android.graphics.Bitmap.Config.ARGB_8888;
+
 import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -54,9 +57,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Objects;
-
-import static android.content.Context.CLIPBOARD_SERVICE;
-import static android.graphics.Bitmap.Config.ARGB_8888;
 
 /**
  * Este fragmento provee de un cuadro de dialogo inferior que permite visualizar los datos para
@@ -158,10 +158,10 @@ public class ReceptorInfoFragment extends BottomSheetDialogFragment {
                 clipboard.setPrimaryClip(data);
 
                 Snackbar.make(
-                        requireView(),
-                        R.string.address_copy_to_clipboard_text,
-                        Snackbar.LENGTH_SHORT
-                ).setAnchorView(requireView())
+                                requireView(),
+                                R.string.address_copy_to_clipboard_text,
+                                Snackbar.LENGTH_SHORT
+                        ).setAnchorView(requireView())
                         .show();
 
                 break;

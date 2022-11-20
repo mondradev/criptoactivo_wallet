@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright © 2020. Criptoactivo
   ~ Copyright © 2020. InnSy Tech
   ~ Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
@@ -65,10 +64,10 @@
             android:title="@string/change_pin_setting"
             app:iconSpaceReserved="false" />
         <SwitchPreference
+            android:defaultValue="false"
             android:key="biometric"
             android:summary="@string/biometric_summary"
             android:title="@string/biometric_setting"
-            android:defaultValue="false"
             app:iconSpaceReserved="false" />
         <ListPreference
             android:dialogTitle="@string/timeout_lock_setting_title"
