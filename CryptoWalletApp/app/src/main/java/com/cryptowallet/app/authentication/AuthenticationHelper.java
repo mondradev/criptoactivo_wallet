@@ -582,7 +582,7 @@ class AuthenticationHelper {
                     }
                 });
 
-        biometricPrompt.authenticate(promptInfo);
+        executor.execute(() -> biometricPrompt.authenticate(promptInfo));
     }
 
     /**

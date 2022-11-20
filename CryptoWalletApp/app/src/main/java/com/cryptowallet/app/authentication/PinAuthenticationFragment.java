@@ -189,7 +189,7 @@ public class PinAuthenticationFragment extends BottomSheetDialogFragment {
         PinAuthenticationFragment fragment =
                 new PinAuthenticationFragment(executor, mode, callback);
 
-        fragment.show(activity.getSupportFragmentManager(), TAG_FRAGMENT);
+        executor.execute(() -> fragment.show(activity.getSupportFragmentManager(), TAG_FRAGMENT));
     }
 
     /**

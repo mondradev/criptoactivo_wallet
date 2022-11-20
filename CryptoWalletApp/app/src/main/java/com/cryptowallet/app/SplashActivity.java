@@ -110,13 +110,17 @@ public final class SplashActivity extends AppCompatActivity {
                 startActivity(new Intent(this, WelcomeActivity.class));
                 finishAfterTransition();
             } else {
-                bar.setVisibility(View.VISIBLE);
+                mHandler.post(() -> bar.setVisibility(View.VISIBLE));
 
                 mWalletProvider.loadWallets();
                 mWalletProvider.syncWallets();
 
                 Preferences.get()
-                        .authenticate(this, mHandler::post, mAuthenticationCallback);
+                        .authenticate(
+                                this,
+                                mHandler::post,
+                                mAuthenticationCallback
+                        );
 
                 hideProgressBar();
             }
