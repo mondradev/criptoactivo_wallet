@@ -54,3 +54,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "CryptoWalletApp"
 include ":app"
+include ':bitcoin'
+include ':core'
