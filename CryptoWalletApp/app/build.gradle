@@ -25,6 +25,8 @@ plugins {
 android {
     namespace 'com.cryptowallet'
     compileSdk rootProject.ext.compileSdk
+    ndkVersion rootProject.ext.ndk
+    buildToolsVersion rootProject.ext.buildTools
 
     defaultConfig {
         applicationId "com.cryptowallet"
@@ -58,6 +60,7 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.9.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.kotlin}"
 
+    // Android X libraries
     implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.cardview:cardview:1.0.0'
@@ -72,27 +75,30 @@ dependencies {
 
     implementation 'com.android.volley:volley:1.2.1'
 
+    // Google libraries
     implementation 'com.google.firebase:firebase-messaging:23.1.0'
     implementation 'com.google.android.material:material:1.7.0'
-    implementation 'com.google.guava:guava:29.0-jre'
-    implementation 'com.google.zxing:core:3.4.1'
+    implementation 'com.google.guava:guava:31.1-jre'
+    implementation 'com.google.zxing:core:3.5.1'
 
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+
+    // Networking libraries
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
 
-    implementation 'org.bitcoinj:bitcoinj-core:0.15.8'
-    implementation 'org.conscrypt:conscrypt-android:2.2.1'
-    implementation 'org.slf4j:slf4j-android:1.7.30'
+    // Bitcoin support libraries
+    implementation 'org.bitcoinj:bitcoinj-core:0.16.1'
+    implementation 'org.conscrypt:conscrypt-android:2.5.2'
+    implementation 'org.slf4j:slf4j-android:1.7.36'
 
-    // Testeo de Java
+    // Unit testing libraries
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:3.3.3'
+    testImplementation 'org.mockito:mockito-core:4.9.0'
 
-    // Testeo de aplicación Android
-    androidTestImplementation 'org.mockito:mockito-android:2.25.0'
-
+    // Android instrumentation testing libraries
+    androidTestImplementation 'org.mockito:mockito-android:4.9.0'
     androidTestImplementation 'androidx.test:runner:1.5.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'

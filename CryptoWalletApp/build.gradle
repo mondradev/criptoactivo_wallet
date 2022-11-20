@@ -35,7 +35,8 @@ plugins {
 ext {
     compileSdk = 33
     kotlin = '1.7.20'
-    androidBuildTools = '7.3.1'
+    buildTools = '33.0.0'
+    ndk = '25.1.8937393'
 }
 
 task clean(type: Delete) {
