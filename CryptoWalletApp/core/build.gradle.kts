@@ -1,3 +1,6 @@
+import org.gradle.api.JavaVersion.VERSION_11
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 /*
  * Copyright © 2020. Criptoactivo
  * Copyright © 2020. InnSy Tech
@@ -17,60 +20,103 @@
  */
 
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
-    namespace 'com.cryptowallet'
-    compileSdk rootProject.ext.compileSdk
-    ndkVersion rootProject.ext.ndk
-    buildToolsVersion rootProject.ext.buildTools
+    namespace = "com.cryptowallet"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    ndkVersion = libs.versions.ndk.get()
+    buildToolsVersion = libs.versions.buildTools.get()
 
     defaultConfig {
-        minSdk rootProject.ext.minSdk
-        targetSdk rootProject.ext.compileSdk
+        minSdk = libs.versions.minSdk.get().toInt()
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        getByName("release") {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    testOptions.unitTests {
+        isIncludeAndroidResources = true
+
+        all { test ->
+            with(test) {
+                testLogging {
+                    events = setOf(
+                        TestLogEvent.PASSED,
+                        TestLogEvent.SKIPPED,
+                        TestLogEvent.FAILED,
+                        TestLogEvent.STANDARD_OUT,
+                        TestLogEvent.STANDARD_ERROR
+                    )
+                }
+            }
         }
     }
 
     compileOptions {
-        sourceCompatibility rootProject.ext.jvmTarget
-        targetCompatibility rootProject.ext.jvmTarget
+        sourceCompatibility = VERSION_11
+        targetCompatibility = VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = rootProject.ext.jvmTarget.toString()
+        jvmTarget = VERSION_11.toString()
+    }
+
+    packaging {
+        resources {
+            excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
+        }
     }
 }
 
-dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.kotlin}"
+dependencies {
+    implementation(fileTree(mapOf("include" to listOf("*.jar"), "dir" to "libs")))
+
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlin.coroutines.android)
 
     // Android X libraries
-    implementation 'androidx.core:core-ktx:1.9.0'
-    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
 
     // Google libraries
-    implementation 'com.google.android.material:material:1.7.0'
+    implementation(libs.google.materialdesign)
 
     // Unit testing libraries
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:4.9.0'
+    testImplementation(libs.google.truth)
+    testImplementation(libs.kotlin.coroutines.test)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.mockito.junit.jupiter)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.junit5.api)
+    testRuntimeOnly(libs.junit5.engine)
+    testRuntimeOnly(libs.junit5.vintage)
 
     // Android instrumentation testing libraries
-    androidTestImplementation 'org.mockito:mockito-android:4.9.0'
-    androidTestImplementation 'androidx.test:runner:1.5.1'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.4'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'
+    debugImplementation(libs.androidx.test.fragment.manifest)
+    androidTestImplementation(libs.androidx.test.fragment)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.test.espresso.intents)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(libs.google.truth)
+    androidTestImplementation(libs.dexmaker)
+    androidTestImplementation(libs.kotlin.coroutines.test)
+    androidTestImplementation(libs.mockito.core)
+    androidTestImplementation(libs.mockito.kotlin)
 }

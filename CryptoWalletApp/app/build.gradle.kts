@@ -1,3 +1,6 @@
+import org.gradle.api.JavaVersion.VERSION_11
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 /*
  * Copyright © 2020. Criptoactivo
  * Copyright © 2020. InnSy Tech
@@ -17,91 +20,136 @@
  */
 
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    id 'com.google.gms.google-services'
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.services)
 }
 
 android {
-    namespace 'com.cryptowallet'
-    compileSdk rootProject.ext.compileSdk
-    ndkVersion rootProject.ext.ndk
-    buildToolsVersion rootProject.ext.buildTools
+    namespace = "com.cryptowallet"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    ndkVersion = libs.versions.ndk.get()
+    buildToolsVersion = libs.versions.buildTools.get()
 
     defaultConfig {
-        applicationId "com.cryptowallet"
-        minSdk rootProject.ext.minSdk
-        targetSdk rootProject.ext.compileSdk
-        versionCode 2
-        versionName '1.6'
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        applicationId = "com.cryptowallet"
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
+        versionCode = 2
+        versionName = "1.6"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        getByName("release") {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    testOptions.unitTests {
+        isIncludeAndroidResources = true
+
+        all { test ->
+            with(test) {
+                testLogging {
+                    events = setOf(
+                        TestLogEvent.PASSED,
+                        TestLogEvent.SKIPPED,
+                        TestLogEvent.FAILED,
+                        TestLogEvent.STANDARD_OUT,
+                        TestLogEvent.STANDARD_ERROR
+                    )
+                }
+            }
         }
     }
 
     compileOptions {
-        sourceCompatibility rootProject.ext.jvmTarget
-        targetCompatibility rootProject.ext.jvmTarget
+        sourceCompatibility = VERSION_11
+        targetCompatibility = VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = rootProject.ext.jvmTarget.toString()
+        jvmTarget = VERSION_11.toString()
+    }
+
+    packaging {
+        resources {
+            excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
+        }
     }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation project(path: ':core')
+    implementation(fileTree(mapOf("include" to listOf("*.jar"), "dir" to "libs")))
+    implementation(project(path = ":core"))
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.kotlin}"
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlin.coroutines.android)
 
     // Android X libraries
-    implementation 'androidx.core:core-ktx:1.9.0'
-    implementation 'androidx.appcompat:appcompat:1.5.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    implementation 'androidx.preference:preference:1.2.0'
-    implementation 'androidx.recyclerview:recyclerview:1.2.1'
-    implementation 'androidx.gridlayout:gridlayout:1.0.0'
-    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
-    implementation 'androidx.navigation:navigation-fragment:2.5.3'
-    implementation 'androidx.navigation:navigation-ui:2.5.3'
-    implementation 'androidx.biometric:biometric:1.1.0'
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.cardview)
+    implementation(libs.androidx.legacysupport)
+    implementation(libs.androidx.preference)
+    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.gridlayout)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.navigation.ui)
+    implementation(libs.androidx.biometric)
 
-    implementation 'com.android.volley:volley:1.2.1'
+    // Android legacy libraries
+    implementation(libs.android.volley)
 
     // Google libraries
-    implementation 'com.google.firebase:firebase-messaging:23.1.0'
-    implementation 'com.google.android.material:material:1.7.0'
-    implementation 'com.google.guava:guava:31.1-jre'
-    implementation 'com.google.zxing:core:3.5.1'
+    implementation(libs.google.firebase.messaging)
+    implementation(libs.google.materialdesign)
+    implementation(libs.google.guava)
+    implementation(libs.google.zxing)
 
-    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    implementation(libs.journeyapps.zxing.android)
 
     // Networking libraries
-    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation(libs.squareup.okhttp3)
+    implementation(libs.squareup.retrofit2)
+    implementation(libs.squareup.retrofit2.converter.gson)
 
     // Bitcoin support libraries
-    implementation 'org.bitcoinj:bitcoinj-core:0.16.1'
-    implementation 'org.conscrypt:conscrypt-android:2.5.2'
-    implementation 'org.slf4j:slf4j-android:1.7.36'
-    implementation project(path: ':bitcoin')
+    implementation(libs.bitcoinj)
+    implementation(libs.conscrypt)
+    implementation(libs.slf4j)
+    implementation(project(path = ":bitcoin"))
 
     // Unit testing libraries
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:4.9.0'
+    testImplementation(libs.google.truth)
+    testImplementation(libs.kotlin.coroutines.test)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.mockito.junit.jupiter)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.junit5.api)
+    testRuntimeOnly(libs.junit5.engine)
+    testRuntimeOnly(libs.junit5.vintage)
 
     // Android instrumentation testing libraries
-    androidTestImplementation 'org.mockito:mockito-android:4.9.0'
-    androidTestImplementation 'androidx.test:runner:1.5.1'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.4'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'
+    debugImplementation(libs.androidx.test.fragment.manifest)
+    androidTestImplementation(libs.androidx.test.fragment)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.test.espresso.intents)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(libs.google.truth)
+    androidTestImplementation(libs.dexmaker)
+    androidTestImplementation(libs.kotlin.coroutines.test)
+    androidTestImplementation(libs.mockito.core)
+    androidTestImplementation(libs.mockito.kotlin)
 }

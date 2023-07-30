@@ -1,0 +1,94 @@
+[versions]
+androidGradlePlugin = "8.1.0"
+androidVolley = "1.2.1"
+androidxAppCompat = "1.6.1"
+androidxBiometric = "1.1.0"
+androidxCardView = "1.0.0"
+androidxConstraintLayout = "2.1.4"
+androidxCore = "1.10.1"
+androidxEspresso = "3.5.1"
+androidxFragment = "1.6.1"
+androidxGridLayout = "1.0.0"
+androidxLegacySupport = "1.0.0"
+androidxLifecycle = "2.2.0"
+androidxNavigation = "2.6.0"
+androidxPreference = "1.2.1"
+androidxRecyclerView = "1.3.1"
+androidxSplashscreen = "1.0.1"
+buildTools = "33.0.0"
+compileSdk = "33"
+googleFirebaseMessaging = "23.2.0"
+googleGuava = "31.1.0"
+googleMaterialDesign = "1.9.0"
+googleServices = "4.3.14"
+googleTruth = "1.1.5"
+googleZxing = "3.5.2"
+journeyappsZxingAndroid = "4.3.0"
+junit4 = "4.13.2"
+junit5 = "5.10.0"
+jvmTarjet = "11"
+kotlin = "1.9.0"
+kotlinxCoroutines = "1.7.3"
+minSdk = "21"
+mockito = "5.4.0"
+mockitoKotlin = "5.0.0"
+ndk = "25.1.8937393"
+okhttp3 = "4.10.0"
+retrofit2 = "2.9.0"
+robolectric = "4.10.3"
+targetSdk = "33"
+
+[libraries]
+android-volley = { group = "com.android.volley", name = "volley", version.ref = "androidVolley" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "androidxBiometric" }
+androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "androidxCardView" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidxConstraintLayout" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidxSplashscreen" }
+androidx-gridlayout = { group = "androidx.gridlayout", name = "gridlayout", version.ref = "androidxGridLayout" }
+androidx-legacysupport = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "androidxLegacySupport" }
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "livedata-ktx", version.ref = "androidxLifecycle" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "viewmodel-ktx", version.ref = "androidxLifecycle" }
+androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "androidxNavigation" }
+androidx-navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "androidxNavigation" }
+androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "androidxPreference" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "androidxRecyclerView" }
+androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxEspresso" }
+androidx-test-espresso-intents = { group = "androidx.test.espresso", name = "espresso-intents", version.ref = "androidxEspresso" }
+androidx-test-fragment = { group = "androidx.fragment", name = "fragment-testing", version.ref = "androidxFragment" }
+androidx-test-fragment-manifest = { group = "androidx.fragment", name = "fragment-testing-manifest", version.ref = "androidxFragment" }
+androidx-test-junit = { group = "androidx.test.ext", name = "junit-ktx", version = "1.1.5" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version = "1.5.2" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version = "2.2.0" }
+bitcoinj = { group = "org.bitcoinj", name = "bitcoinj-core", version = "0.16.1" }
+conscrypt = { group = "org.conscrypt", name = "conscrypt-android", version = "2.5.2" }
+dexmaker = { group = "com.linkedin.dexmaker", name = "dexmaker-mockito", version = "2.28.3" }
+google-firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "googleFirebaseMessaging" }
+google-guava = { group = "com.google.guava", name = "guava", version.ref = "googleGuava" }
+google-materialdesign = { group = "com.google.android.material", name = "material", version.ref = "googleMaterialDesign" }
+google-truth = { group = "com.google.truth", name = "truth", version.ref = "googleTruth" }
+google-zxing = { group = "com.google.zxing", name = "core", version.ref = "googleZxing" }
+journeyapps-zxing-android = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "journeyappsZxingAndroid" }
+junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
+junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }
+junit5-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
+junit5-vintage = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junit5" }
+kotlin-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlin-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { group = "org.mockito", name = "mockito-junit-jupiter", version.ref = "mockito" }
+mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+slf4j = { group = "org.slf4j", name = "slf4j-android", version = "1.7.36" }
+squareup-okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp3" }
+squareup-retrofit2 = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit2" }
+squareup-retrofit2-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit2" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

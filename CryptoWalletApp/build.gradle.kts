@@ -17,7 +17,6 @@
  */
 
 plugins {
-
     /**
      * You should use `apply false` in the top-level build.gradle file
      * to add a Gradle plugin as a build dependency, but not apply it to the
@@ -25,23 +24,15 @@ plugins {
      * For more information, see
      * Applying external plugins with same version to subprojects.
      */
-
-    id 'com.android.application' version '8.0.1' apply false
-    id 'com.android.library' version '8.0.1' apply false
-    id 'org.jetbrains.kotlin.android' version '1.7.20' apply false
-    id 'com.google.gms.google-services' version '4.3.14' apply false
-    id 'org.jetbrains.kotlin.jvm' version '1.7.20' apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
 }
 
-ext {
-    minSdk = 21
-    compileSdk = 33
-    kotlin = '1.7.20'
-    buildTools = '33.0.0'
-    ndk = '25.1.8937393'
-    jvmTarget = JavaVersion.VERSION_11
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks {
+    register<Delete>("clean") {
+        delete(rootProject.buildDir)
+    }
 }
