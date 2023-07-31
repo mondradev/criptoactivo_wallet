@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,9 +38,9 @@ import androidx.fragment.app.Fragment;
 import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Consumer;
-import com.cryptowallet.wallet.SupportedAssets;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -74,7 +74,7 @@ public class WalletFragment extends Fragment {
     /**
      * Receptor del evento {@link Constants#NEW_TRANSACTION}
      */
-    private BroadcastReceiver mPriceReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mPriceReceiver = new BroadcastReceiver() {
         /**
          * This method is called when the BroadcastReceiver is receiving an Intent
          * broadcast.

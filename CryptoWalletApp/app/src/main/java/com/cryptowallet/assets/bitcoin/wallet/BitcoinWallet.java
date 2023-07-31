@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import com.cryptowallet.R;
 import com.cryptowallet.assets.bitcoin.services.BitcoinProvider;
 import com.cryptowallet.assets.bitcoin.wallet.exceptions.BitcoinDustException;
 import com.cryptowallet.assets.bitcoin.wallet.exceptions.BitcoinOverflowException;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitsoPriceTracker;
@@ -41,7 +42,6 @@ import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ChainTipInfo;
 import com.cryptowallet.wallet.IFees;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.exceptions.InsufficientBalanceException;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
 import com.google.common.base.Strings;

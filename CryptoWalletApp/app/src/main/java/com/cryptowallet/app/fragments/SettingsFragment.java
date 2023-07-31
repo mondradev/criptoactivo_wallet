@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,8 +44,8 @@ import com.cryptowallet.app.authentication.Authenticator;
 import com.cryptowallet.app.authentication.IAuthenticationSucceededCallback;
 import com.cryptowallet.app.authentication.IAuthenticationUpdatedCallback;
 import com.cryptowallet.app.authentication.TwoFactorAuthentication;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.services.WalletProvider;
-import com.cryptowallet.wallet.SupportedAssets;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -334,8 +334,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         Preference biometric = requirePreference("biometric");
         Preference changePin = requirePreference("changepin");
 
-        if (!canUseBiometric()) biometric.setVisible(false);
-        else biometric.setVisible(true);
+        biometric.setVisible(canUseBiometric());
 
         changePin.setOnPreferenceClickListener(this::onUpdatedPin);
         biometric.setOnPreferenceChangeListener(this::onBiometricEnabledChange);

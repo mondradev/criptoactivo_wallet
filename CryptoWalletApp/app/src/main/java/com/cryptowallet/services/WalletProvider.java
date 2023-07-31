@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import com.cryptowallet.Constants;
 import com.cryptowallet.R;
 import com.cryptowallet.app.Preferences;
 import com.cryptowallet.app.TxBottomSheetDialogActivity;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.services.coinmarket.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.BiConsumer;
@@ -46,7 +47,6 @@ import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.callbacks.IOnAuthenticated;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -110,17 +110,17 @@ public final class WalletProvider {
     /**
      * Ejecutor para actividades en un subproceso.
      */
-    private ExecutorService mExecutor;
+    private final ExecutorService mExecutor;
 
     /**
      * Colección de controladores de billetera.
      */
-    private Map<SupportedAssets, AbstractWallet> mWallets;
+    private final Map<SupportedAssets, AbstractWallet> mWallets;
 
     /**
      * Comando para procesar las peticiones al servicio.
      */
-    private Consumer<Intent> mProcessingRequest = intent -> {
+    private final Consumer<Intent> mProcessingRequest = intent -> {
         Thread.currentThread().setName("WalletService ProcessingRequest");
 
         String assetValue = intent.getStringExtra(Constants.EXTRA_CRYPTO_ASSET);
@@ -161,17 +161,17 @@ public final class WalletProvider {
     /**
      * Consumidor del evento saldo ha cambiado.
      */
-    private Consumer<AbstractWallet> mOnBalanceChangedConsumer;
+    private final Consumer<AbstractWallet> mOnBalanceChangedConsumer;
 
     /**
      * Consumidor del evento de precio ha cambiado.
      */
-    private BiConsumer<Book, Long> mOnPriceChangedConsumer;
+    private final BiConsumer<Book, Long> mOnPriceChangedConsumer;
 
     /**
      * Consumidor del evento nueva transacción.
      */
-    private Consumer<ITransaction> mOnNewTransactionConsumer;
+    private final Consumer<ITransaction> mOnNewTransactionConsumer;
 
     /**
      * Activo fiat en el cual se expresan los precios de los cripto-activos.
@@ -245,7 +245,7 @@ public final class WalletProvider {
      *
      * @param token Token nuevo de FCM.
      */
-    public final void updatePushToken(String token) {
+    public void updatePushToken(String token) {
         mPreference.edit().putString(TOKEN_FCM, token).apply();
         forEachWallet(wallet -> wallet.onUpdatePushToken(token));
     }
@@ -441,7 +441,7 @@ public final class WalletProvider {
      *
      * @return Token del equipo.
      */
-    public final String getPushToken() {
+    public String getPushToken() {
         return mPreference.getString(TOKEN_FCM, "");
     }
 

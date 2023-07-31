@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ import com.cryptowallet.app.authentication.TwoFactorAuthentication;
 import com.cryptowallet.app.fragments.FailMessageFragment;
 import com.cryptowallet.app.fragments.SuccessfulPaymentFragment;
 import com.cryptowallet.app.fragments.TwoFactorAuthenticationFragment;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.utils.Consumer;
 import com.cryptowallet.utils.Utils;
 import com.cryptowallet.utils.inputfilters.DecimalsFilter;
@@ -52,7 +53,6 @@ import com.cryptowallet.utils.textwatchers.IAfterTextChangedListener;
 import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.IFees;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.SupportedAssets;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
 import com.cryptowallet.wallet.exceptions.InvalidFeeException;
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -177,7 +177,7 @@ public class SendPaymentsActivity extends LockableActivity {
     /**
      * Receptor del evento {@link Constants#NEW_TRANSACTION}
      */
-    private BroadcastReceiver mPriceReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mPriceReceiver = new BroadcastReceiver() {
         /**
          * This method is called when the BroadcastReceiver is receiving an Intent
          * broadcast.

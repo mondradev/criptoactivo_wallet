@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ package com.cryptowallet.assets.bitcoin.wallet.exceptions;
 import android.content.res.Resources;
 
 import com.cryptowallet.R;
-import com.cryptowallet.wallet.SupportedAssets;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.wallet.exceptions.InvalidAmountException;
 
 import org.jetbrains.annotations.NotNull;

@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.wallet;
+package com.cryptowallet.core.domain;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
@@ -71,16 +71,16 @@ public enum SupportedAssets {
     /**
      * Tamaño de la unidad en su porción más pequeña.
      */
-    private long mUnit;
+    private final long mUnit;
     /**
      * Bandera que indica si es un activo FIAT.
      */
-    private boolean mFiat;
+    private final boolean mFiat;
     /**
      * Nombre utilizado en la IU.
      */
     @StringRes
-    private int mName;
+    private final int mName;
     /**
      * Signo de la divisa fiat.
      */
@@ -89,7 +89,7 @@ public enum SupportedAssets {
      * Icono del activo.
      */
     @DrawableRes
-    private int mIcon;
+    private final int mIcon;
 
     /**
      * Crea una nueva instancia del activo.

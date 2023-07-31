@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ package com.cryptowallet.assets.bitcoin.wallet;
 import androidx.annotation.NonNull;
 
 import com.cryptowallet.assets.bitcoin.services.retrofit.TxDataResponse;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.wallet.AbstractWallet;
 import com.cryptowallet.wallet.ITransaction;
-import com.cryptowallet.wallet.SupportedAssets;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
@@ -63,12 +63,12 @@ public class BitcoinTransaction implements ITransaction {
     /**
      * Billetera de bitcoin (BitcoinJ)
      */
-    private org.bitcoinj.wallet.Wallet mWallet;
+    private final org.bitcoinj.wallet.Wallet mWallet;
 
     /**
      * Billetera que contiene la transacción.
      */
-    private BitcoinWallet mWalletParent;
+    private final BitcoinWallet mWalletParent;
 
     /**
      * Crea una nueva transacción vacía.

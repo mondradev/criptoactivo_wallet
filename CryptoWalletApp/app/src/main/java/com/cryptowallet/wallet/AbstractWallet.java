@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.cryptowallet.BuildConfig;
+import com.cryptowallet.core.domain.SupportedAssets;
 import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.utils.Consumer;
@@ -91,22 +92,22 @@ public abstract class AbstractWallet {
     /**
      * Conjunto de escuchas para cuando el saldo ha cambiado.
      */
-    private CopyOnWriteArraySet<ExecutableConsumer<AbstractWallet>> mBalanceChangedListeners;
+    private final CopyOnWriteArraySet<ExecutableConsumer<AbstractWallet>> mBalanceChangedListeners;
 
     /**
      * Conjunto de escuchas para cuando se agrega una nueva transacción a la billetera.
      */
-    private CopyOnWriteArraySet<ExecutableConsumer<ITransaction>> mNewTransactionListeners;
+    private final CopyOnWriteArraySet<ExecutableConsumer<ITransaction>> mNewTransactionListeners;
 
     /**
      * Conjunto de escuchas para cuando se finaliza la sincronización.
      */
-    private CopyOnWriteArraySet<ExecutableCommand> mFullSyncListener;
+    private final CopyOnWriteArraySet<ExecutableCommand> mFullSyncListener;
 
     /**
      * Seguidores de precio.
      */
-    private Map<SupportedAssets, PriceTracker> mPriceTrackers;
+    private final Map<SupportedAssets, PriceTracker> mPriceTrackers;
 
     /**
      * Crea una instancia de la billetera.
