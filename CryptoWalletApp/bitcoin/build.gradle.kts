@@ -1,10 +1,7 @@
-import org.gradle.api.JavaVersion.VERSION_11
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +16,9 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
  * limitations under the License.
  */
 
+import org.gradle.api.JavaVersion.VERSION_11
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -28,7 +28,6 @@ android {
     namespace = "com.cryptowallet.assets.bitcoin"
     compileSdk = libs.versions.compileSdk.get().toInt()
     ndkVersion = libs.versions.ndk.get()
-    buildToolsVersion = libs.versions.buildTools.get()
 
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
