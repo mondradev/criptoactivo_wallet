@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
-import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.cryptowallet.services.WalletProvider;
 import com.cryptowallet.utils.Timeout;
@@ -223,13 +222,13 @@ public abstract class LockableActivity extends AppCompatActivity {
 
                 @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
                 public void onDestroy() {
-                    ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifecycleObserver);
+                    getLifecycle().removeObserver(mLifecycleObserver);
                     mLifecycleObserver = null;
                 }
 
             };
 
-            ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifecycleObserver);
+            getLifecycle().addObserver(mLifecycleObserver);
         }
     }
 

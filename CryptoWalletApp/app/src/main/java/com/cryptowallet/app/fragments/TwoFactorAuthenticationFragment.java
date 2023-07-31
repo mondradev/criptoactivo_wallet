@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
-import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.cryptowallet.R;
 import com.cryptowallet.app.LockableActivity;
@@ -92,7 +91,7 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
     /**
      * Función para indicar que se autenticó.
      */
-    private IAuthenticationSucceeded mSuccededCallback;
+    private final IAuthenticationSucceeded mSuccededCallback;
 
     /**
      *
@@ -184,7 +183,7 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
 
         };
 
-        ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifeCycleObserver);
+        getLifecycle().addObserver(mLifeCycleObserver);
         mRoot.getViewTreeObserver().addOnWindowFocusChangeListener(mWindowFocusListener);
 
         return mRoot;
@@ -247,7 +246,7 @@ public class TwoFactorAuthenticationFragment extends BottomSheetDialogFragment {
     public void onDestroy() {
         super.onDestroy();
 
-        ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifeCycleObserver);
+        getLifecycle().removeObserver(mLifeCycleObserver);
         mRoot.getViewTreeObserver().removeOnWindowFocusChangeListener(mWindowFocusListener);
     }
 

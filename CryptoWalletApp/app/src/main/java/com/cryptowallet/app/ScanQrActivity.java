@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
-import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.cryptowallet.R;
 import com.cryptowallet.utils.Utils;
@@ -116,7 +115,7 @@ public class ScanQrActivity extends LockableActivity {
             }
         };
 
-        ProcessLifecycleOwner.get().getLifecycle().addObserver(mLifeCycleObserver);
+        getLifecycle().addObserver(mLifeCycleObserver);
 
     }
 
@@ -162,7 +161,7 @@ public class ScanQrActivity extends LockableActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        ProcessLifecycleOwner.get().getLifecycle().removeObserver(mLifeCycleObserver);
+        getLifecycle().removeObserver(mLifeCycleObserver);
     }
 
     /**
