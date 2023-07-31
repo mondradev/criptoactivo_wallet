@@ -15,9 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.cryptowallet.services.coinmarket
-
-import com.cryptowallet.core.domain.SupportedAssets
+package com.cryptowallet.core.domain
 
 /**
  * Define los atributos requeridos para los libros de un seguidor de precio. En este se especifica

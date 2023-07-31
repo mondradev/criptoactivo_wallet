@@ -18,8 +18,8 @@
 
 package com.cryptowallet.services.coinmarket.pricetrackers;
 
+import com.cryptowallet.core.domain.Book;
 import com.cryptowallet.core.domain.SupportedAssets;
-import com.cryptowallet.services.coinmarket.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 
 import org.jetbrains.annotations.NotNull;

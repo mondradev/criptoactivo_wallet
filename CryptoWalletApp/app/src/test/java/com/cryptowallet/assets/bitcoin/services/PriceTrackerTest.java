@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
-import com.cryptowallet.services.coinmarket.Book;
+import com.cryptowallet.core.domain.Book;
 import com.cryptowallet.services.coinmarket.PriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitfinexPriceTracker;
 import com.cryptowallet.services.coinmarket.pricetrackers.BitsoPriceTracker;

@@ -1,7 +1,7 @@
 /*
- * Copyright © 2020. Criptoactivo
- * Copyright © 2020. InnSy Tech
- * Copyright © 2020. Ing. Javier de Jesús Flores Mondragón
+ * Copyright &copy; 2023. Criptoactivo
+ * Copyright &copy; 2023. InnSy Tech
+ * Copyright &copy; 2023. Ing. Javier de Jesús Flores Mondragón
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package com.cryptowallet.services.coinmarket;
 
 import android.os.Handler;
 
+import com.cryptowallet.core.domain.Book;
 import com.cryptowallet.utils.BiConsumer;
 import com.cryptowallet.utils.ExecutableBiConsumer;
 
@@ -65,7 +66,7 @@ public abstract class PriceTracker {
     /**
      * Libro de seguimiento.
      */
-    private Book mBook;
+    private final Book mBook;
 
     /**
      * Crea una nueva instancia del seguidor.
