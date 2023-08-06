@@ -227,7 +227,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         List<String> currenciesValues = new ArrayList<>();
 
         for (SupportedAssets asset : SupportedAssets.getSupportedFiatAssets()) {
-            currenciesNames.add(requireContext().getString(asset.getName()));
+            currenciesNames.add(asset.getName());
             currenciesValues.add(asset.name());
         }
 

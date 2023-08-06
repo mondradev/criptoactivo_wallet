@@ -18,12 +18,6 @@
 
 package com.cryptowallet.core.domain;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.StringRes;
-
-import com.cryptowallet.R;
-import com.google.common.base.Strings;
-
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -48,17 +42,17 @@ public enum SupportedAssets {
     /**
      * Cripto-activo Bitcoin.
      */
-    BTC(100000000, R.string.bitcoin_text, R.drawable.ic_bitcoin),
+    BTC(100000000, "Bitcon"),
 
     /**
      * Activo fiduciario Dolar estadounidense.
      */
-    USD(100, R.string.usd_text, 0, true),
+    USD(100, "Dolar", true),
 
     /**
      * Activo fiduciario Peso mexicano.
      */
-    MXN(100, R.string.mxn_text, 0, true);
+    MXN(100, "Pesos", true);
 
     /**
      * Indica que la cantidad está expresando miles.
@@ -79,31 +73,22 @@ public enum SupportedAssets {
     /**
      * Nombre utilizado en la IU.
      */
-    @StringRes
-    private final int mName;
+    private final String mName;
     /**
      * Signo de la divisa fiat.
      */
     private char mSign;
-    /**
-     * Icono del activo.
-     */
-    @DrawableRes
-    private final int mIcon;
 
     /**
      * Crea una nueva instancia del activo.
      *
      * @param unit   La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
-     * @param name   Nombre utilizado en la IU.
      * @param isFiat Indica si el activo es fiduciario.
-     * @param icon   Icono que representa al activo.
      */
-    SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon, boolean isFiat) {
+    SupportedAssets(long unit, String name, boolean isFiat) {
         mUnit = unit;
-        mName = name;
         mFiat = isFiat;
-        mIcon = icon;
+        mName = name;
 
         if (isFiat) mSign = '$';
     }
@@ -112,11 +97,9 @@ public enum SupportedAssets {
      * Crea una nueva instancia del activo.
      *
      * @param unit La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
-     * @param name Nombre utilizado en la IU.
-     * @param icon Icono que representa al activo.
      */
-    SupportedAssets(long unit, @StringRes int name, @DrawableRes int icon) {
-        this(unit, name, icon, false);
+    SupportedAssets(long unit, String name) {
+        this(unit, name, false);
     }
 
     /**
@@ -153,11 +136,11 @@ public enum SupportedAssets {
     }
 
     /**
-     * Obtiene el nombre del activo utilizado en IU.
+     * Obtiene el nombre del activo.
      *
      * @return Nombre del activo.
      */
-    public int getName() {
+    public String getName() {
         return mName;
     }
 
@@ -168,16 +151,6 @@ public enum SupportedAssets {
      */
     public String getSign() {
         return isFiat() ? Character.toString(mSign) : "";
-    }
-
-    /**
-     * Obtiene el identificador del dibujable utilizado como icono.
-     *
-     * @return Recurso del dibujable del icono.
-     */
-    @DrawableRes
-    public int getIcon() {
-        return mIcon;
     }
 
     /**
@@ -206,7 +179,6 @@ public enum SupportedAssets {
         String unit = "";
 
         if (reduce) {
-
             if (newValue >= 10000) {
                 unit = KILO_SYMBOL;
                 newValue /= 1000;
@@ -218,7 +190,7 @@ public enum SupportedAssets {
             }
         }
 
-        if (isFiat() || (reduce && !Strings.isNullOrEmpty(unit))) {
+        if (isFiat() || reduce && !unit.isEmpty()) {
             minDigits = 2;
             maxDigits = 2;
         } else
@@ -286,7 +258,7 @@ public enum SupportedAssets {
             }
         }
 
-        if (isFiat() || (!Strings.isNullOrEmpty(unit) && reduce)) {
+        if (isFiat() || (!unit.isEmpty() && reduce)) {
             minDigits = 2;
             maxDigits = 2;
         } else

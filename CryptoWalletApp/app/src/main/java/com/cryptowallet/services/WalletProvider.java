@@ -369,8 +369,7 @@ public final class WalletProvider {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext,
                 mContext.getString(R.string.payments_notification_channel_id))
-                .setSmallIcon(asset.getIcon())
-                .setContentTitle(mContext.getString(asset.getName()))
+                .setContentTitle(asset.getName())
                 .setContentText(message)
                 .setColor(Utils.resolveColor(mContext, androidx.appcompat.R.attr.colorAccent))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
