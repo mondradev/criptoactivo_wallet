@@ -15,13 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.cryptowallet.core.domain
 
-package com.cryptowallet.core.domain;
-
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.List;
+import java.text.DecimalFormat
+import java.text.NumberFormat
+import kotlin.math.log10
 
 /**
  * Enumera los activos que maneja la billetera. Cada activo contiene datos unicos que los definen
@@ -29,139 +27,36 @@ import java.util.List;
  * activo.
  *
  * <pre>
- *     Ejemplo:
+ * Ejemplo:
  *
- *          1 BTC expresado en su unidad más pequeña sería 100,000,000 satoshis.
- *          1 USD expresado en su unidad más pequeña sería 100 centavos.
- * </pre>
+ * 1 BTC expresado en su unidad más pequeña sería 100,000,000 satoshis.
+ * 1 USD expresado en su unidad más pequeña sería 100 centavos.
+</pre> *
  *
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.2
  */
-public enum SupportedAssets {
-    /**
-     * Cripto-activo Bitcoin.
-     */
-    BTC(100000000, "Bitcon"),
-
-    /**
-     * Activo fiduciario Dolar estadounidense.
-     */
-    USD(100, "Dolar", true),
-
-    /**
-     * Activo fiduciario Peso mexicano.
-     */
-    MXN(100, "Pesos", true);
-
-    /**
-     * Indica que la cantidad está expresando miles.
-     */
-    private static final String KILO_SYMBOL = "K";
-    /**
-     * Indica que la cantidad está expresando millones.
-     */
-    private static final String MEGA_SYMBOL = "M";
+sealed class SupportedAssets @JvmOverloads constructor(
     /**
      * Tamaño de la unidad en su porción más pequeña.
      */
-    private final long mUnit;
-    /**
-     * Bandera que indica si es un activo FIAT.
-     */
-    private final boolean mFiat;
+    val unit: Long,
+
     /**
      * Nombre utilizado en la IU.
      */
-    private final String mName;
-    /**
-     * Signo de la divisa fiat.
-     */
-    private char mSign;
+    val name: String,
 
     /**
-     * Crea una nueva instancia del activo.
-     *
-     * @param unit   La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
-     * @param isFiat Indica si el activo es fiduciario.
+     * Bandera que indica si es un activo FIAT.
      */
-    SupportedAssets(long unit, String name, boolean isFiat) {
-        mUnit = unit;
-        mFiat = isFiat;
-        mName = name;
-
-        if (isFiat) mSign = '$';
-    }
-
+    val isFiat: Boolean = false
+) {
     /**
-     * Crea una nueva instancia del activo.
-     *
-     * @param unit La unidad expresada en su porción más pequeña. Ej. 100000000 satoshis = 1 BTC.
+     * Signo de la divisa si es un activo fiat.
      */
-    SupportedAssets(long unit, String name) {
-        this(unit, name, false);
-    }
-
-    /**
-     * Obtiene la lista de los activos fiduciarios soportados.
-     *
-     * @return Lista de activos.
-     */
-    public static List<SupportedAssets> getSupportedFiatAssets() {
-        List<SupportedAssets> fiat = new ArrayList<>();
-
-        for (SupportedAssets asset : SupportedAssets.values())
-            if (asset.isFiat())
-                fiat.add(asset);
-
-        return fiat;
-    }
-
-    /**
-     * Obtiene el tamaño de la unidad expresada en su porción más pequeña.
-     *
-     * @return Tamaño de la unidad.
-     */
-    public long getUnit() {
-        return this.mUnit;
-    }
-
-    /**
-     * Determina si es un activo fiduciario.
-     *
-     * @return Un true en caso de ser fiat.
-     */
-    public boolean isFiat() {
-        return mFiat;
-    }
-
-    /**
-     * Obtiene el nombre del activo.
-     *
-     * @return Nombre del activo.
-     */
-    public String getName() {
-        return mName;
-    }
-
-    /**
-     * Obtiene el signo de la divisa si es un activo fiat.
-     *
-     * @return Signo del activo.
-     */
-    public String getSign() {
-        return isFiat() ? Character.toString(mSign) : "";
-    }
-
-    /**
-     * Obtiene la representación de una cantidad en la divisa. Ej: 100.0 -> $100.00
-     *
-     * @param value Valor a formatear.
-     * @return Una cadena que representa la cantidad en la divisa.
-     */
-    public String toStringFriendly(long value) {
-        return toStringFriendly(value, true);
-    }
+    val sign: String
+        get() = if (isFiat) "$" else ""
 
     /**
      * Obtiene la representación de una cantidad en la divisa. Ej: 100.0 -> $100.00
@@ -170,64 +65,34 @@ public enum SupportedAssets {
      * @param reduce Indica si se debe abreviar el valor, Ej. 1,000 -> K o 1,000,000 -> M.
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toStringFriendly(long value, boolean reduce) {
-        final DecimalFormat format = new DecimalFormat();
-
-        int minDigits = (int) Math.log10(mUnit);
-        int maxDigits = (int) Math.log10(mUnit);
-        double newValue = (double) value / mUnit;
-        String unit = "";
+    @JvmOverloads
+    fun toStringFriendly(value: Long, reduce: Boolean = true): String {
+        val format = DecimalFormat()
+        var minDigits = log10(unit.toDouble()).toInt()
+        var maxDigits = log10(unit.toDouble()).toInt()
+        var newValue = value.toDouble() / unit
+        var unit = ""
 
         if (reduce) {
             if (newValue >= 10000) {
-                unit = KILO_SYMBOL;
-                newValue /= 1000;
+                unit = KILO_SYMBOL
+                newValue /= 1000.0
             }
-
-            if (newValue >= 1000 && unit.equals(KILO_SYMBOL)) {
-                unit = MEGA_SYMBOL;
-                newValue /= 1000;
+            if (newValue >= 1000 && unit == KILO_SYMBOL) {
+                unit = MEGA_SYMBOL
+                newValue /= 1000.0
             }
         }
 
-        if (isFiat() || reduce && !unit.isEmpty()) {
-            minDigits = 2;
-            maxDigits = 2;
-        } else
-            minDigits = Math.min(minDigits, 4);
+        if (isFiat || reduce && !unit.isEmpty()) {
+            minDigits = 2
+            maxDigits = 2
+        } else minDigits = minDigits.coerceAtMost(4)
 
-        format.setMinimumFractionDigits(minDigits);
-        format.setMaximumFractionDigits(maxDigits);
+        format.minimumFractionDigits = minDigits
+        format.maximumFractionDigits = maxDigits
 
-        String money = "";
-
-        if (isFiat())
-            money = String.format("%s ", mSign);
-
-        money += String.format("%s%s %s", format.format(newValue), unit, this.name());
-
-        return money;
-    }
-
-    /**
-     * Obtiene la representación de la cantidad formateada con el número de digitos máximos.
-     *
-     * @param value Valor a formatear.
-     * @return Una cadena que representa la cantidad en la divisa.
-     */
-    public String toPlainText(long value) {
-        return toPlainText(value, true, true);
-    }
-
-    /**
-     * Obtiene la representación de la cantidad formateada con el número de digitos máximos.
-     *
-     * @param value  Valor a formatear.
-     * @param reduce Indica si se debe abreviar el valor. Ej. 1,000 -> K o 1,000,000 -> M.
-     * @return Una cadena que representa la cantidad en la divisa.
-     */
-    public String toPlainText(long value, boolean reduce) {
-        return toPlainText(value, reduce, true);
+        return "$sign${format.format(newValue)}$unit $name"
     }
 
     /**
@@ -238,36 +103,69 @@ public enum SupportedAssets {
      * @param groupingUsed Indica si se agrupan las cifras. Ej. 1000000 -> 1,000,000
      * @return Una cadena que representa la cantidad en la divisa.
      */
-    public String toPlainText(long value, boolean reduce, boolean groupingUsed) {
-        final NumberFormat instance = NumberFormat.getInstance();
-
-        int minDigits = (int) Math.log10(mUnit);
-        int maxDigits = (int) Math.log10(mUnit);
-        double newValue = (double) value / mUnit;
-        String unit = "";
-
+    @JvmOverloads
+    fun toPlainText(value: Long, reduce: Boolean = true, groupingUsed: Boolean = true): String {
+        val instance = NumberFormat.getInstance()
+        var minDigits = log10(unit.toDouble()).toInt()
+        var maxDigits = log10(unit.toDouble()).toInt()
+        var newValue = value.toDouble() / unit
+        var unit = ""
         if (reduce) {
             if (newValue >= 10000) {
-                unit = KILO_SYMBOL;
-                newValue /= 1000;
+                unit = KILO_SYMBOL
+                newValue /= 1000.0
             }
-
-            if (newValue >= 1000 && unit.equals(KILO_SYMBOL)) {
-                unit = MEGA_SYMBOL;
-                newValue /= 1000;
+            if (newValue >= 1000 && unit == KILO_SYMBOL) {
+                unit = MEGA_SYMBOL
+                newValue /= 1000.0
             }
         }
+        if (isFiat || unit.isNotEmpty() && reduce) {
+            minDigits = 2
+            maxDigits = 2
+        } else minDigits = minDigits.coerceAtMost(4)
+        instance.isGroupingUsed = groupingUsed
+        instance.minimumFractionDigits = minDigits
+        instance.maximumFractionDigits = maxDigits
+        return String.format("%s%s", instance.format(newValue), unit)
+    }
 
-        if (isFiat() || (!unit.isEmpty() && reduce)) {
-            minDigits = 2;
-            maxDigits = 2;
-        } else
-            minDigits = Math.min(minDigits, 4);
+    companion object {
+        /**
+         * Indica que la cantidad está expresando miles.
+         */
+        private const val KILO_SYMBOL = "K"
 
-        instance.setGroupingUsed(groupingUsed);
-        instance.setMinimumFractionDigits(minDigits);
-        instance.setMaximumFractionDigits(maxDigits);
+        /**
+         * Indica que la cantidad está expresando millones.
+         */
+        private const val MEGA_SYMBOL = "M"
 
-        return String.format("%s%s", instance.format(newValue), unit);
+        /**
+         * Cripto-activo Bitcoin.
+         */
+        data object BTC : SupportedAssets(100000000, "Bitcon")
+
+        /**
+         * Activo fiduciario Dolar estadounidense.
+         */
+        data object USD : SupportedAssets(100, "Dolar", true)
+
+        /**
+         * Activo fiduciario Peso mexicano.
+         */
+        data object MXN : SupportedAssets(100, "Pesos", true)
+
+        val supportedFiatAssets: List<SupportedAssets>
+            /**
+             * Obtiene la lista de los activos fiduciarios soportados.
+             *
+             * @return Lista de activos.
+             */
+            get() = arrayListOf(
+                BTC,
+                USD,
+                MXN
+            )
     }
 }
