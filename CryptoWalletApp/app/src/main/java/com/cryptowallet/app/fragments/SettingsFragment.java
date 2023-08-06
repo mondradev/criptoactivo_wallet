@@ -227,7 +227,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         List<String> currenciesValues = new ArrayList<>();
 
         for (SupportedAssets asset : SupportedAssets.getSupportedFiatAssets()) {
-            currenciesNames.add(asset.getName());
+            currenciesNames.add(asset.name());
             currenciesValues.add(asset.name());
         }
 
@@ -236,7 +236,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         currenciesList.setEntryValues(currenciesValues.toArray(new CharSequence[0]));
         currenciesList.setValue(preferences.getFiat().name());
         currenciesList.setOnPreferenceChangeListener(this::onSelectedCurrency);
-        currenciesList.setSummary(preferences.getFiat().getName());
+        currenciesList.setSummary(preferences.getFiat().name());
 
         List<String> themeNames = new ArrayList<>();
         List<String> themeCaptions = new ArrayList<>();
@@ -320,7 +320,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     private boolean onSelectedCurrency(Preference preference, Object selectedCurrency) {
         SupportedAssets fiatAsset = SupportedAssets.valueOf(selectedCurrency.toString());
         Preferences.get().setFiat(fiatAsset);
-        requirePreference("currency").setSummary(Preferences.get().getFiat().getName());
+        requirePreference("currency").setSummary(Preferences.get().getFiat().name());
 
         WalletProvider.getInstance().updateFiatCurrency(fiatAsset);
 

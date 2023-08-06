@@ -99,7 +99,7 @@ public class BitcoinTransaction implements ITransaction {
         Objects.requireNonNull(wallet);
         Objects.requireNonNull(payloadBytes);
 
-        if (wallet.getCryptoAsset() != SupportedAssets.BTC)
+        if (wallet.getCryptoAsset() != SupportedAssets.BTC.INSTANCE)
             throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
 
         if (payloadBytes.length == 0)
@@ -133,7 +133,7 @@ public class BitcoinTransaction implements ITransaction {
         Objects.requireNonNull(data);
         Objects.requireNonNull(wallet);
 
-        if (wallet.getCryptoAsset() != SupportedAssets.BTC)
+        if (wallet.getCryptoAsset() != SupportedAssets.BTC.INSTANCE)
             throw new IllegalArgumentException("The wallet doesn't have the same cryptoasset");
 
         final BitcoinTransaction tx = new BitcoinTransaction(
@@ -202,7 +202,7 @@ public class BitcoinTransaction implements ITransaction {
      */
     @Override
     public SupportedAssets getCryptoAsset() {
-        return SupportedAssets.BTC;
+        return SupportedAssets.BTC.INSTANCE;
     }
 
     /**

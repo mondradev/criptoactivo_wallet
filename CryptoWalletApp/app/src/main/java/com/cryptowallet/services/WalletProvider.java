@@ -276,9 +276,9 @@ public final class WalletProvider {
     private void notifyPriceChanged(Book book, Long price) {
         Intent intent = new Intent()
                 .setAction(Constants.UPDATED_PRICE)
-                .putExtra(Constants.EXTRA_CRYPTO_ASSET, book.getCryptoAsset())
+                .putExtra(Constants.EXTRA_CRYPTO_ASSET, book.getCryptoAsset().name())
                 .putExtra(Constants.EXTRA_FIAT_PRICE, price)
-                .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency);
+                .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency.name());
 
         mContext.sendBroadcast(intent);
 
@@ -294,7 +294,7 @@ public final class WalletProvider {
         Intent intent = new Intent()
                 .setAction(Constants.UPDATED_FIAT_BALANCE)
                 .putExtra(Constants.EXTRA_FIAT_BALANCE, balance)
-                .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency);
+                .putExtra(Constants.EXTRA_FIAT_ASSET, mFiatCurrency.name());
 
         mContext.sendBroadcast(intent);
     }
@@ -369,7 +369,7 @@ public final class WalletProvider {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(mContext,
                 mContext.getString(R.string.payments_notification_channel_id))
-                .setContentTitle(asset.getName())
+                .setContentTitle(asset.name())
                 .setContentText(message)
                 .setColor(Utils.resolveColor(mContext, androidx.appcompat.R.attr.colorAccent))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

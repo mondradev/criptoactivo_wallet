@@ -41,7 +41,7 @@ public class BitcoinOverflowException extends InvalidAmountException {
      * Crea una instancia de la excepción.
      */
     public BitcoinOverflowException(long amount) {
-        super(SupportedAssets.BTC, amount);
+        super(SupportedAssets.BTC.INSTANCE, amount);
     }
 
     /**

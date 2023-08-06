@@ -140,8 +140,12 @@ public class SuccessfulPaymentFragment extends BottomSheetDialogFragment {
             throw new UnsupportedOperationException();
 
         final Bundle arguments = requireArguments();
-        final SupportedAssets asset = Enum.valueOf(SupportedAssets.class,
-                arguments.getString(Constants.EXTRA_CRYPTO_ASSET, SupportedAssets.BTC.name()));
+        final SupportedAssets asset = SupportedAssets.valueOf(
+                arguments.getString(
+                        Constants.EXTRA_CRYPTO_ASSET,
+                        SupportedAssets.BTC.INSTANCE.name()
+                )
+        );
 
         String[] toAddresses = arguments.getStringArray(Constants.EXTRA_TO_ADDRESSES);
         toAddresses = toAddresses == null ? new String[]{} : toAddresses;

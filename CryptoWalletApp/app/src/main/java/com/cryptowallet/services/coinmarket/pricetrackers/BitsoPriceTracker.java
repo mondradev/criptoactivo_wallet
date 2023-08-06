@@ -53,7 +53,7 @@ public class BitsoPriceTracker extends PriceTracker {
      * Libro de Bitcoin-PesosMxn Bitso
      */
     public static final Book BTCMXN
-            = new Book(SupportedAssets.BTC, SupportedAssets.MXN, "btc_mxn");
+            = new Book(SupportedAssets.BTC.INSTANCE, SupportedAssets.MXN.INSTANCE, "btc_mxn");
 
     /**
      * URL de la API Rest de Bitso.

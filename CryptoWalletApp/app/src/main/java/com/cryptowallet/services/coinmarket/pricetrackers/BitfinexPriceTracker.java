@@ -52,7 +52,7 @@ public class BitfinexPriceTracker extends PriceTracker {
      * Libro de Bitcoin-Dolar US Bitfinex
      */
     public static final Book BTCUSD
-            = new Book(SupportedAssets.BTC, SupportedAssets.USD, "tBTCUSD");
+            = new Book(SupportedAssets.BTC.INSTANCE, SupportedAssets.USD.INSTANCE, "tBTCUSD");
 
     /**
      * URL de la API Rest de Bitfinex.

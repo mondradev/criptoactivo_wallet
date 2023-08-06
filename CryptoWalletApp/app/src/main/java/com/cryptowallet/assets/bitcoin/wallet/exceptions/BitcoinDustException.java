@@ -39,7 +39,7 @@ public class BitcoinDustException extends InvalidAmountException {
      * Crea una instancia de la excepción.
      */
     public BitcoinDustException() {
-        super(SupportedAssets.BTC, 0);
+        super(SupportedAssets.BTC.INSTANCE, 0);
     }
 
     /**

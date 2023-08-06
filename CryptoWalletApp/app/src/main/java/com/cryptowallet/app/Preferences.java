@@ -260,7 +260,7 @@ public final class Preferences {
      */
     public SupportedAssets getFiat() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mAppContext);
-        String assetStr = preferences.getString(FIAT_KEY, SupportedAssets.USD.name());
+        String assetStr = preferences.getString(FIAT_KEY, SupportedAssets.USD.INSTANCE.name());
 
         return SupportedAssets.valueOf(assetStr);
     }

@@ -252,14 +252,13 @@ public final class TransactionHistoryAdapter
     final class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         /**
-         * Transacción enlazada al {@link RecyclerView.ViewHolder}.
-         */
-        private ITransaction mItem;
-
-        /**
          * Función de consumo utilizada para actualizar la divisa en la que se muestra el precio.
          */
         private final Consumer<Boolean> mOnCurrencyChange;
+        /**
+         * Transacción enlazada al {@link RecyclerView.ViewHolder}.
+         */
+        private ITransaction mItem;
 
         /**
          * Crea una nueva instancia.
@@ -367,7 +366,7 @@ public final class TransactionHistoryAdapter
                 return;
 
             if (mActivity != null)
-                TransactionFragment.show(mActivity, SupportedAssets.BTC, mItem.getID());
+                TransactionFragment.show(mActivity, SupportedAssets.BTC.INSTANCE, mItem.getID());
         }
     }
 

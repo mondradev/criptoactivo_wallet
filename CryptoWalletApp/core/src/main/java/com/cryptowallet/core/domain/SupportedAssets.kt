@@ -36,7 +36,7 @@ import kotlin.math.log10
  * @author Ing. Javier Flores (jjflores@innsytech.com)
  * @version 2.2
  */
-sealed class SupportedAssets @JvmOverloads constructor(
+sealed class SupportedAssets(
     /**
      * Tamaño de la unidad en su porción más pequeña.
      */
@@ -45,6 +45,7 @@ sealed class SupportedAssets @JvmOverloads constructor(
     /**
      * Nombre utilizado en la IU.
      */
+    @get:JvmName("name")
     val name: String,
 
     /**
@@ -130,7 +131,23 @@ sealed class SupportedAssets @JvmOverloads constructor(
         return String.format("%s%s", instance.format(newValue), unit)
     }
 
+    /**
+     * Cripto-activo Bitcoin.
+     */
+    data object BTC : SupportedAssets(100000000, "Bitcon")
+
+    /**
+     * Activo fiduciario Dolar estadounidense.
+     */
+    data object USD : SupportedAssets(100, "Dolar", true)
+
+    /**
+     * Activo fiduciario Peso mexicano.
+     */
+    data object MXN : SupportedAssets(100, "Pesos", true)
+
     companion object {
+
         /**
          * Indica que la cantidad está expresando miles.
          */
@@ -141,21 +158,16 @@ sealed class SupportedAssets @JvmOverloads constructor(
          */
         private const val MEGA_SYMBOL = "M"
 
-        /**
-         * Cripto-activo Bitcoin.
-         */
-        data object BTC : SupportedAssets(100000000, "Bitcon")
+        @JvmStatic
+        fun valueOf(name: String) = when {
+            BTC.name == name -> BTC
+            MXN.name == name -> MXN
+            USD.name == name -> USD
 
-        /**
-         * Activo fiduciario Dolar estadounidense.
-         */
-        data object USD : SupportedAssets(100, "Dolar", true)
+            else -> throw IllegalArgumentException()
+        }
 
-        /**
-         * Activo fiduciario Peso mexicano.
-         */
-        data object MXN : SupportedAssets(100, "Pesos", true)
-
+        @JvmStatic
         val supportedFiatAssets: List<SupportedAssets>
             /**
              * Obtiene la lista de los activos fiduciarios soportados.
@@ -163,7 +175,6 @@ sealed class SupportedAssets @JvmOverloads constructor(
              * @return Lista de activos.
              */
             get() = arrayListOf(
-                BTC,
                 USD,
                 MXN
             )

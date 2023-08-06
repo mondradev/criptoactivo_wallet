@@ -79,47 +79,38 @@ public class CryptoAssetFragment extends Fragment {
      * Petición de envío de pago.
      */
     private static final int SEND_PAYMENTS_REQUEST = 2;
-
-    /**
-     * Controlador de la billetera.
-     */
-    private AbstractWallet mWallet;
-
-    /**
-     * Vista de la tarjeta.
-     */
-    private CardView mRoot;
-
-    /**
-     * Vista del valor total.
-     */
-    private TextView mFiatValueView;
-
-    /**
-     * Vista de la cantidad total.
-     */
-    private TextView mBalanceView;
-
-    /**
-     * Vista del precio en el mercado.
-     */
-    private TextView mPriceView;
-
-    /**
-     * Último precio del activo en el mercado.
-     */
-    private long mLastPrice;
-
-    /**
-     * Último saldo de la billetera.
-     */
-    private long mLastBalance;
-
     /**
      * Handler para manejo de la IU.
      */
     private final Handler mHandler;
-
+    /**
+     * Controlador de la billetera.
+     */
+    private AbstractWallet mWallet;
+    /**
+     * Vista de la tarjeta.
+     */
+    private CardView mRoot;
+    /**
+     * Vista del valor total.
+     */
+    private TextView mFiatValueView;
+    /**
+     * Vista de la cantidad total.
+     */
+    private TextView mBalanceView;
+    /**
+     * Vista del precio en el mercado.
+     */
+    private TextView mPriceView;
+    /**
+     * Último precio del activo en el mercado.
+     */
+    private long mLastPrice;
+    /**
+     * Último saldo de la billetera.
+     */
+    private long mLastBalance;
     /**
      * Escucha del saldo de la billetera.
      */
@@ -194,7 +185,7 @@ public class CryptoAssetFragment extends Fragment {
         ((ImageView) mRoot.findViewById(R.id.mCryptoAssetIcon))
                 .setImageDrawable(ContextCompat.getDrawable(requireContext(), mWallet.getIcon()));
         ((TextView) mRoot.findViewById(R.id.mCryptoAssetName))
-                .setText(mWallet.getCryptoAsset().getName());
+                .setText(mWallet.getCryptoAsset().name());
 
         mBalanceView = mRoot.findViewById(R.id.mCryptoAssetBalance);
         mFiatValueView = mRoot.findViewById(R.id.mCryptoAssetValue);

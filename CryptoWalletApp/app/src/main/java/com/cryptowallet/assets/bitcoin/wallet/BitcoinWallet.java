@@ -183,7 +183,7 @@ public class BitcoinWallet extends AbstractWallet {
      * Crea una nueva instancia.
      */
     public BitcoinWallet(@NonNull Context context) {
-        super(SupportedAssets.BTC, context, WALLET_FILENAME);
+        super(SupportedAssets.BTC.INSTANCE, context, WALLET_FILENAME);
         mNetwork = TestNet3Params.get();
         mContextLib = new org.bitcoinj.core.Context(mNetwork);
 
@@ -199,8 +199,8 @@ public class BitcoinWallet extends AbstractWallet {
                     "00110116140d1f1b191212081702071b05070a0f03190c131d021c1419111b091a"));
         }
 
-        registerPriceTracker(SupportedAssets.MXN, BitsoPriceTracker.get(BitsoPriceTracker.BTCMXN));
-        registerPriceTracker(SupportedAssets.USD, BitfinexPriceTracker.get(BitfinexPriceTracker.BTCUSD));
+        registerPriceTracker(SupportedAssets.MXN.INSTANCE, BitsoPriceTracker.get(BitsoPriceTracker.BTCMXN));
+        registerPriceTracker(SupportedAssets.USD.INSTANCE, BitfinexPriceTracker.get(BitfinexPriceTracker.BTCUSD));
     }
 
     /**
@@ -1234,7 +1234,7 @@ public class BitcoinWallet extends AbstractWallet {
 
         if (Coin.valueOf(amount).isGreaterThan(Coin.valueOf(getBalance())))
             if (throwIfInvalid)
-                throw new InsufficientBalanceException(SupportedAssets.BTC, amount);
+                throw new InsufficientBalanceException(SupportedAssets.BTC.INSTANCE, amount);
             else return false;
 
         return true;

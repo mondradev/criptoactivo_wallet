@@ -46,7 +46,7 @@ public class CryptoAssetException extends RuntimeException {
      */
     public CryptoAssetException(SupportedAssets cryptoAsset) {
         this("An error occurred while performing the operation for the crypto-asset "
-                + cryptoAsset.getName(), cryptoAsset);
+                + cryptoAsset.name(), cryptoAsset);
     }
 
     /**

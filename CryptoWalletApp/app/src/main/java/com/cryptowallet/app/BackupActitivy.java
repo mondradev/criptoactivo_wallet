@@ -47,25 +47,21 @@ import java.util.concurrent.ThreadLocalRandom;
 public class BackupActitivy extends LockableActivity {
 
     /**
+     * Palabras testeadas.
+     */
+    private final List<Integer> mWordsTested = new ArrayList<>();
+    /**
      * Palabra que está actualmente mostrandose.
      */
     private int mCurrentWord = -1;
-
     /**
      * Palabra a probar.
      */
     private int mWord;
-
     /**
      * Error de ingreso de palabras.
      */
     private int mError;
-
-    /**
-     * Palabras testeadas.
-     */
-    private final List<Integer> mWordsTested = new ArrayList<>();
-
     /**
      * Palabras de la billetera.
      */
@@ -96,7 +92,7 @@ public class BackupActitivy extends LockableActivity {
                     (IAuthenticationSucceededCallback) authenticationToken -> {
                         // TODO Generalize wallets
                         mSeed = getWalletService()
-                                .get(SupportedAssets.BTC)
+                                .get(SupportedAssets.BTC.INSTANCE)
                                 .getCurrentSeed(authenticationToken);
                         nextWord();
                     });

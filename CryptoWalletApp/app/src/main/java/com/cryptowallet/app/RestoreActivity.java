@@ -211,7 +211,7 @@ public class RestoreActivity extends AppCompatActivity implements DialogInterfac
             if (!provider.verifyMnemonicCode(seedStr))
                 throw new IllegalArgumentException();
 
-            provider.restore(Lists.newArrayList(SupportedAssets.BTC), seedStr);
+            provider.restore(Lists.newArrayList(SupportedAssets.BTC.INSTANCE), seedStr);
 
             AlertMessages.showTerms(RestoreActivity.this, RestoreActivity.this.getString(R.string.restore_caption_button), this);
         } catch (Exception ignored) {
