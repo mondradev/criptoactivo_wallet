@@ -16,6 +16,11 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.core.domain
+package com.cryptowallet.core.domain.exceptions
 
-data class Value(val units: Long, val currency: Currency)
+import com.cryptowallet.core.domain.Currency
+
+class DifferentCurrenciesException(first: Currency, second: Currency) :
+    UnsupportedOperationException(
+        "It is not possible to perform arithmetic or logical operations between values expressed in different currencies. ($first vs $second)"
+    )
