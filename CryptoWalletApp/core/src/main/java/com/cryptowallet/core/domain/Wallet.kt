@@ -20,11 +20,14 @@ package com.cryptowallet.core.domain
 
 import kotlinx.coroutines.flow.Flow
 
+typealias TransactionList = List<Transaction>
+typealias AuthenticationToken = ByteArray
+
 interface Wallet {
 
-    val balance: Flow<Value>
+    val balance: Flow<Coin>
 
-    val lastTransaction: Flow<Transaction>
+    val recentTransactions: Flow<Transaction>
 
     val asset: Currency
 
@@ -32,11 +35,17 @@ interface Wallet {
 
     suspend fun exists(): Boolean
 
-    suspend fun authenticate(token: ByteArray)
+    suspend fun authenticate(token: AuthenticationToken)
 
-    suspend fun load()
+    suspend fun initialize()
 
     suspend fun restore(method: RestoreMethod)
 
     suspend fun sync()
+
+    suspend fun send(address: Address, amount: Coin)
+
+    suspend fun generateAddress(): Address
+
+    suspend fun getTransactions(): TransactionList
 }
