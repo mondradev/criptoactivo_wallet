@@ -18,4 +18,21 @@
 
 package com.cryptowallet.core.domain
 
-class Currency(val name: String, val units: Int)
+abstract class Currency(
+    val name: String,
+    val symbol: String,
+    val maxSubdivisions: Long
+) {
+
+    abstract fun format(
+        amount: Coin,
+        includeSymbol: Boolean,
+        reducedExpression: Boolean,
+        numberGrouping: Boolean
+    ): String
+
+    fun valueOf(units: Long) = Coin(
+        units = units,
+        currency = this
+    )
+}
