@@ -16,23 +16,9 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.core.domain
+package com.cryptowallet.core.domain.currencies
 
-abstract class Currency(
-    val name: String,
-    val symbol: String,
-    val maxSubdivisions: Long
-) {
-
-    abstract fun format(
-        amount: Coin,
-        includeSymbol: Boolean,
-        reducedExpression: Boolean,
-        numberGrouping: Boolean
-    ): String
-
-    fun valueOf(units: Long) = Coin(
-        units = units,
-        currency = this
-    )
-}
+data object Mxn : Fiat(
+    symbol = "$",
+    code = "MXN"
+)

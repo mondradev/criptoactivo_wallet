@@ -16,37 +16,15 @@
  * limitations under the License.
  */
 
-package com.cryptowallet.core.domain
+package com.cryptowallet.core.domain.currencies
 
-import com.cryptowallet.core.domain.currencies.Currency
-import kotlinx.coroutines.flow.Flow
+open class Fiat(val symbol: String, code: String) : Currency(
+    code = code,
+    maxSubdivisions = 100,
+    formatPattern = "0.00"
+) {
 
-typealias TransactionList = List<Transaction>
-typealias AuthenticationToken = ByteArray
+    override fun formatWithCurrencySymbol(formattedValue: String) =
+        "$symbol $formattedValue $code"
 
-interface Wallet {
-
-    val balance: Flow<Coin>
-
-    val recentTransactions: Flow<Transaction>
-
-    val asset: Currency
-
-    suspend fun delete()
-
-    suspend fun exists(): Boolean
-
-    suspend fun authenticate(token: AuthenticationToken)
-
-    suspend fun initialize()
-
-    suspend fun restore(method: RestoreMethod)
-
-    suspend fun sync()
-
-    suspend fun send(address: Address, amount: Coin)
-
-    suspend fun generateAddress(): Address
-
-    suspend fun getTransactions(): TransactionList
 }

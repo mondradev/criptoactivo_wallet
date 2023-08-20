@@ -18,6 +18,7 @@
 
 package com.cryptowallet.core.domain
 
+import com.cryptowallet.core.domain.currencies.Currency
 import com.cryptowallet.core.domain.exceptions.DifferentCurrenciesException
 
 data class Coin(val units: Long, val currency: Currency) : Comparable<Coin> {
