@@ -18,4 +18,11 @@
 
 package com.cryptowallet.core.domain
 
-interface Transaction
+interface Transaction {
+
+    val source: Address
+
+    val destination: Address
+    
+    val value: Coin
+}
